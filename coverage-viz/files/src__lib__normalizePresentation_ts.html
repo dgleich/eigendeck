@@ -5,78 +5,79 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/normalizePresentation.ts </h1>
   <div class="stats">
-    <span class="stat"><b>91%</b> covered</span>
-    <span class="stat">72/79 executable</span>
-    <span class="stat unc-txt">7 uncovered</span>
+    <span class="stat"><b>98%</b> covered</span>
+    <span class="stat">63/64 statements</span>
+    <span class="stat unc-txt">1 uncovered</span>
     <span class="stat">140 raw lines</span>
     <span class="stat">0.33% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:51.429%"></span><span class="seg unc" style="width:5.000%"></span><span class="seg nil" style="width:43.571%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:98.438%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:1.562%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__lib__sanitizeRichText_ts.html">sanitizeRichText.ts</a> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
   <div class="links"><span>imported by:</span> <a href="src__components__HistoryPanel_tsx.html">HistoryPanel.tsx</a> <a href="src__export-cli_ts.html">export-cli.ts</a> <a href="src__lib__pasteClip_ts.html">pasteClip.ts</a> <a href="src__store__fileOps_ts.html">fileOps.ts</a> <a href="src__store__presentation_ts.html">presentation.ts</a></div>
 </header>
 <table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Fail-closed normalization for UNTRUSTED presentation content (audit H-1 + C-2).</td></tr>
-<tr class="cov"><td class="ln">2</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">//</td></tr>
 <tr class="nil"><td class="ln">3</td><td class="code">// A .eigendeck is attacker-controllable data, and element `data` is parsed as</td></tr>
-<tr class="unc"><td class="ln">4</td><td class="code">// arbitrary JSON with no runtime schema check — TypeScript types are compile-time</td></tr>
-<tr class="unc"><td class="ln">5</td><td class="code">// only. Two sinks make that dangerous:</td></tr>
-<tr class="unc"><td class="ln">6</td><td class="code">//   - element.html is rendered via dangerouslySetInnerHTML (the rich-text sanitizer</td></tr>
-<tr class="unc"><td class="ln">7</td><td class="code">//     handles this — see sanitizeRichText); and</td></tr>
-<tr class="unc"><td class="ln">8</td><td class="code">//   - element PROPERTIES (fontFamily, color, geometry) are string-interpolated into</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// arbitrary JSON with no runtime schema check — TypeScript types are compile-time</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// only. Two sinks make that dangerous:</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">//   - element.html is rendered via dangerouslySetInnerHTML (the rich-text sanitizer</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">//     handles this — see sanitizeRichText); and</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">//   - element PROPERTIES (fontFamily, color, geometry) are string-interpolated into</td></tr>
 <tr class="nil"><td class="ln">9</td><td class="code">//     the SVG/markup that buildTextElementSvgMarkup produces and then</td></tr>
-<tr class="unc"><td class="ln">10</td><td class="code">//     dangerouslySetInnerHTML&#x27;d in the PRIVILEGED frame. A crafted fontFamily/color</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">//     dangerouslySetInnerHTML&#x27;d in the PRIVILEGED frame. A crafted fontFamily/color</td></tr>
 <tr class="nil"><td class="ln">11</td><td class="code">//     containing a `&quot;`/`&lt;`/`&gt;` breaks out of the style attribute and injects a tag</td></tr>
-<tr class="cov"><td class="ln">12</td><td class="code">//     (e.g. &lt;img onerror&gt;), so a payload in a property bypasses the html sanitizer</td></tr>
-<tr class="cov"><td class="ln">13</td><td class="code">//     and fires automatically on display (C-2).</td></tr>
-<tr class="cov"><td class="ln">14</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">//     (e.g. &lt;img onerror&gt;), so a payload in a property bypasses the html sanitizer</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">//     and fires automatically on display (C-2).</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">//</td></tr>
 <tr class="nil"><td class="ln">15</td><td class="code">// This is the ONE boundary to run at EVERY untrusted ingress (deck open/import,</td></tr>
-<tr class="cov"><td class="ln">16</td><td class="code">// undo-seed, history restore, clipboard paste). It sanitizes text html and validates</td></tr>
-<tr class="cov"><td class="ln">17</td><td class="code">// each property against its known-safe shape, DROPPING any element whose values fall</td></tr>
-<tr class="cov"><td class="ln">18</td><td class="code">// outside it (fail-closed). It is transparent to legitimate decks: real fonts/colors/</td></tr>
-<tr class="cov"><td class="ln">19</td><td class="code">// numbers all pass, so nothing a normal deck contains is altered or dropped.</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">// undo-seed, history restore, clipboard paste). It sanitizes text html and validates</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">// each property against its known-safe shape, DROPPING any element whose values fall</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">// outside it (fail-closed). It is transparent to legitimate decks: real fonts/colors/</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">// numbers all pass, so nothing a normal deck contains is altered or dropped.</td></tr>
 <tr class="nil"><td class="ln">20</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">21</td><td class="code">import { sanitizeRichText } from &#x27;./sanitizeRichText&#x27;;<a class="jump" href="src__lib__sanitizeRichText_ts.html" title="src/lib/sanitizeRichText.ts">→ sanitizeRichText.ts</a></td></tr>
-<tr class="cov"><td class="ln">22</td><td class="code">import type { Presentation, SlideElement } from &#x27;../types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">import type { Presentation, SlideElement } from &#x27;../types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
 <tr class="nil"><td class="ln">23</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">24</td><td class="code">// Characters that let a value escape the CSS declaration / HTML style attribute /</td></tr>
-<tr class="cov"><td class="ln">25</td><td class="code">// SVG attribute it&#x27;s interpolated into: close the attribute (&quot;), end/inject a CSS</td></tr>
-<tr class="cov"><td class="ln">26</td><td class="code">// declaration (; { }), open/close a tag (&lt; &gt;), or use an escape (\ `). Legit CSS</td></tr>
-<tr class="cov"><td class="ln">27</td><td class="code">// font stacks (&#x27;PT Sans&#x27;, sans-serif) and colors (#0af, rgb(0,0,0), red) contain</td></tr>
-<tr class="cov"><td class="ln">28</td><td class="code">// NONE of these — they use only letters, digits, spaces, commas, dots, %, ()</td></tr>
-<tr class="cov"><td class="ln">29</td><td class="code">// (rgb/hsl), hyphens and single-quotes. Control chars (&lt; 0x20, 0x7f) are rejected too.</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">// SVG attribute it&#x27;s interpolated into: close the attribute (&quot;), end/inject a CSS</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">// declaration (; { }), open/close a tag (&lt; &gt;), or use an escape (\ `). Legit CSS</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">// font stacks (&#x27;PT Sans&#x27;, sans-serif) and colors (#0af, rgb(0,0,0), red) contain</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">// NONE of these — they use only letters, digits, spaces, commas, dots, %, ()</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">// (rgb/hsl), hyphens and single-quotes. Control chars (&lt; 0x20, 0x7f) are rejected too.</td></tr>
 <tr class="cov"><td class="ln">30</td><td class="code">const CSS_BREAKOUT = new Set([&#x27;&lt;&#x27;, &#x27;&gt;&#x27;, &#x27;&quot;&#x27;, &#x27;`&#x27;, &#x27;;&#x27;, &#x27;{&#x27;, &#x27;}&#x27;, &#x27;\\&#x27;]);</td></tr>
-<tr class="cov"><td class="ln">31</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">32</td><td class="code">/** A string safe to interpolate into a CSS value / style / SVG attribute (no breakout). */</td></tr>
-<tr class="cov"><td class="ln">33</td><td class="code">export function isSafeCssValue(s: unknown): boolean {</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">export function isSafeCssValue(s: unknown): boolean {</td></tr>
 <tr class="cov"><td class="ln">34</td><td class="code">  if (typeof s !== &#x27;string&#x27;) return false;</td></tr>
 <tr class="cov"><td class="ln">35</td><td class="code">  for (let i = 0; i &lt; s.length; i++) {</td></tr>
 <tr class="cov"><td class="ln">36</td><td class="code">    const code = s.charCodeAt(i);</td></tr>
 <tr class="cov"><td class="ln">37</td><td class="code">    if (code &lt; 0x20 || code === 0x7f) return false; // control chars</td></tr>
 <tr class="cov"><td class="ln">38</td><td class="code">    if (CSS_BREAKOUT.has(s[i])) return false;        // breakout chars</td></tr>
-<tr class="cov"><td class="ln">39</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">  }</td></tr>
 <tr class="cov"><td class="ln">40</td><td class="code">  return true;</td></tr>
-<tr class="cov"><td class="ln">41</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">42</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">43</td><td class="code">// A REAL CSS color: hex, an rgb/rgba/hsl/hsla function with numeric args, or a bare</td></tr>
-<tr class="cov"><td class="ln">44</td><td class="code">// keyword (named colors, `transparent`, `currentColor`, theme tokens like `accent`).</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">// keyword (named colors, `transparent`, `currentColor`, theme tokens like `accent`).</td></tr>
 <tr class="nil"><td class="ln">45</td><td class="code">// Deliberately NOT breakout-char filtering — `isSafeCssValue` accepts `url(...)`, which</td></tr>
 <tr class="nil"><td class="ln">46</td><td class="code">// in a `color`/`background` field loads a network resource (a beacon in an exported</td></tr>
-<tr class="cov"><td class="ln">47</td><td class="code">// artifact). This rejects `url(`/`@import`/expressions and only permits real colors.</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">// artifact). This rejects `url(`/`@import`/expressions and only permits real colors.</td></tr>
 <tr class="cov"><td class="ln">48</td><td class="code">const COLOR_HEX = /^#[0-9a-fA-F]{3,8}$/;</td></tr>
 <tr class="cov"><td class="ln">49</td><td class="code">const COLOR_FUNC = /^(?:rgb|rgba|hsl|hsla)\([0-9.,%\s/]*\)$/i;</td></tr>
 <tr class="cov"><td class="ln">50</td><td class="code">const COLOR_KEYWORD = /^[a-zA-Z][a-zA-Z0-9-]*$/;</td></tr>
-<tr class="cov"><td class="ln">51</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">52</td><td class="code">/** True when `v` is a genuine CSS color (not `url()`/`@import`/injection). */</td></tr>
-<tr class="cov"><td class="ln">53</td><td class="code">export function isSafeColor(v: unknown): boolean {</td></tr>
-<tr class="cov"><td class="ln">54</td><td class="code">  if (typeof v !== &#x27;string&#x27;) return false;</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">/** True when `v` is a genuine CSS color (not `url()`/`@import`/injection). */</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">export function isSafeColor(v: unknown): boolean {</td></tr>
+<tr class="part"><td class="ln">54</td><td class="code">  if (typeof v !== &#x27;string&#x27;) return false;</td></tr>
 <tr class="cov"><td class="ln">55</td><td class="code">  const s = v.trim();</td></tr>
 <tr class="cov"><td class="ln">56</td><td class="code">  if (s === &#x27;&#x27;) return false;</td></tr>
 <tr class="cov"><td class="ln">57</td><td class="code">  return COLOR_HEX.test(s) || COLOR_FUNC.test(s) || COLOR_KEYWORD.test(s);</td></tr>
-<tr class="cov"><td class="ln">58</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">59</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">60</td><td class="code">function isFiniteNum(n: unknown): n is number {</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code">function isFiniteNum(n: unknown): n is number {</td></tr>
 <tr class="cov"><td class="ln">61</td><td class="code">  return typeof n === &#x27;number&#x27; &amp;&amp; Number.isFinite(n);</td></tr>
-<tr class="cov"><td class="ln">62</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">62</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">63</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">64</td><td class="code">/**</td></tr>
 <tr class="nil"><td class="ln">65</td><td class="code"> * Validate ONE untrusted element. Returns the element (possibly with its html</td></tr>
@@ -97,7 +98,7 @@
 <tr class="nil"><td class="ln">80</td><td class="code">  // `padding`, when present, is spliced into the SVG style (textPaddingCss) — every</td></tr>
 <tr class="nil"><td class="ln">81</td><td class="code">  // side must be a finite number.</td></tr>
 <tr class="cov"><td class="ln">82</td><td class="code">  const pad = (el as { padding?: unknown }).padding;</td></tr>
-<tr class="cov"><td class="ln">83</td><td class="code">  if (pad != null) {</td></tr>
+<tr class="nil"><td class="ln">83</td><td class="code">  if (pad != null) {</td></tr>
 <tr class="cov"><td class="ln">84</td><td class="code">    const pp = pad as { top?: unknown; right?: unknown; bottom?: unknown; left?: unknown };</td></tr>
 <tr class="cov"><td class="ln">85</td><td class="code">    if (typeof pad !== &#x27;object&#x27; || !isFiniteNum(pp.top) || !isFiniteNum(pp.right) || !isFiniteNum(pp.bottom) || !isFiniteNum(pp.left)) return null;</td></tr>
 <tr class="nil"><td class="ln">86</td><td class="code">  }</td></tr>
@@ -111,11 +112,11 @@
 <tr class="nil"><td class="ln">94</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">95</td><td class="code">  // Optional numeric visual fields that reach a CSS/SVG numeric (opacity, rotate(),</td></tr>
 <tr class="nil"><td class="ln">96</td><td class="code">  // border-radius, rgba() alpha, arrow stroke/head) — finite if present, else drop.</td></tr>
-<tr class="cov"><td class="ln">97</td><td class="code">  for (const k of [&#x27;rotation&#x27;, &#x27;borderRadius&#x27;, &#x27;opacity&#x27;, &#x27;backgroundOpacity&#x27;, &#x27;strokeWidth&#x27;, &#x27;headSize&#x27;]) {</td></tr>
+<tr class="nil"><td class="ln">97</td><td class="code">  for (const k of [&#x27;rotation&#x27;, &#x27;borderRadius&#x27;, &#x27;opacity&#x27;, &#x27;backgroundOpacity&#x27;, &#x27;strokeWidth&#x27;, &#x27;headSize&#x27;]) {</td></tr>
 <tr class="cov"><td class="ln">98</td><td class="code">    if (anyEl[k] != null &amp;&amp; !isFiniteNum(anyEl[k])) return null;</td></tr>
 <tr class="nil"><td class="ln">99</td><td class="code">  }</td></tr>
 <tr class="nil"><td class="ln">100</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">101</td><td class="code">  if (anyEl.type === &#x27;text&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">101</td><td class="code">  if (anyEl.type === &#x27;text&#x27;) {</td></tr>
 <tr class="cov"><td class="ln">102</td><td class="code">    if (anyEl.fontFamily != null &amp;&amp; !isSafeCssValue(anyEl.fontFamily)) return null;</td></tr>
 <tr class="cov"><td class="ln">103</td><td class="code">    if (anyEl.fontSize != null &amp;&amp; !isFiniteNum(anyEl.fontSize)) return null;</td></tr>
 <tr class="cov"><td class="ln">104</td><td class="code">    if (typeof anyEl.html === &#x27;string&#x27;) anyEl.html = sanitizeRichText(anyEl.html);</td></tr>
@@ -134,11 +135,11 @@
 <tr class="nil"><td class="ln">117</td><td class="code">}): number {</td></tr>
 <tr class="cov"><td class="ln">118</td><td class="code">  let dropped = 0;</td></tr>
 <tr class="cov"><td class="ln">119</td><td class="code">  const slides = Array.isArray(presentation.slides) ? (presentation.slides as Array&lt;{ elements?: unknown }&gt;) : [];</td></tr>
-<tr class="cov"><td class="ln">120</td><td class="code">  for (const slide of slides) {</td></tr>
+<tr class="nil"><td class="ln">120</td><td class="code">  for (const slide of slides) {</td></tr>
 <tr class="cov"><td class="ln">121</td><td class="code">    if (!slide || !Array.isArray(slide.elements)) continue;</td></tr>
 <tr class="cov"><td class="ln">122</td><td class="code">    const els = slide.elements as SlideElement[];</td></tr>
 <tr class="cov"><td class="ln">123</td><td class="code">    const kept = els.filter((el) =&gt; normalizeUntrustedElement(el) !== null);</td></tr>
-<tr class="cov"><td class="ln">124</td><td class="code">    if (kept.length !== els.length) {</td></tr>
+<tr class="nil"><td class="ln">124</td><td class="code">    if (kept.length !== els.length) {</td></tr>
 <tr class="cov"><td class="ln">125</td><td class="code">      dropped += els.length - kept.length;</td></tr>
 <tr class="cov"><td class="ln">126</td><td class="code">      (slide as { elements: SlideElement[] }).elements = kept;</td></tr>
 <tr class="nil"><td class="ln">127</td><td class="code">    }</td></tr>
@@ -148,7 +149,7 @@
 <tr class="nil"><td class="ln">131</td><td class="code">  // value here. Drop any non-finite entry so it can never reach the sink as a string;</td></tr>
 <tr class="nil"><td class="ln">132</td><td class="code">  // effectiveFontSize then falls back to the built-in default for that name.</td></tr>
 <tr class="cov"><td class="ln">133</td><td class="code">  const ts = presentation.config?.textSizes;</td></tr>
-<tr class="cov"><td class="ln">134</td><td class="code">  if (ts &amp;&amp; typeof ts === &#x27;object&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">134</td><td class="code">  if (ts &amp;&amp; typeof ts === &#x27;object&#x27;) {</td></tr>
 <tr class="cov"><td class="ln">135</td><td class="code">    for (const k of Object.keys(ts)) if (!isFiniteNum((ts as Record&lt;string, unknown&gt;)[k])) delete (ts as Record&lt;string, unknown&gt;)[k];</td></tr>
 <tr class="nil"><td class="ln">136</td><td class="code">  }</td></tr>
 <tr class="cov"><td class="ln">137</td><td class="code">  return dropped;</td></tr>

@@ -5,13 +5,14 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/components/notebook/IsolatedOutput.tsx </h1>
   <div class="stats">
-    <span class="stat"><b>50%</b> covered</span>
-    <span class="stat">18/36 executable</span>
-    <span class="stat unc-txt">18 uncovered</span>
+    <span class="stat"><b>77%</b> covered</span>
+    <span class="stat">23/30 statements</span>
+    <span class="stat unc-txt">7 uncovered</span>
     <span class="stat">63 raw lines</span>
     <span class="stat">0.15% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:28.571%"></span><span class="seg unc" style="width:28.571%"></span><span class="seg nil" style="width:42.857%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:76.667%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:23.333%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__lib__demoMount_ts.html">demoMount.ts</a> <a href="src__lib__demoThemeInject_ts.html">demoThemeInject.ts</a> <a href="src__store__presentation_ts.html">presentation.ts</a></div>
   <div class="links"><span>imported by:</span> <a href="src__components__notebook__CellOutput_tsx.html">CellOutput.tsx</a></div>
 </header>
@@ -21,33 +22,33 @@
 <tr class="nil"><td class="ln">4</td><td class="code">// a crafted deck&#x27;s &quot;output&quot; can&#x27;t reach the filesystem. Static output is</td></tr>
 <tr class="nil"><td class="ln">5</td><td class="code">// sanitized inline instead (CellOutput); only executable output reaches here.</td></tr>
 <tr class="nil"><td class="ln">6</td><td class="code">//</td></tr>
-<tr class="unc"><td class="ln">7</td><td class="code">// The iframe carries `el-demo-frame`, so the parent rAF pump + relay armed by</td></tr>
-<tr class="unc"><td class="ln">8</td><td class="code">// useDemoHost (SlideEditor / PresentMode) drive it at full framerate, and it</td></tr>
-<tr class="unc"><td class="ln">9</td><td class="code">// reports its content height back so the box grows to fit.</td></tr>
-<tr class="unc"><td class="ln">10</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">11</td><td class="code">import { useEffect, useId, useMemo, useRef, useState } from &#x27;react&#x27;;</td></tr>
-<tr class="unc"><td class="ln">12</td><td class="code">import { buildIsolatedOutputUrl, invalidateIsolatedOutput, useDeckFontFacesCss, useDemoInternetBlocked } from &#x27;../../lib/demoMount&#x27;;<a class="jump" href="src__lib__demoMount_ts.html" title="src/lib/demoMount.ts">→ demoMount.ts</a></td></tr>
-<tr class="unc"><td class="ln">13</td><td class="code">import { demoVarsCssForSlide } from &#x27;../../lib/demoThemeInject&#x27;;<a class="jump" href="src__lib__demoThemeInject_ts.html" title="src/lib/demoThemeInject.ts">→ demoThemeInject.ts</a></td></tr>
-<tr class="unc"><td class="ln">14</td><td class="code">import { usePresentationStore } from &#x27;../../store/presentation&#x27;;<a class="jump" href="src__store__presentation_ts.html" title="src/store/presentation.ts">→ presentation.ts</a></td></tr>
-<tr class="unc"><td class="ln">15</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">// The iframe carries `el-demo-frame`, so the parent rAF pump + relay armed by</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">// useDemoHost (SlideEditor / PresentMode) drive it at full framerate, and it</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">// reports its content height back so the box grows to fit.</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">import { useEffect, useId, useMemo, useRef, useState } from &#x27;react&#x27;;</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">import { buildIsolatedOutputUrl, invalidateIsolatedOutput, useDeckFontFacesCss, useDemoInternetBlocked } from &#x27;../../lib/demoMount&#x27;;<a class="jump" href="src__lib__demoMount_ts.html" title="src/lib/demoMount.ts">→ demoMount.ts</a></td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">import { demoVarsCssForSlide } from &#x27;../../lib/demoThemeInject&#x27;;<a class="jump" href="src__lib__demoThemeInject_ts.html" title="src/lib/demoThemeInject.ts">→ demoThemeInject.ts</a></td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">import { usePresentationStore } from &#x27;../../store/presentation&#x27;;<a class="jump" href="src__store__presentation_ts.html" title="src/store/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">16</td><td class="code">export function IsolatedOutput({ html }: { html: string }) {</td></tr>
 <tr class="cov"><td class="ln">17</td><td class="code">  const channelKey = `nbout-${useId()}`;</td></tr>
 <tr class="cov"><td class="ln">18</td><td class="code">  const iframeRef = useRef&lt;HTMLIFrameElement&gt;(null);</td></tr>
 <tr class="cov"><td class="ln">19</td><td class="code">  const [height, setHeight] = useState(24);</td></tr>
-<tr class="unc"><td class="ln">20</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">21</td><td class="code">  const fontFacesCss = useDeckFontFacesCss();</td></tr>
 <tr class="cov"><td class="ln">22</td><td class="code">  const config = usePresentationStore((s) =&gt; s.presentation.config);</td></tr>
 <tr class="cov"><td class="ln">23</td><td class="code">  const theme = usePresentationStore((s) =&gt; s.presentation.theme);</td></tr>
 <tr class="cov"><td class="ln">24</td><td class="code">  const slide = usePresentationStore((s) =&gt; s.presentation.slides[s.currentSlideIndex]);</td></tr>
-<tr class="unc"><td class="ln">25</td><td class="code">  // demoVarsCssForSlide resolves the theme + font packages; memoize so it doesn&#x27;t</td></tr>
-<tr class="unc"><td class="ln">26</td><td class="code">  // recompute (and re-hash into the blob key) on every unrelated store re-render.</td></tr>
-<tr class="cov"><td class="ln">27</td><td class="code">  const varsCss = useMemo(</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">  // demoVarsCssForSlide resolves the theme + font packages; memoize so it doesn&#x27;t</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">  // recompute (and re-hash into the blob key) on every unrelated store re-render.</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">  const varsCss = useMemo(</td></tr>
 <tr class="cov"><td class="ln">28</td><td class="code">    () =&gt; (slide ? demoVarsCssForSlide(config, theme, slide) : &#x27;&#x27;),</td></tr>
-<tr class="unc"><td class="ln">29</td><td class="code">    [config, theme, slide],</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">    [config, theme, slide],</td></tr>
 <tr class="nil"><td class="ln">30</td><td class="code">  );</td></tr>
-<tr class="unc"><td class="ln">31</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">32</td><td class="code">  const blockInternet = useDemoInternetBlocked();</td></tr>
-<tr class="cov"><td class="ln">33</td><td class="code">  const src = useMemo(</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">  const src = useMemo(</td></tr>
 <tr class="cov"><td class="ln">34</td><td class="code">    () =&gt; buildIsolatedOutputUrl(html, { channelKey, varsCss, fontFacesCss, blockInternet }),</td></tr>
 <tr class="nil"><td class="ln">35</td><td class="code">    [html, channelKey, varsCss, fontFacesCss, blockInternet],</td></tr>
 <tr class="nil"><td class="ln">36</td><td class="code">  );</td></tr>
@@ -56,8 +57,8 @@
 <tr class="nil"><td class="ln">39</td><td class="code">  // so nothing else supersedes them.</td></tr>
 <tr class="cov"><td class="ln">40</td><td class="code">  useEffect(() =&gt; () =&gt; invalidateIsolatedOutput(channelKey), [channelKey]);</td></tr>
 <tr class="nil"><td class="ln">41</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">42</td><td class="code">  useEffect(() =&gt; {</td></tr>
-<tr class="cov"><td class="ln">43</td><td class="code">    const onMsg = (e: MessageEvent) =&gt; {</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">    const onMsg = (e: MessageEvent) =&gt; {</td></tr>
 <tr class="unc"><td class="ln">44</td><td class="code">      const d = e.data as { __eigendeck?: number; type?: string; h?: number } | undefined;</td></tr>
 <tr class="unc"><td class="ln">45</td><td class="code">      if (!d || d.__eigendeck !== 1 || d.type !== &#x27;iso-size&#x27;) return;</td></tr>
 <tr class="unc"><td class="ln">46</td><td class="code">      if (e.source !== iframeRef.current?.contentWindow) return;</td></tr>
@@ -68,13 +69,13 @@
 <tr class="nil"><td class="ln">51</td><td class="code">  }, []);</td></tr>
 <tr class="nil"><td class="ln">52</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">53</td><td class="code">  return (</td></tr>
-<tr class="nil"><td class="ln">54</td><td class="code">    &lt;iframe</td></tr>
-<tr class="nil"><td class="ln">55</td><td class="code">      ref={iframeRef}</td></tr>
-<tr class="nil"><td class="ln">56</td><td class="code">      src={src}</td></tr>
-<tr class="nil"><td class="ln">57</td><td class="code">      sandbox=&quot;allow-scripts&quot;</td></tr>
-<tr class="nil"><td class="ln">58</td><td class="code">      className=&quot;el-demo-frame nb-output nb-html-interactive&quot;</td></tr>
-<tr class="nil"><td class="ln">59</td><td class="code">      title=&quot;notebook output&quot;</td></tr>
-<tr class="nil"><td class="ln">60</td><td class="code">      style={{ width: &#x27;100%&#x27;, height, border: &#x27;none&#x27;, display: &#x27;block&#x27; }}</td></tr>
+<tr class="cov"><td class="ln">54</td><td class="code">    &lt;iframe</td></tr>
+<tr class="cov"><td class="ln">55</td><td class="code">      ref={iframeRef}</td></tr>
+<tr class="cov"><td class="ln">56</td><td class="code">      src={src}</td></tr>
+<tr class="cov"><td class="ln">57</td><td class="code">      sandbox=&quot;allow-scripts&quot;</td></tr>
+<tr class="cov"><td class="ln">58</td><td class="code">      className=&quot;el-demo-frame nb-output nb-html-interactive&quot;</td></tr>
+<tr class="cov"><td class="ln">59</td><td class="code">      title=&quot;notebook output&quot;</td></tr>
+<tr class="cov"><td class="ln">60</td><td class="code">      style={{ width: &#x27;100%&#x27;, height, border: &#x27;none&#x27;, display: &#x27;block&#x27; }}</td></tr>
 <tr class="nil"><td class="ln">61</td><td class="code">    /&gt;</td></tr>
 <tr class="nil"><td class="ln">62</td><td class="code">  );</td></tr>
 <tr class="nil"><td class="ln">63</td><td class="code">}</td></tr></table>

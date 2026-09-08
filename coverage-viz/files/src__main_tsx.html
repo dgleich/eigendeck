@@ -6,12 +6,13 @@
   <h1>src/main.tsx </h1>
   <div class="stats">
     <span class="stat"><b>100%</b> covered</span>
-    <span class="stat">3/3 executable</span>
+    <span class="stat">3/3 statements</span>
     <span class="stat unc-txt">0 uncovered</span>
     <span class="stat">18 raw lines</span>
     <span class="stat">0.04% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:16.667%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:83.333%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:100.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:0.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__lib__coverageBeacon_ts.html">coverageBeacon.ts</a> <a href="src__lib__runtime_ts.html">runtime.ts</a></div>
   <div class="links"><span>imported by:</span> <i>none</i></div>
 </header>
@@ -21,8 +22,8 @@
 <tr class="nil"><td class="ln">4</td><td class="code">import { initRuntime } from &quot;./lib/runtime&quot;;<a class="jump" href="src__lib__runtime_ts.html" title="src/lib/runtime.ts">→ runtime.ts</a></td></tr>
 <tr class="nil"><td class="ln">5</td><td class="code">import { installCoverageBeacon } from &quot;./lib/coverageBeacon&quot;;<a class="jump" href="src__lib__coverageBeacon_ts.html" title="src/lib/coverageBeacon.ts">→ coverageBeacon.ts</a></td></tr>
 <tr class="nil"><td class="ln">6</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">7</td><td class="code">// Shared boot (fonts + Jupyter server discovery). The projector window runs the</td></tr>
-<tr class="cov"><td class="ln">8</td><td class="code">// SAME initRuntime() so the two windows can&#x27;t diverge on setup.</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">// Shared boot (fonts + Jupyter server discovery). The projector window runs the</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">// SAME initRuntime() so the two windows can&#x27;t diverge on setup.</td></tr>
 <tr class="cov"><td class="ln">9</td><td class="code">initRuntime();</td></tr>
 <tr class="nil"><td class="ln">10</td><td class="code">// No-op unless this is an Istanbul-instrumented build (COVERAGE_INSTRUMENT=1);</td></tr>
 <tr class="nil"><td class="ln">11</td><td class="code">// then it streams e2e coverage to the collector server. See src/lib/coverageBeacon.</td></tr>

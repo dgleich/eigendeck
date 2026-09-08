@@ -6,22 +6,23 @@
   <h1>src/debug/report.ts </h1>
   <div class="stats">
     <span class="stat"><b>0%</b> covered</span>
-    <span class="stat">0/17 executable</span>
-    <span class="stat unc-txt">17 uncovered</span>
+    <span class="stat">0/10 statements</span>
+    <span class="stat unc-txt">10 uncovered</span>
     <span class="stat">53 raw lines</span>
     <span class="stat">0.12% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:0.000%"></span><span class="seg unc" style="width:32.075%"></span><span class="seg nil" style="width:67.925%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:0.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:100.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__debug__types_ts.html">types.ts</a> <a href="src__lib__nativeFs_ts.html">nativeFs.ts</a></div>
   <div class="links"><span>imported by:</span> <a href="src__debug__batchCacheAudit_ts.html">batchCacheAudit.ts</a> <a href="src__debug__batchExportHtml_ts.html">batchExportHtml.ts</a> <a href="src__debug__batchRoundtrip_ts.html">batchRoundtrip.ts</a> <a href="src__debug__batchStripHistory_ts.html">batchStripHistory.ts</a> <a href="src__debug__batchWarmCache_ts.html">batchWarmCache.ts</a></div>
 </header>
 <table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Write a JSON report next to the directory the batch operated on, then show</td></tr>
 <tr class="nil"><td class="ln">2</td><td class="code">// a native done dialog. Centralised so every batch action surfaces results</td></tr>
 <tr class="nil"><td class="ln">3</td><td class="code">// the same way.</td></tr>
-<tr class="unc"><td class="ln">4</td><td class="code">&nbsp;</td></tr>
-<tr class="nil"><td class="ln">5</td><td class="code">import { writeTextFileNative } from &#x27;../lib/nativeFs&#x27;;<a class="jump" href="src__lib__nativeFs_ts.html" title="src/lib/nativeFs.ts">→ nativeFs.ts</a></td></tr>
-<tr class="nil"><td class="ln">6</td><td class="code">import { message, ask } from &#x27;@tauri-apps/plugin-dialog&#x27;;</td></tr>
-<tr class="nil"><td class="ln">7</td><td class="code">import type { RunMeta } from &#x27;./types&#x27;;<a class="jump" href="src__debug__types_ts.html" title="src/debug/types.ts">→ types.ts</a></td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">5</td><td class="code">import { writeTextFileNative } from &#x27;../lib/nativeFs&#x27;;<a class="jump" href="src__lib__nativeFs_ts.html" title="src/lib/nativeFs.ts">→ nativeFs.ts</a></td></tr>
+<tr class="unc"><td class="ln">6</td><td class="code">import { message, ask } from &#x27;@tauri-apps/plugin-dialog&#x27;;</td></tr>
+<tr class="unc"><td class="ln">7</td><td class="code">import type { RunMeta } from &#x27;./types&#x27;;<a class="jump" href="src__debug__types_ts.html" title="src/debug/types.ts">→ types.ts</a></td></tr>
 <tr class="nil"><td class="ln">8</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">9</td><td class="code">/**</td></tr>
 <tr class="nil"><td class="ln">10</td><td class="code"> * Confirm a destructive write-in-place batch action. Returns true if user</td></tr>
@@ -34,36 +35,36 @@
 <tr class="unc"><td class="ln">17</td><td class="code">    `No backups are created — commit or back up first if needed.\n\nContinue?`,</td></tr>
 <tr class="nil"><td class="ln">18</td><td class="code">    { title: `Debug: ${action}`, kind: &#x27;warning&#x27;, okLabel: &#x27;Rewrite files&#x27;, cancelLabel: &#x27;Cancel&#x27; },</td></tr>
 <tr class="nil"><td class="ln">19</td><td class="code">  );</td></tr>
-<tr class="unc"><td class="ln">20</td><td class="code">}</td></tr>
-<tr class="unc"><td class="ln">21</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">22</td><td class="code">/** ISO timestamp safe for filenames. */</td></tr>
-<tr class="nil"><td class="ln">23</td><td class="code">function stampForFilename(): string {</td></tr>
-<tr class="unc"><td class="ln">24</td><td class="code">  const d = new Date();</td></tr>
-<tr class="unc"><td class="ln">25</td><td class="code">  const pad = (n: number) =&gt; `${n}`.padStart(2, &#x27;0&#x27;);</td></tr>
-<tr class="unc"><td class="ln">26</td><td class="code">  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">/** ISO timestamp safe for filenames. */</td></tr>
+<tr class="unc"><td class="ln">23</td><td class="code">function stampForFilename(): string {</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">  const d = new Date();</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">  const pad = (n: number) =&gt; `${n}`.padStart(2, &#x27;0&#x27;);</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;</td></tr>
 <tr class="nil"><td class="ln">27</td><td class="code">}</td></tr>
-<tr class="unc"><td class="ln">28</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">29</td><td class="code">/**</td></tr>
 <tr class="nil"><td class="ln">30</td><td class="code"> * Write a report file alongside the directory + show a native &quot;done&quot; alert</td></tr>
-<tr class="unc"><td class="ln">31</td><td class="code"> * summarising pass/fail. Returns the report path.</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code"> * summarising pass/fail. Returns the report path.</td></tr>
 <tr class="nil"><td class="ln">32</td><td class="code"> */</td></tr>
-<tr class="nil"><td class="ln">33</td><td class="code">export async function writeReportAndAlert(</td></tr>
+<tr class="unc"><td class="ln">33</td><td class="code">export async function writeReportAndAlert(</td></tr>
 <tr class="nil"><td class="ln">34</td><td class="code">  dir: string,</td></tr>
 <tr class="nil"><td class="ln">35</td><td class="code">  meta: RunMeta,</td></tr>
 <tr class="nil"><td class="ln">36</td><td class="code">  report: object,</td></tr>
 <tr class="nil"><td class="ln">37</td><td class="code">): Promise&lt;string&gt; {</td></tr>
-<tr class="unc"><td class="ln">38</td><td class="code">  const path = `${dir}/debug-report-${meta.action}-${stampForFilename()}.json`;</td></tr>
-<tr class="unc"><td class="ln">39</td><td class="code">  await writeTextFileNative(path, JSON.stringify(report, null, 2));</td></tr>
-<tr class="unc"><td class="ln">40</td><td class="code">  await message(</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">  const path = `${dir}/debug-report-${meta.action}-${stampForFilename()}.json`;</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">  await writeTextFileNative(path, JSON.stringify(report, null, 2));</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">  await message(</td></tr>
 <tr class="nil"><td class="ln">41</td><td class="code">    `${meta.passed}/${meta.totalFiles} passed (${meta.failed} failed) in ${meta.elapsedSeconds.toFixed(1)}s\n\nReport: ${path}`,</td></tr>
 <tr class="nil"><td class="ln">42</td><td class="code">    { title: `Debug: ${meta.action}`, kind: meta.failed === 0 ? &#x27;info&#x27; : &#x27;warning&#x27; },</td></tr>
 <tr class="nil"><td class="ln">43</td><td class="code">  );</td></tr>
-<tr class="unc"><td class="ln">44</td><td class="code">  return path;</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">  return path;</td></tr>
 <tr class="nil"><td class="ln">45</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">46</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">47</td><td class="code">/** Show a native error alert for a fatal batch-level problem. */</td></tr>
 <tr class="nil"><td class="ln">48</td><td class="code">export async function showBatchError(action: string, err: unknown): Promise&lt;void&gt; {</td></tr>
-<tr class="unc"><td class="ln">49</td><td class="code">  await message(`${err instanceof Error ? err.message : String(err)}`, {</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">  await message(`${err instanceof Error ? err.message : String(err)}`, {</td></tr>
 <tr class="nil"><td class="ln">50</td><td class="code">    title: `Debug: ${action} failed`,</td></tr>
 <tr class="nil"><td class="ln">51</td><td class="code">    kind: &#x27;error&#x27;,</td></tr>
 <tr class="nil"><td class="ln">52</td><td class="code">  });</td></tr>

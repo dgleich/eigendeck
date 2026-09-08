@@ -5,40 +5,41 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/trustStore.ts </h1>
   <div class="stats">
-    <span class="stat"><b>82%</b> covered</span>
-    <span class="stat">49/60 executable</span>
-    <span class="stat unc-txt">11 uncovered</span>
+    <span class="stat"><b>81%</b> covered</span>
+    <span class="stat">38/47 statements</span>
+    <span class="stat unc-txt">9 uncovered</span>
     <span class="stat">156 raw lines</span>
     <span class="stat">0.37% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:31.410%"></span><span class="seg unc" style="width:7.051%"></span><span class="seg nil" style="width:61.538%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:80.851%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:19.149%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__lib__trustLedger_mjs.html">trustLedger.mjs</a></div>
   <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__components__AssetSection_tsx.html">AssetSection.tsx</a> <a href="src__components__PropertiesPanel_tsx.html">PropertiesPanel.tsx</a> <a href="src__components__SecurityPanel_tsx.html">SecurityPanel.tsx</a> <a href="src__lib__assetInsert_ts.html">assetInsert.ts</a> <a href="src__lib__demoMount_ts.html">demoMount.ts</a> <a href="src__lib__securityReport_ts.html">securityReport.ts</a> <a href="src__lib__watcherRegistry_ts.html">watcherRegistry.ts</a> <a href="src__security_tsx.html">security.tsx</a> <a href="src__store__fileOps_ts.html">fileOps.ts</a> <a href="src__store__presentation_ts.html">presentation.ts</a></div>
 </header>
 <table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// App-side persistence + accessors for the asset-security trust ledger.</td></tr>
 <tr class="nil"><td class="ln">2</td><td class="code">//</td></tr>
-<tr class="cov"><td class="ln">3</td><td class="code">// The pure state machine lives in trustLedger.mjs; this wraps it with:</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// The pure state machine lives in trustLedger.mjs; this wraps it with:</td></tr>
 <tr class="nil"><td class="ln">4</td><td class="code">//   - lazy load from a JSON file in Tauri&#x27;s appDataDir (in-memory cache),</td></tr>
-<tr class="cov"><td class="ln">5</td><td class="code">//   - best-effort write-through on every mutation,</td></tr>
-<tr class="cov"><td class="ln">6</td><td class="code">//   - graceful degradation to in-memory-only when Tauri APIs are absent</td></tr>
-<tr class="cov"><td class="ln">7</td><td class="code">//     (tests / CLI / non-Tauri), so callers never need to special-case that.</td></tr>
-<tr class="cov"><td class="ln">8</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">//   - best-effort write-through on every mutation,</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">//   - graceful degradation to in-memory-only when Tauri APIs are absent</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">//     (tests / CLI / non-Tauri), so callers never need to special-case that.</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">//</td></tr>
 <tr class="nil"><td class="ln">9</td><td class="code">// The ledger is app-side (per docs/ASSETS-SECURITY.md) — one ledger per machine,</td></tr>
-<tr class="unc"><td class="ln">10</td><td class="code">// keyed by deck-token; it is NOT stored in any deck.</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">// keyed by deck-token; it is NOT stored in any deck.</td></tr>
 <tr class="nil"><td class="ln">11</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">12</td><td class="code">import { invoke } from &#x27;@tauri-apps/api/core&#x27;;</td></tr>
 <tr class="nil"><td class="ln">13</td><td class="code">import { TrustLedger } from &#x27;./trustLedger.mjs&#x27;;<a class="jump" href="src__lib__trustLedger_mjs.html" title="src/lib/trustLedger.mjs">→ trustLedger.mjs</a></td></tr>
-<tr class="cov"><td class="ln">14</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">15</td><td class="code">// Persistence is the Rust read_trust_ledger / write_trust_ledger pair (app-data</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">// Persistence is the Rust read_trust_ledger / write_trust_ledger pair (app-data</td></tr>
 <tr class="nil"><td class="ln">16</td><td class="code">// JSON, dir created before write, None-on-missing). The webview has no fs-plugin</td></tr>
 <tr class="nil"><td class="ln">17</td><td class="code">// access; these commands own the file I/O. In a non-Tauri context (tests/CLI)</td></tr>
-<tr class="cov"><td class="ln">18</td><td class="code">// `invoke` throws → we degrade to an in-memory-only ledger, so callers never</td></tr>
-<tr class="cov"><td class="ln">19</td><td class="code">// special-case it.</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">// `invoke` throws → we degrade to an in-memory-only ledger, so callers never</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">// special-case it.</td></tr>
 <tr class="nil"><td class="ln">20</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">21</td><td class="code">let _ledger: Promise&lt;TrustLedger&gt; | null = null;</td></tr>
 <tr class="nil"><td class="ln">22</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">23</td><td class="code">async function loadLedger(): Promise&lt;TrustLedger&gt; {</td></tr>
-<tr class="cov"><td class="ln">24</td><td class="code">  try {</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">  try {</td></tr>
 <tr class="cov"><td class="ln">25</td><td class="code">    const json = await invoke&lt;string | null&gt;(&#x27;read_trust_ledger&#x27;);</td></tr>
 <tr class="cov"><td class="ln">26</td><td class="code">    if (!json) return new TrustLedger(); // missing → empty (fail-safe: untrusted)</td></tr>
 <tr class="cov"><td class="ln">27</td><td class="code">    return TrustLedger.deserialize(JSON.parse(json));</td></tr>
@@ -47,58 +48,58 @@
 <tr class="cov"><td class="ln">30</td><td class="code">    return new TrustLedger();</td></tr>
 <tr class="nil"><td class="ln">31</td><td class="code">  }</td></tr>
 <tr class="nil"><td class="ln">32</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">33</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">34</td><td class="code">/** The in-memory ledger, loaded once. */</td></tr>
 <tr class="nil"><td class="ln">35</td><td class="code">function ledger(): Promise&lt;TrustLedger&gt; {</td></tr>
 <tr class="cov"><td class="ln">36</td><td class="code">  if (!_ledger) _ledger = loadLedger();</td></tr>
 <tr class="cov"><td class="ln">37</td><td class="code">  return _ledger;</td></tr>
 <tr class="nil"><td class="ln">38</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">39</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">40</td><td class="code">/** Best-effort write-through. Never throws — a failed persist must not break the</td></tr>
 <tr class="nil"><td class="ln">41</td><td class="code"> *  app; worst case a trust decision doesn&#x27;t survive a restart (fail-safe: the deck</td></tr>
-<tr class="cov"><td class="ln">42</td><td class="code"> *  re-prompts, it never silently gains trust). The Rust command creates the</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code"> *  re-prompts, it never silently gains trust). The Rust command creates the</td></tr>
 <tr class="nil"><td class="ln">43</td><td class="code"> *  app-data dir before writing. */</td></tr>
 <tr class="nil"><td class="ln">44</td><td class="code">async function persist(l: TrustLedger): Promise&lt;void&gt; {</td></tr>
-<tr class="cov"><td class="ln">45</td><td class="code">  try {</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">  try {</td></tr>
 <tr class="cov"><td class="ln">46</td><td class="code">    await invoke(&#x27;write_trust_ledger&#x27;, { json: JSON.stringify(l.serialize()) });</td></tr>
 <tr class="nil"><td class="ln">47</td><td class="code">  } catch { /* ignore — see doc comment */ }</td></tr>
-<tr class="unc"><td class="ln">48</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">49</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">50</td><td class="code">// NOTE: load→mutate→persist is not atomic. Fine today — this is a single-window</td></tr>
-<tr class="unc"><td class="ln">51</td><td class="code">// app and all calls are await-serialized on one in-memory ledger. If multi-window</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">// app and all calls are await-serialized on one in-memory ledger. If multi-window</td></tr>
 <tr class="nil"><td class="ln">52</td><td class="code">// (multi-presentation windows are on the roadmap) ever shares this appData file,</td></tr>
 <tr class="nil"><td class="ln">53</td><td class="code">// last-writer-wins could drop an approval; funnel all ledger mutations through one</td></tr>
-<tr class="cov"><td class="ln">54</td><td class="code">// owner (or add file locking / merge-on-write) before that lands.</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">// owner (or add file locking / merge-on-write) before that lands.</td></tr>
 <tr class="nil"><td class="ln">55</td><td class="code">async function mutate&lt;T&gt;(fn: (l: TrustLedger, now: number) =&gt; T): Promise&lt;T&gt; {</td></tr>
 <tr class="cov"><td class="ln">56</td><td class="code">  const l = await ledger();</td></tr>
 <tr class="cov"><td class="ln">57</td><td class="code">  const out = fn(l, Date.now());</td></tr>
 <tr class="cov"><td class="ln">58</td><td class="code">  await persist(l);</td></tr>
 <tr class="cov"><td class="ln">59</td><td class="code">  return out;</td></tr>
-<tr class="unc"><td class="ln">60</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">61</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">62</td><td class="code">// --- read accessors ---------------------------------------------------------</td></tr>
-<tr class="cov"><td class="ln">63</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">63</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">64</td><td class="code">export async function deckState(token: string) {</td></tr>
 <tr class="cov"><td class="ln">65</td><td class="code">  return (await ledger()).deckState(token, Date.now());</td></tr>
-<tr class="cov"><td class="ln">66</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">67</td><td class="code">export async function isTrusted(token: string): Promise&lt;boolean&gt; {</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">67</td><td class="code">export async function isTrusted(token: string): Promise&lt;boolean&gt; {</td></tr>
 <tr class="cov"><td class="ln">68</td><td class="code">  return (await ledger()).isTrusted(token, Date.now());</td></tr>
-<tr class="cov"><td class="ln">69</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">70</td><td class="code">export async function isPathApproved(token: string, resolvedPath: string): Promise&lt;boolean&gt; {</td></tr>
 <tr class="cov"><td class="ln">71</td><td class="code">  return (await ledger()).isApproved(token, resolvedPath, Date.now());</td></tr>
-<tr class="unc"><td class="ln">72</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">72</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">73</td><td class="code">/** Provenance for one approved resolved path: { at, reason } or null. */</td></tr>
 <tr class="nil"><td class="ln">74</td><td class="code">export async function approvalDetail(token: string, resolvedPath: string): Promise&lt;{ at: number; reason: string } | null&gt; {</td></tr>
 <tr class="cov"><td class="ln">75</td><td class="code">  return (await ledger()).approvalDetail(token, resolvedPath);</td></tr>
 <tr class="nil"><td class="ln">76</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">77</td><td class="code">/** Is this deck&#x27;s demo internet access blocked (per-deck local choice)? */</td></tr>
-<tr class="cov"><td class="ln">78</td><td class="code">export async function isDeckInternetBlocked(token: string): Promise&lt;boolean&gt; {</td></tr>
+<tr class="nil"><td class="ln">78</td><td class="code">export async function isDeckInternetBlocked(token: string): Promise&lt;boolean&gt; {</td></tr>
 <tr class="cov"><td class="ln">79</td><td class="code">  return (await ledger()).isInternetBlocked(token);</td></tr>
 <tr class="nil"><td class="ln">80</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">81</td><td class="code">/** Set the per-deck internet block (persisted). Works for any deck, trusted or not. */</td></tr>
+<tr class="nil"><td class="ln">81</td><td class="code">/** Set the per-deck internet block (persisted). Works for any deck, trusted or not. */</td></tr>
 <tr class="nil"><td class="ln">82</td><td class="code">export async function setDeckInternetBlocked(token: string, blocked: boolean): Promise&lt;void&gt; {</td></tr>
 <tr class="cov"><td class="ln">83</td><td class="code">  await mutate((l, now) =&gt; l.setInternetBlocked(token, blocked, now));</td></tr>
-<tr class="unc"><td class="ln">84</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">84</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">85</td><td class="code">/** Is THIS demo (by assetId) individually blocked from the internet in this deck? */</td></tr>
 <tr class="nil"><td class="ln">86</td><td class="code">export async function isDeckDemoBlocked(token: string, assetId: string): Promise&lt;boolean&gt; {</td></tr>
 <tr class="cov"><td class="ln">87</td><td class="code">  return (await ledger()).isDemoBlocked(token, assetId);</td></tr>

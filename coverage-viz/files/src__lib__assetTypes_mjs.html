@@ -5,13 +5,14 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/assetTypes.mjs </h1>
   <div class="stats">
-    <span class="stat"><b>99%</b> covered</span>
-    <span class="stat">78/79 executable</span>
-    <span class="stat unc-txt">1 uncovered</span>
+    <span class="stat"><b>97%</b> covered</span>
+    <span class="stat">94/97 statements</span>
+    <span class="stat unc-txt">3 uncovered</span>
     <span class="stat">247 raw lines</span>
     <span class="stat">0.58% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:31.579%"></span><span class="seg unc" style="width:0.405%"></span><span class="seg nil" style="width:68.016%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:96.907%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:3.093%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src__lib__assetGate_ts.html">assetGate.ts</a> <a href="src__lib__assetInsert_ts.html">assetInsert.ts</a> <a href="src__lib__demoMount_ts.html">demoMount.ts</a> <a href="src__lib__exportCore_mjs.html">exportCore.mjs</a> <a href="src__lib__htmlDropRoute_ts.html">htmlDropRoute.ts</a></div>
 </header>
@@ -29,14 +30,14 @@
 <tr class="nil"><td class="ln">12</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">13</td><td class="code">/** extension (lowercase, no dot) → asset kind. This IS the allowlist. */</td></tr>
 <tr class="cov"><td class="ln">14</td><td class="code">export const ASSET_EXTENSIONS = Object.freeze({</td></tr>
-<tr class="nil"><td class="ln">15</td><td class="code">  png: &#x27;image&#x27;, jpg: &#x27;image&#x27;, jpeg: &#x27;image&#x27;, gif: &#x27;image&#x27;, webp: &#x27;image&#x27;,</td></tr>
-<tr class="nil"><td class="ln">16</td><td class="code">  svg: &#x27;image&#x27;,</td></tr>
-<tr class="nil"><td class="ln">17</td><td class="code">  pdf: &#x27;pdf&#x27;,</td></tr>
+<tr class="cov"><td class="ln">15</td><td class="code">  png: &#x27;image&#x27;, jpg: &#x27;image&#x27;, jpeg: &#x27;image&#x27;, gif: &#x27;image&#x27;, webp: &#x27;image&#x27;,</td></tr>
+<tr class="cov"><td class="ln">16</td><td class="code">  svg: &#x27;image&#x27;,</td></tr>
+<tr class="cov"><td class="ln">17</td><td class="code">  pdf: &#x27;pdf&#x27;,</td></tr>
 <tr class="nil"><td class="ln">18</td><td class="code">  // Video/media pickers accept these; all are watchable assets.</td></tr>
-<tr class="nil"><td class="ln">19</td><td class="code">  mp4: &#x27;video&#x27;, webm: &#x27;video&#x27;, mov: &#x27;video&#x27;, m4v: &#x27;video&#x27;, ogv: &#x27;video&#x27;, ogg: &#x27;video&#x27;,</td></tr>
-<tr class="nil"><td class="ln">20</td><td class="code">  ipynb: &#x27;notebook&#x27;,</td></tr>
-<tr class="nil"><td class="ln">21</td><td class="code">  html: &#x27;demo&#x27;,</td></tr>
-<tr class="nil"><td class="ln">22</td><td class="code">  vtt: &#x27;captions&#x27;,</td></tr>
+<tr class="cov"><td class="ln">19</td><td class="code">  mp4: &#x27;video&#x27;, webm: &#x27;video&#x27;, mov: &#x27;video&#x27;, m4v: &#x27;video&#x27;, ogv: &#x27;video&#x27;, ogg: &#x27;video&#x27;,</td></tr>
+<tr class="cov"><td class="ln">20</td><td class="code">  ipynb: &#x27;notebook&#x27;,</td></tr>
+<tr class="cov"><td class="ln">21</td><td class="code">  html: &#x27;demo&#x27;,</td></tr>
+<tr class="cov"><td class="ln">22</td><td class="code">  vtt: &#x27;captions&#x27;,</td></tr>
 <tr class="nil"><td class="ln">23</td><td class="code">});</td></tr>
 <tr class="nil"><td class="ln">24</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">25</td><td class="code">/** Marker that identifies eigendeck&#x27;s own demo format (see docs/DEMO_AUTHORING.md). */</td></tr>
@@ -65,7 +66,7 @@
 <tr class="nil"><td class="ln">48</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">49</td><td class="code">/** First `n` bytes of the input (Uint8Array | ArrayBuffer | string) as a byte array. */</td></tr>
 <tr class="nil"><td class="ln">50</td><td class="code">function toBytes(input, n) {</td></tr>
-<tr class="cov"><td class="ln">51</td><td class="code">  if (typeof input === &#x27;string&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">  if (typeof input === &#x27;string&#x27;) {</td></tr>
 <tr class="cov"><td class="ln">52</td><td class="code">    const out = new Uint8Array(Math.min(input.length, n));</td></tr>
 <tr class="cov"><td class="ln">53</td><td class="code">    for (let i = 0; i &lt; out.length; i++) out[i] = input.charCodeAt(i) &amp; 0xff;</td></tr>
 <tr class="cov"><td class="ln">54</td><td class="code">    return out;</td></tr>
@@ -76,12 +77,12 @@
 <tr class="nil"><td class="ln">59</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">60</td><td class="code">/** A latin1 (byte-preserving) string of the prefix, BOM stripped, for text sniffs. */</td></tr>
 <tr class="nil"><td class="ln">61</td><td class="code">function prefixString(input, n = 512) {</td></tr>
-<tr class="cov"><td class="ln">62</td><td class="code">  if (typeof input === &#x27;string&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">62</td><td class="code">  if (typeof input === &#x27;string&#x27;) {</td></tr>
 <tr class="cov"><td class="ln">63</td><td class="code">    const s = input.charCodeAt(0) === 0xfeff ? input.slice(1) : input; // BOM char</td></tr>
 <tr class="cov"><td class="ln">64</td><td class="code">    return s.slice(0, n);</td></tr>
 <tr class="nil"><td class="ln">65</td><td class="code">  }</td></tr>
 <tr class="cov"><td class="ln">66</td><td class="code">  let b = toBytes(input, n + 3);</td></tr>
-<tr class="cov"><td class="ln">67</td><td class="code">  if (b.length &gt;= 3 &amp;&amp; b[0] === 0xef &amp;&amp; b[1] === 0xbb &amp;&amp; b[2] === 0xbf) b = b.subarray(3); // UTF-8 BOM</td></tr>
+<tr class="part"><td class="ln">67</td><td class="code">  if (b.length &gt;= 3 &amp;&amp; b[0] === 0xef &amp;&amp; b[1] === 0xbb &amp;&amp; b[2] === 0xbf) b = b.subarray(3); // UTF-8 BOM</td></tr>
 <tr class="cov"><td class="ln">68</td><td class="code">  let s = &#x27;&#x27;;</td></tr>
 <tr class="cov"><td class="ln">69</td><td class="code">  for (let i = 0; i &lt; b.length &amp;&amp; i &lt; n; i++) s += String.fromCharCode(b[i]);</td></tr>
 <tr class="cov"><td class="ln">70</td><td class="code">  return s;</td></tr>
@@ -118,19 +119,19 @@
 <tr class="nil"><td class="ln">101</td><td class="code">// --- native content identity per interchange format -------------------------</td></tr>
 <tr class="nil"><td class="ln">102</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">103</td><td class="code">const MAGIC = {</td></tr>
-<tr class="nil"><td class="ln">104</td><td class="code">  png: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],</td></tr>
-<tr class="nil"><td class="ln">105</td><td class="code">  jpg: [0xff, 0xd8, 0xff],</td></tr>
-<tr class="nil"><td class="ln">106</td><td class="code">  gif: [0x47, 0x49, 0x46, 0x38], // &quot;GIF8&quot;</td></tr>
-<tr class="nil"><td class="ln">107</td><td class="code">  pdf: [0x25, 0x50, 0x44, 0x46, 0x2d], // &quot;%PDF-&quot;</td></tr>
-<tr class="nil"><td class="ln">108</td><td class="code">  webm: [0x1a, 0x45, 0xdf, 0xa3], // EBML (matroska/webm)</td></tr>
-<tr class="nil"><td class="ln">109</td><td class="code">  ogg: [0x4f, 0x67, 0x67, 0x53], // &quot;OggS&quot; (ogg/ogv)</td></tr>
+<tr class="cov"><td class="ln">104</td><td class="code">  png: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],</td></tr>
+<tr class="cov"><td class="ln">105</td><td class="code">  jpg: [0xff, 0xd8, 0xff],</td></tr>
+<tr class="cov"><td class="ln">106</td><td class="code">  gif: [0x47, 0x49, 0x46, 0x38], // &quot;GIF8&quot;</td></tr>
+<tr class="cov"><td class="ln">107</td><td class="code">  pdf: [0x25, 0x50, 0x44, 0x46, 0x2d], // &quot;%PDF-&quot;</td></tr>
+<tr class="cov"><td class="ln">108</td><td class="code">  webm: [0x1a, 0x45, 0xdf, 0xa3], // EBML (matroska/webm)</td></tr>
+<tr class="cov"><td class="ln">109</td><td class="code">  ogg: [0x4f, 0x67, 0x67, 0x53], // &quot;OggS&quot; (ogg/ogv)</td></tr>
 <tr class="nil"><td class="ln">110</td><td class="code">};</td></tr>
 <tr class="nil"><td class="ln">111</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">112</td><td class="code">function isWebp(input) {</td></tr>
 <tr class="cov"><td class="ln">113</td><td class="code">  const b = toBytes(input, 12);</td></tr>
 <tr class="cov"><td class="ln">114</td><td class="code">  return b.length &gt;= 12 &amp;&amp;</td></tr>
-<tr class="nil"><td class="ln">115</td><td class="code">    b[0] === 0x52 &amp;&amp; b[1] === 0x49 &amp;&amp; b[2] === 0x46 &amp;&amp; b[3] === 0x46 &amp;&amp; // RIFF</td></tr>
-<tr class="nil"><td class="ln">116</td><td class="code">    b[8] === 0x57 &amp;&amp; b[9] === 0x45 &amp;&amp; b[10] === 0x42 &amp;&amp; b[11] === 0x50; // WEBP</td></tr>
+<tr class="cov"><td class="ln">115</td><td class="code">    b[0] === 0x52 &amp;&amp; b[1] === 0x49 &amp;&amp; b[2] === 0x46 &amp;&amp; b[3] === 0x46 &amp;&amp; // RIFF</td></tr>
+<tr class="cov"><td class="ln">116</td><td class="code">    b[8] === 0x57 &amp;&amp; b[9] === 0x45 &amp;&amp; b[10] === 0x42 &amp;&amp; b[11] === 0x50; // WEBP</td></tr>
 <tr class="nil"><td class="ln">117</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">118</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">119</td><td class="code">function isMp4(input) {</td></tr>
@@ -149,7 +150,7 @@
 <tr class="nil"><td class="ln">132</td><td class="code">  // somewhere in the file). Tolerate any prolog of xml-decl / &lt;!DOCTYPE svg …&gt; /</td></tr>
 <tr class="nil"><td class="ln">133</td><td class="code">  // comments in any order — Illustrator + Inkscape emit an SVG DOCTYPE before &lt;svg&gt;.</td></tr>
 <tr class="cov"><td class="ln">134</td><td class="code">  return /^\s*(?:(?:&lt;\?xml[^&gt;]*&gt;|&lt;!doctype\s+svg[^&gt;]*&gt;|&lt;!--[\s\S]*?--&gt;)\s*)*&lt;svg[\s&gt;]/i</td></tr>
-<tr class="nil"><td class="ln">135</td><td class="code">    .test(prefixString(input, 512));</td></tr>
+<tr class="cov"><td class="ln">135</td><td class="code">    .test(prefixString(input, 512));</td></tr>
 <tr class="nil"><td class="ln">136</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">137</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">138</td><td class="code">/** Upper bound on a notebook we&#x27;ll parse. Notebooks with embedded plot/image</td></tr>
@@ -170,7 +171,7 @@
 <tr class="nil"><td class="ln">153</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">154</td><td class="code">function isNotebookJson(input) {</td></tr>
 <tr class="cov"><td class="ln">155</td><td class="code">  if (byteLength(input) &gt; NOTEBOOK_MAX_BYTES) return false;</td></tr>
-<tr class="cov"><td class="ln">156</td><td class="code">  try {</td></tr>
+<tr class="nil"><td class="ln">156</td><td class="code">  try {</td></tr>
 <tr class="cov"><td class="ln">157</td><td class="code">    const o = JSON.parse(prefixStringFull(input));</td></tr>
 <tr class="cov"><td class="ln">158</td><td class="code">    return !!o &amp;&amp; typeof o === &#x27;object&#x27; &amp;&amp; (&#x27;nbformat&#x27; in o || Array.isArray(o.cells));</td></tr>
 <tr class="cov"><td class="ln">159</td><td class="code">  } catch { return false; }</td></tr>
@@ -195,7 +196,7 @@
 <tr class="nil"><td class="ln">178</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">179</td><td class="code">/** Interchange (non-demo) content identity by native magic / structural parse. */</td></tr>
 <tr class="nil"><td class="ln">180</td><td class="code">function matchesInterchangeMagic(input, e) {</td></tr>
-<tr class="cov"><td class="ln">181</td><td class="code">  switch (e) {</td></tr>
+<tr class="nil"><td class="ln">181</td><td class="code">  switch (e) {</td></tr>
 <tr class="cov"><td class="ln">182</td><td class="code">    case &#x27;png&#x27;: return startsWithBytes(input, MAGIC.png);</td></tr>
 <tr class="cov"><td class="ln">183</td><td class="code">    case &#x27;jpg&#x27;: case &#x27;jpeg&#x27;: return startsWithBytes(input, MAGIC.jpg);</td></tr>
 <tr class="cov"><td class="ln">184</td><td class="code">    case &#x27;gif&#x27;: return startsWithBytes(input, MAGIC.gif);</td></tr>
@@ -221,15 +222,15 @@
 <tr class="nil"><td class="ln">204</td><td class="code"> */</td></tr>
 <tr class="nil"><td class="ln">205</td><td class="code">export function checkContent(input, ext) {</td></tr>
 <tr class="cov"><td class="ln">206</td><td class="code">  const e = String(ext).toLowerCase();</td></tr>
-<tr class="cov"><td class="ln">207</td><td class="code">  if (e === &#x27;html&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">207</td><td class="code">  if (e === &#x27;html&#x27;) {</td></tr>
 <tr class="cov"><td class="ln">208</td><td class="code">    const d = isEigendeckDemo(input);</td></tr>
 <tr class="cov"><td class="ln">209</td><td class="code">    if (!d.ok) return { ok: false, reason: &#x27;content-mismatch&#x27; };</td></tr>
 <tr class="cov"><td class="ln">210</td><td class="code">    if (!d.supported) return { ok: false, reason: &#x27;unsupported-demo-version&#x27; };</td></tr>
 <tr class="cov"><td class="ln">211</td><td class="code">    return { ok: true, reason: null };</td></tr>
 <tr class="nil"><td class="ln">212</td><td class="code">  }</td></tr>
 <tr class="cov"><td class="ln">213</td><td class="code">  return matchesInterchangeMagic(input, e)</td></tr>
-<tr class="nil"><td class="ln">214</td><td class="code">    ? { ok: true, reason: null }</td></tr>
-<tr class="nil"><td class="ln">215</td><td class="code">    : { ok: false, reason: &#x27;content-mismatch&#x27; };</td></tr>
+<tr class="cov"><td class="ln">214</td><td class="code">    ? { ok: true, reason: null }</td></tr>
+<tr class="cov"><td class="ln">215</td><td class="code">    : { ok: false, reason: &#x27;content-mismatch&#x27; };</td></tr>
 <tr class="nil"><td class="ln">216</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">217</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">218</td><td class="code">/** Boolean form of {@link checkContent}: do the bytes match the type its</td></tr>
@@ -258,7 +259,7 @@
 <tr class="nil"><td class="ln">241</td><td class="code">  // files before reading; this catches the add path, which gates on already-read bytes.</td></tr>
 <tr class="nil"><td class="ln">242</td><td class="code">  // (A bounded &quot;sniff&quot; read is under the cap and won&#x27;t false-trip — the Rust side reports</td></tr>
 <tr class="nil"><td class="ln">243</td><td class="code">  // the true too-large for that path.)</td></tr>
-<tr class="cov"><td class="ln">244</td><td class="code">  if (byteLength(input) &gt; MAX_ASSET_BYTES) return { ok: false, kind, reason: &#x27;too-large&#x27; };</td></tr>
+<tr class="part"><td class="ln">244</td><td class="code">  if (byteLength(input) &gt; MAX_ASSET_BYTES) return { ok: false, kind, reason: &#x27;too-large&#x27; };</td></tr>
 <tr class="cov"><td class="ln">245</td><td class="code">  const c = checkContent(input, ext); // one code path; no per-site re-implementation</td></tr>
 <tr class="cov"><td class="ln">246</td><td class="code">  return { ok: c.ok, kind, reason: c.reason };</td></tr>
 <tr class="nil"><td class="ln">247</td><td class="code">}</td></tr></table>

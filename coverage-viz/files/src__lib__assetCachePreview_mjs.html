@@ -6,12 +6,13 @@
   <h1>src/lib/assetCachePreview.mjs </h1>
   <div class="stats">
     <span class="stat"><b>100%</b> covered</span>
-    <span class="stat">13/13 executable</span>
+    <span class="stat">17/17 statements</span>
     <span class="stat unc-txt">0 uncovered</span>
     <span class="stat">47 raw lines</span>
     <span class="stat">0.11% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:27.660%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:72.340%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:100.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:0.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src__export-cli_ts.html">export-cli.ts</a> <a href="src__store__fileOps_ts.html">fileOps.ts</a></div>
 </header>
@@ -42,10 +43,10 @@
 <tr class="nil"><td class="ln">25</td><td class="code"> *     element&#x27;s sync identity (syncId, falling back to id).</td></tr>
 <tr class="nil"><td class="ln">26</td><td class="code"> */</td></tr>
 <tr class="nil"><td class="ln">27</td><td class="code">export function previewLookupKey(el) {</td></tr>
-<tr class="cov"><td class="ln">28</td><td class="code">  if (el.type === &#x27;image&#x27; &amp;&amp; el.kind === &#x27;pdf&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">  if (el.type === &#x27;image&#x27; &amp;&amp; el.kind === &#x27;pdf&#x27;) {</td></tr>
 <tr class="cov"><td class="ln">29</td><td class="code">    return { sourceId: el.assetId, variant: el.snapshotVariant ?? &#x27;_&#x27; };</td></tr>
 <tr class="nil"><td class="ln">30</td><td class="code">  }</td></tr>
-<tr class="cov"><td class="ln">31</td><td class="code">  if (el.type === &#x27;notebook&#x27; || el.type === &#x27;video&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">  if (el.type === &#x27;notebook&#x27; || el.type === &#x27;video&#x27;) {</td></tr>
 <tr class="cov"><td class="ln">32</td><td class="code">    return { sourceId: el.syncId ?? el.id, variant: &#x27;preview&#x27; };</td></tr>
 <tr class="nil"><td class="ln">33</td><td class="code">  }</td></tr>
 <tr class="cov"><td class="ln">34</td><td class="code">  return null;</td></tr>

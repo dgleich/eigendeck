@@ -5,13 +5,14 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/components/HistoryPanel.tsx </h1>
   <div class="stats">
-    <span class="stat"><b>45%</b> covered</span>
-    <span class="stat">43/95 executable</span>
-    <span class="stat unc-txt">52 uncovered</span>
+    <span class="stat"><b>55%</b> covered</span>
+    <span class="stat">43/78 statements</span>
+    <span class="stat unc-txt">35 uncovered</span>
     <span class="stat">203 raw lines</span>
     <span class="stat">0.48% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:21.182%"></span><span class="seg unc" style="width:25.616%"></span><span class="seg nil" style="width:53.202%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:55.128%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:44.872%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__lib__confirmDialog_ts.html">confirmDialog.ts</a> <a href="src__lib__normalizePresentation_ts.html">normalizePresentation.ts</a> <a href="src__lib__sanitizeRichText_ts.html">sanitizeRichText.ts</a> <a href="src__store__presentation_ts.html">presentation.ts</a> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
   <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a></div>
 </header>
@@ -22,28 +23,28 @@
 <tr class="nil"><td class="ln">5</td><td class="code">import { normalizeUntrustedPresentation } from &#x27;../lib/normalizePresentation&#x27;;<a class="jump" href="src__lib__normalizePresentation_ts.html" title="src/lib/normalizePresentation.ts">→ normalizePresentation.ts</a></td></tr>
 <tr class="nil"><td class="ln">6</td><td class="code">import { askConfirm } from &#x27;../lib/confirmDialog&#x27;;<a class="jump" href="src__lib__confirmDialog_ts.html" title="src/lib/confirmDialog.ts">→ confirmDialog.ts</a></td></tr>
 <tr class="nil"><td class="ln">7</td><td class="code">import type { Presentation } from &#x27;../types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
-<tr class="cov"><td class="ln">8</td><td class="code">&nbsp;</td></tr>
-<tr class="nil"><td class="ln">9</td><td class="code">interface HistoryEntry {</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">9</td><td class="code">interface HistoryEntry {</td></tr>
 <tr class="unc"><td class="ln">10</td><td class="code">  timestamp: string;</td></tr>
 <tr class="unc"><td class="ln">11</td><td class="code">  summary: string;</td></tr>
-<tr class="unc"><td class="ln">12</td><td class="code">}</td></tr>
-<tr class="unc"><td class="ln">13</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">14</td><td class="code">// Sanitize each history element&#x27;s html once and cache by the element object</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">// Sanitize each history element&#x27;s html once and cache by the element object</td></tr>
 <tr class="nil"><td class="ln">15</td><td class="code">// (snapshot elements are stable across the panel&#x27;s re-renders / slide stepping),</td></tr>
-<tr class="unc"><td class="ln">16</td><td class="code">// so we don&#x27;t re-parse+sanitize every text box on every render.</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">// so we don&#x27;t re-parse+sanitize every text box on every render.</td></tr>
 <tr class="unc"><td class="ln">17</td><td class="code">const _richCache = new WeakMap&lt;object, string&gt;();</td></tr>
 <tr class="nil"><td class="ln">18</td><td class="code">function cachedSanitizeRichText(el: { html?: string }): string {</td></tr>
 <tr class="cov"><td class="ln">19</td><td class="code">  if (!el.html) return &#x27;&#x27;;</td></tr>
-<tr class="cov"><td class="ln">20</td><td class="code">  let v = _richCache.get(el);</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">  let v = _richCache.get(el);</td></tr>
 <tr class="cov"><td class="ln">21</td><td class="code">  if (v === undefined) { v = sanitizeRichText(el.html); _richCache.set(el, v); }</td></tr>
 <tr class="cov"><td class="ln">22</td><td class="code">  return v;</td></tr>
 <tr class="nil"><td class="ln">23</td><td class="code">}</td></tr>
-<tr class="unc"><td class="ln">24</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">25</td><td class="code">/** Format a timestamp like &quot;2026-04-15T10:30:45.123Z-00000042&quot; for display */</td></tr>
-<tr class="nil"><td class="ln">26</td><td class="code">function formatTime(ts: string): string {</td></tr>
+<tr class="unc"><td class="ln">26</td><td class="code">function formatTime(ts: string): string {</td></tr>
 <tr class="nil"><td class="ln">27</td><td class="code">  // Strip the sequence suffix</td></tr>
 <tr class="cov"><td class="ln">28</td><td class="code">  const iso = ts.replace(/-\d{8}$/, &#x27;&#x27;);</td></tr>
-<tr class="cov"><td class="ln">29</td><td class="code">  try {</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">  try {</td></tr>
 <tr class="cov"><td class="ln">30</td><td class="code">    const d = new Date(iso);</td></tr>
 <tr class="cov"><td class="ln">31</td><td class="code">    return d.toLocaleTimeString([], { hour: &#x27;2-digit&#x27;, minute: &#x27;2-digit&#x27;, second: &#x27;2-digit&#x27; });</td></tr>
 <tr class="nil"><td class="ln">32</td><td class="code">  } catch {</td></tr>
@@ -58,68 +59,68 @@
 <tr class="cov"><td class="ln">41</td><td class="code">    return d.toLocaleDateString([], { month: &#x27;short&#x27;, day: &#x27;numeric&#x27; });</td></tr>
 <tr class="cov"><td class="ln">42</td><td class="code">  } catch {</td></tr>
 <tr class="cov"><td class="ln">43</td><td class="code">    return ts.slice(0, 10);</td></tr>
-<tr class="cov"><td class="ln">44</td><td class="code">  }</td></tr>
-<tr class="cov"><td class="ln">45</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">46</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">46</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">47</td><td class="code">export function HistoryPanel() {</td></tr>
-<tr class="cov"><td class="ln">48</td><td class="code">  const [entries, setEntries] = useState&lt;HistoryEntry[]&gt;([]);</td></tr>
+<tr class="part"><td class="ln">48</td><td class="code">  const [entries, setEntries] = useState&lt;HistoryEntry[]&gt;([]);</td></tr>
 <tr class="cov"><td class="ln">49</td><td class="code">  const [loading, setLoading] = useState(false);</td></tr>
 <tr class="cov"><td class="ln">50</td><td class="code">  const [previewIdx, setPreviewIdx] = useState&lt;number | null&gt;(null);</td></tr>
 <tr class="cov"><td class="ln">51</td><td class="code">  const [previewSlideIdx, setPreviewSlideIdx] = useState(0);</td></tr>
-<tr class="unc"><td class="ln">52</td><td class="code">  const [previewData, setPreviewData] = useState&lt;Presentation | null&gt;(null);</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">  const [previewData, setPreviewData] = useState&lt;Presentation | null&gt;(null);</td></tr>
 <tr class="unc"><td class="ln">53</td><td class="code">  const canvasRef = useRef&lt;HTMLDivElement&gt;(null);</td></tr>
 <tr class="nil"><td class="ln">54</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">55</td><td class="code">  const { toggleHistory, setPresentation } = usePresentationStore();</td></tr>
-<tr class="cov"><td class="ln">56</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">57</td><td class="code">  // Load history entries</td></tr>
-<tr class="unc"><td class="ln">58</td><td class="code">  useEffect(() =&gt; {</td></tr>
-<tr class="cov"><td class="ln">59</td><td class="code">    let cancelled = false;</td></tr>
-<tr class="cov"><td class="ln">60</td><td class="code">    setLoading(true);</td></tr>
+<tr class="cov"><td class="ln">58</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code">    let cancelled = false;</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code">    setLoading(true);</td></tr>
 <tr class="cov"><td class="ln">61</td><td class="code">    invoke&lt;string&gt;(&#x27;db_get_history_timestamps&#x27;).then((json) =&gt; {</td></tr>
 <tr class="cov"><td class="ln">62</td><td class="code">      if (cancelled) return;</td></tr>
-<tr class="unc"><td class="ln">63</td><td class="code">      const parsed: HistoryEntry[] = JSON.parse(json);</td></tr>
+<tr class="nil"><td class="ln">63</td><td class="code">      const parsed: HistoryEntry[] = JSON.parse(json);</td></tr>
 <tr class="unc"><td class="ln">64</td><td class="code">      setEntries(parsed);</td></tr>
 <tr class="unc"><td class="ln">65</td><td class="code">      setLoading(false);</td></tr>
 <tr class="unc"><td class="ln">66</td><td class="code">    }).catch(() =&gt; {</td></tr>
-<tr class="unc"><td class="ln">67</td><td class="code">      if (!cancelled) setLoading(false);</td></tr>
-<tr class="unc"><td class="ln">68</td><td class="code">    });</td></tr>
+<tr class="nil"><td class="ln">67</td><td class="code">      if (!cancelled) setLoading(false);</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code">    });</td></tr>
 <tr class="unc"><td class="ln">69</td><td class="code">    return () =&gt; { cancelled = true; };</td></tr>
-<tr class="unc"><td class="ln">70</td><td class="code">  }, []);</td></tr>
+<tr class="nil"><td class="ln">70</td><td class="code">  }, []);</td></tr>
 <tr class="nil"><td class="ln">71</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">72</td><td class="code">  // Load state at selected timestamp</td></tr>
+<tr class="nil"><td class="ln">72</td><td class="code">  // Load state at selected timestamp</td></tr>
 <tr class="unc"><td class="ln">73</td><td class="code">  useEffect(() =&gt; {</td></tr>
-<tr class="unc"><td class="ln">74</td><td class="code">    if (previewIdx === null) {</td></tr>
+<tr class="nil"><td class="ln">74</td><td class="code">    if (previewIdx === null) {</td></tr>
 <tr class="unc"><td class="ln">75</td><td class="code">      setPreviewData(null);</td></tr>
-<tr class="unc"><td class="ln">76</td><td class="code">      return;</td></tr>
+<tr class="nil"><td class="ln">76</td><td class="code">      return;</td></tr>
 <tr class="nil"><td class="ln">77</td><td class="code">    }</td></tr>
 <tr class="cov"><td class="ln">78</td><td class="code">    const entry = entries[previewIdx];</td></tr>
 <tr class="cov"><td class="ln">79</td><td class="code">    if (!entry) return;</td></tr>
 <tr class="cov"><td class="ln">80</td><td class="code">    let cancelled = false;</td></tr>
 <tr class="cov"><td class="ln">81</td><td class="code">    invoke&lt;string&gt;(&#x27;db_get_state_at&#x27;, { at: entry.timestamp }).then((json) =&gt; {</td></tr>
-<tr class="cov"><td class="ln">82</td><td class="code">      if (cancelled) return;</td></tr>
+<tr class="nil"><td class="ln">82</td><td class="code">      if (cancelled) return;</td></tr>
 <tr class="cov"><td class="ln">83</td><td class="code">      setPreviewData(JSON.parse(json));</td></tr>
 <tr class="cov"><td class="ln">84</td><td class="code">      setPreviewSlideIdx(0);</td></tr>
 <tr class="nil"><td class="ln">85</td><td class="code">    }).catch((e) =&gt; {</td></tr>
 <tr class="cov"><td class="ln">86</td><td class="code">      console.error(&#x27;Failed to load state at&#x27;, entry.timestamp, e);</td></tr>
 <tr class="nil"><td class="ln">87</td><td class="code">    });</td></tr>
 <tr class="cov"><td class="ln">88</td><td class="code">    return () =&gt; { cancelled = true; };</td></tr>
-<tr class="cov"><td class="ln">89</td><td class="code">  }, [previewIdx, entries]);</td></tr>
+<tr class="nil"><td class="ln">89</td><td class="code">  }, [previewIdx, entries]);</td></tr>
 <tr class="nil"><td class="ln">90</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">91</td><td class="code">  // Group entries by date</td></tr>
-<tr class="unc"><td class="ln">92</td><td class="code">  const grouped: { date: string; entries: { entry: HistoryEntry; idx: number }[] }[] = [];</td></tr>
-<tr class="unc"><td class="ln">93</td><td class="code">  let lastDate = &#x27;&#x27;;</td></tr>
-<tr class="cov"><td class="ln">94</td><td class="code">  for (let i = 0; i &lt; entries.length; i++) {</td></tr>
-<tr class="unc"><td class="ln">95</td><td class="code">    const date = formatDate(entries[i].timestamp);</td></tr>
-<tr class="cov"><td class="ln">96</td><td class="code">    if (date !== lastDate) {</td></tr>
-<tr class="unc"><td class="ln">97</td><td class="code">      grouped.push({ date, entries: [] });</td></tr>
-<tr class="cov"><td class="ln">98</td><td class="code">      lastDate = date;</td></tr>
+<tr class="nil"><td class="ln">92</td><td class="code">  const grouped: { date: string; entries: { entry: HistoryEntry; idx: number }[] }[] = [];</td></tr>
+<tr class="nil"><td class="ln">93</td><td class="code">  let lastDate = &#x27;&#x27;;</td></tr>
+<tr class="nil"><td class="ln">94</td><td class="code">  for (let i = 0; i &lt; entries.length; i++) {</td></tr>
+<tr class="nil"><td class="ln">95</td><td class="code">    const date = formatDate(entries[i].timestamp);</td></tr>
+<tr class="nil"><td class="ln">96</td><td class="code">    if (date !== lastDate) {</td></tr>
+<tr class="nil"><td class="ln">97</td><td class="code">      grouped.push({ date, entries: [] });</td></tr>
+<tr class="nil"><td class="ln">98</td><td class="code">      lastDate = date;</td></tr>
 <tr class="nil"><td class="ln">99</td><td class="code">    }</td></tr>
-<tr class="unc"><td class="ln">100</td><td class="code">    grouped[grouped.length - 1].entries.push({ entry: entries[i], idx: i });</td></tr>
+<tr class="nil"><td class="ln">100</td><td class="code">    grouped[grouped.length - 1].entries.push({ entry: entries[i], idx: i });</td></tr>
 <tr class="nil"><td class="ln">101</td><td class="code">  }</td></tr>
-<tr class="unc"><td class="ln">102</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">102</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">103</td><td class="code">  const previewSlide = previewData?.slides[previewSlideIdx];</td></tr>
 <tr class="nil"><td class="ln">104</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">105</td><td class="code">  return (</td></tr>
+<tr class="nil"><td class="ln">105</td><td class="code">  return (</td></tr>
 <tr class="nil"><td class="ln">106</td><td class="code">    &lt;div className=&quot;history-panel&quot;&gt;</td></tr>
 <tr class="nil"><td class="ln">107</td><td class="code">      &lt;div className=&quot;history-header&quot;&gt;</td></tr>
 <tr class="nil"><td class="ln">108</td><td class="code">        &lt;span&gt;History&lt;/span&gt;</td></tr>
@@ -131,56 +132,56 @@
 <tr class="nil"><td class="ln">114</td><td class="code">      {!loading &amp;&amp; entries.length === 0 &amp;&amp; (</td></tr>
 <tr class="nil"><td class="ln">115</td><td class="code">        &lt;div className=&quot;history-empty&quot;&gt;No history yet. Edit your presentation to create history entries.&lt;/div&gt;</td></tr>
 <tr class="nil"><td class="ln">116</td><td class="code">      )}</td></tr>
-<tr class="unc"><td class="ln">117</td><td class="code">&nbsp;</td></tr>
-<tr class="nil"><td class="ln">118</td><td class="code">      &lt;div className=&quot;history-list&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">117</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">118</td><td class="code">      &lt;div className=&quot;history-list&quot;&gt;</td></tr>
 <tr class="nil"><td class="ln">119</td><td class="code">        {grouped.map((group) =&gt; (</td></tr>
-<tr class="unc"><td class="ln">120</td><td class="code">          &lt;div key={group.date}&gt;</td></tr>
+<tr class="nil"><td class="ln">120</td><td class="code">          &lt;div key={group.date}&gt;</td></tr>
 <tr class="nil"><td class="ln">121</td><td class="code">            &lt;div className=&quot;history-date&quot;&gt;{group.date}&lt;/div&gt;</td></tr>
 <tr class="nil"><td class="ln">122</td><td class="code">            {group.entries.map(({ entry, idx }) =&gt; (</td></tr>
-<tr class="unc"><td class="ln">123</td><td class="code">              &lt;button</td></tr>
+<tr class="nil"><td class="ln">123</td><td class="code">              &lt;button</td></tr>
 <tr class="nil"><td class="ln">124</td><td class="code">                key={idx}</td></tr>
 <tr class="nil"><td class="ln">125</td><td class="code">                className={`history-entry ${previewIdx === idx ? &#x27;active&#x27; : &#x27;&#x27;}`}</td></tr>
-<tr class="unc"><td class="ln">126</td><td class="code">                onClick={() =&gt; setPreviewIdx(previewIdx === idx ? null : idx)}</td></tr>
+<tr class="nil"><td class="ln">126</td><td class="code">                onClick={() =&gt; setPreviewIdx(previewIdx === idx ? null : idx)}</td></tr>
 <tr class="nil"><td class="ln">127</td><td class="code">              &gt;</td></tr>
 <tr class="nil"><td class="ln">128</td><td class="code">                &lt;span className=&quot;history-time&quot;&gt;{formatTime(entry.timestamp)}&lt;/span&gt;</td></tr>
 <tr class="nil"><td class="ln">129</td><td class="code">                &lt;span className=&quot;history-summary&quot;&gt;{entry.summary}&lt;/span&gt;</td></tr>
 <tr class="nil"><td class="ln">130</td><td class="code">              &lt;/button&gt;</td></tr>
-<tr class="unc"><td class="ln">131</td><td class="code">            ))}</td></tr>
-<tr class="nil"><td class="ln">132</td><td class="code">          &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">131</td><td class="code">            ))}</td></tr>
+<tr class="unc"><td class="ln">132</td><td class="code">          &lt;/div&gt;</td></tr>
 <tr class="nil"><td class="ln">133</td><td class="code">        ))}</td></tr>
 <tr class="nil"><td class="ln">134</td><td class="code">      &lt;/div&gt;</td></tr>
 <tr class="nil"><td class="ln">135</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">136</td><td class="code">      {/* Preview area */}</td></tr>
-<tr class="nil"><td class="ln">137</td><td class="code">      {previewData &amp;&amp; previewSlide &amp;&amp; (</td></tr>
-<tr class="nil"><td class="ln">138</td><td class="code">        &lt;div className=&quot;history-preview&quot;&gt;</td></tr>
-<tr class="nil"><td class="ln">139</td><td class="code">          &lt;div className=&quot;history-preview-header&quot;&gt;</td></tr>
-<tr class="nil"><td class="ln">140</td><td class="code">            &lt;button</td></tr>
-<tr class="nil"><td class="ln">141</td><td class="code">              disabled={previewSlideIdx &lt;= 0}</td></tr>
+<tr class="unc"><td class="ln">137</td><td class="code">      {previewData &amp;&amp; previewSlide &amp;&amp; (</td></tr>
+<tr class="unc"><td class="ln">138</td><td class="code">        &lt;div className=&quot;history-preview&quot;&gt;</td></tr>
+<tr class="unc"><td class="ln">139</td><td class="code">          &lt;div className=&quot;history-preview-header&quot;&gt;</td></tr>
+<tr class="unc"><td class="ln">140</td><td class="code">            &lt;button</td></tr>
+<tr class="unc"><td class="ln">141</td><td class="code">              disabled={previewSlideIdx &lt;= 0}</td></tr>
 <tr class="unc"><td class="ln">142</td><td class="code">              onClick={() =&gt; setPreviewSlideIdx((i) =&gt; Math.max(0, i - 1))}</td></tr>
-<tr class="nil"><td class="ln">143</td><td class="code">            &gt;&amp;larr;&lt;/button&gt;</td></tr>
-<tr class="nil"><td class="ln">144</td><td class="code">            &lt;span&gt;Slide {previewSlideIdx + 1} / {previewData.slides.length}&lt;/span&gt;</td></tr>
-<tr class="nil"><td class="ln">145</td><td class="code">            &lt;button</td></tr>
-<tr class="nil"><td class="ln">146</td><td class="code">              disabled={previewSlideIdx &gt;= previewData.slides.length - 1}</td></tr>
+<tr class="unc"><td class="ln">143</td><td class="code">            &gt;&amp;larr;&lt;/button&gt;</td></tr>
+<tr class="unc"><td class="ln">144</td><td class="code">            &lt;span&gt;Slide {previewSlideIdx + 1} / {previewData.slides.length}&lt;/span&gt;</td></tr>
+<tr class="unc"><td class="ln">145</td><td class="code">            &lt;button</td></tr>
+<tr class="unc"><td class="ln">146</td><td class="code">              disabled={previewSlideIdx &gt;= previewData.slides.length - 1}</td></tr>
 <tr class="unc"><td class="ln">147</td><td class="code">              onClick={() =&gt; setPreviewSlideIdx((i) =&gt; Math.min(previewData.slides.length - 1, i + 1))}</td></tr>
-<tr class="nil"><td class="ln">148</td><td class="code">            &gt;&amp;rarr;&lt;/button&gt;</td></tr>
-<tr class="nil"><td class="ln">149</td><td class="code">          &lt;/div&gt;</td></tr>
-<tr class="nil"><td class="ln">150</td><td class="code">          &lt;div className=&quot;history-preview-canvas&quot; ref={canvasRef}&gt;</td></tr>
-<tr class="nil"><td class="ln">151</td><td class="code">            &lt;div className=&quot;history-slide-preview&quot; style={{ transform: &#x27;scale(0.18)&#x27;, transformOrigin: &#x27;top left&#x27;, width: 1920, height: 1080, background: &#x27;#fff&#x27;, position: &#x27;relative&#x27; }}&gt;</td></tr>
-<tr class="nil"><td class="ln">152</td><td class="code">              {previewSlide.elements.map((el: any, i: number) =&gt; (</td></tr>
+<tr class="unc"><td class="ln">148</td><td class="code">            &gt;&amp;rarr;&lt;/button&gt;</td></tr>
+<tr class="unc"><td class="ln">149</td><td class="code">          &lt;/div&gt;</td></tr>
+<tr class="unc"><td class="ln">150</td><td class="code">          &lt;div className=&quot;history-preview-canvas&quot; ref={canvasRef}&gt;</td></tr>
+<tr class="unc"><td class="ln">151</td><td class="code">            &lt;div className=&quot;history-slide-preview&quot; style={{ transform: &#x27;scale(0.18)&#x27;, transformOrigin: &#x27;top left&#x27;, width: 1920, height: 1080, background: &#x27;#fff&#x27;, position: &#x27;relative&#x27; }}&gt;</td></tr>
+<tr class="unc"><td class="ln">152</td><td class="code">              {previewSlide.elements.map((el: any, i: number) =&gt; (</td></tr>
 <tr class="unc"><td class="ln">153</td><td class="code">                &lt;div</td></tr>
-<tr class="nil"><td class="ln">154</td><td class="code">                  key={el.id || i}</td></tr>
-<tr class="nil"><td class="ln">155</td><td class="code">                  style={{</td></tr>
-<tr class="nil"><td class="ln">156</td><td class="code">                    position: &#x27;absolute&#x27;,</td></tr>
-<tr class="nil"><td class="ln">157</td><td class="code">                    left: el.position?.x ?? 0,</td></tr>
+<tr class="unc"><td class="ln">154</td><td class="code">                  key={el.id || i}</td></tr>
+<tr class="unc"><td class="ln">155</td><td class="code">                  style={{</td></tr>
+<tr class="unc"><td class="ln">156</td><td class="code">                    position: &#x27;absolute&#x27;,</td></tr>
+<tr class="unc"><td class="ln">157</td><td class="code">                    left: el.position?.x ?? 0,</td></tr>
 <tr class="nil"><td class="ln">158</td><td class="code">                    top: el.position?.y ?? 0,</td></tr>
 <tr class="nil"><td class="ln">159</td><td class="code">                    width: el.position?.width ?? 200,</td></tr>
 <tr class="nil"><td class="ln">160</td><td class="code">                    height: el.position?.height ?? 40,</td></tr>
 <tr class="nil"><td class="ln">161</td><td class="code">                    fontSize: el.fontSize ?? 24,</td></tr>
 <tr class="nil"><td class="ln">162</td><td class="code">                    color: el.color ?? &#x27;#222&#x27;,</td></tr>
-<tr class="unc"><td class="ln">163</td><td class="code">                    overflow: &#x27;hidden&#x27;,</td></tr>
-<tr class="unc"><td class="ln">164</td><td class="code">                  }}</td></tr>
+<tr class="nil"><td class="ln">163</td><td class="code">                    overflow: &#x27;hidden&#x27;,</td></tr>
+<tr class="nil"><td class="ln">164</td><td class="code">                  }}</td></tr>
 <tr class="unc"><td class="ln">165</td><td class="code">                  dangerouslySetInnerHTML={el.html ? { __html: cachedSanitizeRichText(el) } : undefined}</td></tr>
-<tr class="unc"><td class="ln">166</td><td class="code">                &gt;</td></tr>
+<tr class="nil"><td class="ln">166</td><td class="code">                &gt;</td></tr>
 <tr class="unc"><td class="ln">167</td><td class="code">                  {!el.html &amp;&amp; el.type === &#x27;image&#x27; &amp;&amp; (</td></tr>
 <tr class="nil"><td class="ln">168</td><td class="code">                    &lt;div style={{ width: &#x27;100%&#x27;, height: &#x27;100%&#x27;, background: &#x27;#e5e7eb&#x27;, display: &#x27;flex&#x27;, alignItems: &#x27;center&#x27;, justifyContent: &#x27;center&#x27;, fontSize: 14, color: &#x27;#9ca3af&#x27; }}&gt;img&lt;/div&gt;</td></tr>
 <tr class="nil"><td class="ln">169</td><td class="code">                  )}</td></tr>
@@ -197,17 +198,17 @@
 <tr class="nil"><td class="ln">180</td><td class="code">          &lt;button</td></tr>
 <tr class="nil"><td class="ln">181</td><td class="code">            className=&quot;history-restore-btn&quot;</td></tr>
 <tr class="nil"><td class="ln">182</td><td class="code">            onClick={async () =&gt; {</td></tr>
-<tr class="unc"><td class="ln">183</td><td class="code">              if (previewData &amp;&amp; await askConfirm(&#x27;Restore presentation to this point in time? Current state will be saved first.&#x27;)) {</td></tr>
+<tr class="nil"><td class="ln">183</td><td class="code">              if (previewData &amp;&amp; await askConfirm(&#x27;Restore presentation to this point in time? Current state will be saved first.&#x27;)) {</td></tr>
 <tr class="nil"><td class="ln">184</td><td class="code">                // Flush current state to SQLite so it&#x27;s preserved in history</td></tr>
-<tr class="unc"><td class="ln">185</td><td class="code">                await flushToSqlite();</td></tr>
+<tr class="nil"><td class="ln">185</td><td class="code">                await flushToSqlite();</td></tr>
 <tr class="nil"><td class="ln">186</td><td class="code">                // History restore is an untrusted ingress: previewData is a state</td></tr>
 <tr class="nil"><td class="ln">187</td><td class="code">                // reconstructed from the deck&#x27;s temporal rows (db_get_state_at), which</td></tr>
 <tr class="nil"><td class="ln">188</td><td class="code">                // a crafted deck controls — and setPresentation does NOT normalize (that</td></tr>
 <tr class="nil"><td class="ln">189</td><td class="code">                // lives in openSqliteProject). Run the same boundary here as deck open /</td></tr>
 <tr class="nil"><td class="ln">190</td><td class="code">                // undo seeding (audit H-1 + C-2): sanitize html + validate properties.</td></tr>
-<tr class="unc"><td class="ln">191</td><td class="code">                normalizeUntrustedPresentation(previewData);</td></tr>
-<tr class="unc"><td class="ln">192</td><td class="code">                setPresentation(previewData);</td></tr>
-<tr class="unc"><td class="ln">193</td><td class="code">                toggleHistory();</td></tr>
+<tr class="nil"><td class="ln">191</td><td class="code">                normalizeUntrustedPresentation(previewData);</td></tr>
+<tr class="nil"><td class="ln">192</td><td class="code">                setPresentation(previewData);</td></tr>
+<tr class="nil"><td class="ln">193</td><td class="code">                toggleHistory();</td></tr>
 <tr class="nil"><td class="ln">194</td><td class="code">              }</td></tr>
 <tr class="nil"><td class="ln">195</td><td class="code">            }}</td></tr>
 <tr class="nil"><td class="ln">196</td><td class="code">          &gt;</td></tr>

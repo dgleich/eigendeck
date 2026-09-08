@@ -5,13 +5,14 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/htmlEscape.mjs </h1>
   <div class="stats">
-    <span class="stat"><b>100%</b> covered</span>
-    <span class="stat">8/8 executable</span>
-    <span class="stat unc-txt">0 uncovered</span>
+    <span class="stat"><b>92%</b> covered</span>
+    <span class="stat">11/12 statements</span>
+    <span class="stat unc-txt">1 uncovered</span>
     <span class="stat">31 raw lines</span>
     <span class="stat">0.07% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:25.806%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:74.194%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:91.667%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:8.333%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src__lib__arrowGeometry_mjs.html">arrowGeometry.mjs</a> <a href="src__lib__elementHtml_mjs.html">elementHtml.mjs</a> <a href="src__lib__exportCore_mjs.html">exportCore.mjs</a> <a href="src__lib__htmlElement_mjs.html">htmlElement.mjs</a> <a href="src__lib__notebookExport_tsx.html">notebookExport.tsx</a></div>
 </header>
@@ -21,10 +22,10 @@
 <tr class="nil"><td class="ln">4</td><td class="code">// notebook export (notebookExport.tsx), which each used to keep their own copy.</td></tr>
 <tr class="nil"><td class="ln">5</td><td class="code">export function htmlEscapeForSrcdoc(s) {</td></tr>
 <tr class="cov"><td class="ln">6</td><td class="code">  return s</td></tr>
-<tr class="nil"><td class="ln">7</td><td class="code">    .replace(/&amp;/g, &#x27;&amp;amp;&#x27;)</td></tr>
-<tr class="nil"><td class="ln">8</td><td class="code">    .replace(/&quot;/g, &#x27;&amp;quot;&#x27;)</td></tr>
-<tr class="nil"><td class="ln">9</td><td class="code">    .replace(/&lt;/g, &#x27;&amp;lt;&#x27;)</td></tr>
-<tr class="nil"><td class="ln">10</td><td class="code">    .replace(/&gt;/g, &#x27;&amp;gt;&#x27;);</td></tr>
+<tr class="cov"><td class="ln">7</td><td class="code">    .replace(/&amp;/g, &#x27;&amp;amp;&#x27;)</td></tr>
+<tr class="cov"><td class="ln">8</td><td class="code">    .replace(/&quot;/g, &#x27;&amp;quot;&#x27;)</td></tr>
+<tr class="cov"><td class="ln">9</td><td class="code">    .replace(/&lt;/g, &#x27;&amp;lt;&#x27;)</td></tr>
+<tr class="cov"><td class="ln">10</td><td class="code">    .replace(/&gt;/g, &#x27;&amp;gt;&#x27;);</td></tr>
 <tr class="nil"><td class="ln">11</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">12</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">13</td><td class="code">/** Escape ANY value for an HTML attribute / style (&quot;&lt;&gt;&amp; → entities). Coerces to</td></tr>
@@ -39,7 +40,7 @@
 <tr class="nil"><td class="ln">22</td><td class="code"> *  http(s) — and `data:` for images when `allowData` — pass; anything else returns</td></tr>
 <tr class="nil"><td class="ln">23</td><td class="code"> *  &#x27;&#x27; so the exported link/media is inert. Protocol-relative `//host` → https. */</td></tr>
 <tr class="nil"><td class="ln">24</td><td class="code">export function safeExportUrl(url, { allowData = false } = {}) {</td></tr>
-<tr class="cov"><td class="ln">25</td><td class="code">  if (typeof url !== &#x27;string&#x27;) return &#x27;&#x27;;</td></tr>
+<tr class="part"><td class="ln">25</td><td class="code">  if (typeof url !== &#x27;string&#x27;) return &#x27;&#x27;;</td></tr>
 <tr class="cov"><td class="ln">26</td><td class="code">  const s = url.trim();</td></tr>
 <tr class="cov"><td class="ln">27</td><td class="code">  if (/^https?:\/\//i.test(s)) return s;</td></tr>
 <tr class="cov"><td class="ln">28</td><td class="code">  if (/^\/\//.test(s)) return &#x27;https:&#x27; + s;</td></tr>

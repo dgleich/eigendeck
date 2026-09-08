@@ -6,12 +6,13 @@
   <h1>src/lib/securityWindow.ts </h1>
   <div class="stats">
     <span class="stat"><b>100%</b> covered</span>
-    <span class="stat">28/28 executable</span>
+    <span class="stat">22/22 statements</span>
     <span class="stat unc-txt">0 uncovered</span>
     <span class="stat">54 raw lines</span>
     <span class="stat">0.13% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:51.852%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:48.148%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:100.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:0.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__store__presentation_ts.html">presentation.ts</a></div>
   <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__components__AssetSection_tsx.html">AssetSection.tsx</a> <a href="src__components__PropertiesPanel_tsx.html">PropertiesPanel.tsx</a> <a href="src__store__fileOps_ts.html">fileOps.ts</a></div>
 </header>
@@ -19,27 +20,27 @@
 <tr class="nil"><td class="ln">2</td><td class="code">//</td></tr>
 <tr class="nil"><td class="ln">3</td><td class="code">// Mirrors the presenter-window pattern (src/lib/multiMonitor.ts): create a</td></tr>
 <tr class="nil"><td class="ln">4</td><td class="code">// WebviewWindow pointing at security.html, wait for its `security:ready` handshake,</td></tr>
-<tr class="cov"><td class="ln">5</td><td class="code">// then push the current deck (presentation + projectPath) via `security:init` so the</td></tr>
-<tr class="cov"><td class="ln">6</td><td class="code">// window&#x27;s store can build the report. Focuses the existing window if already open.</td></tr>
-<tr class="cov"><td class="ln">7</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// then push the current deck (presentation + projectPath) via `security:init` so the</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">// window&#x27;s store can build the report. Focuses the existing window if already open.</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">8</td><td class="code">import { WebviewWindow } from &#x27;@tauri-apps/api/webviewWindow&#x27;;</td></tr>
 <tr class="cov"><td class="ln">9</td><td class="code">import { listen, emitTo } from &#x27;@tauri-apps/api/event&#x27;;</td></tr>
 <tr class="cov"><td class="ln">10</td><td class="code">import { usePresentationStore } from &#x27;../store/presentation&#x27;;<a class="jump" href="src__store__presentation_ts.html" title="src/store/presentation.ts">→ presentation.ts</a></td></tr>
-<tr class="cov"><td class="ln">11</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">12</td><td class="code">export async function openSecurityWindow(): Promise&lt;void&gt; {</td></tr>
 <tr class="cov"><td class="ln">13</td><td class="code">  const store = usePresentationStore.getState();</td></tr>
-<tr class="cov"><td class="ln">14</td><td class="code">  const payload = { presentation: store.presentation, projectPath: store.projectPath };</td></tr>
-<tr class="cov"><td class="ln">15</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">  const payload = { presentation: store.presentation, projectPath: store.projectPath };</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">16</td><td class="code">  const existing = await WebviewWindow.getByLabel(&#x27;security&#x27;);</td></tr>
 <tr class="cov"><td class="ln">17</td><td class="code">  if (existing) {</td></tr>
-<tr class="cov"><td class="ln">18</td><td class="code">    // Raise it to the top: unminimize (if minimized) + show (if hidden) + focus.</td></tr>
-<tr class="cov"><td class="ln">19</td><td class="code">    // These require core:window:allow-{unminimize,show,set-focus} in the capability</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">    // Raise it to the top: unminimize (if minimized) + show (if hidden) + focus.</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">    // These require core:window:allow-{unminimize,show,set-focus} in the capability</td></tr>
 <tr class="nil"><td class="ln">20</td><td class="code">    // (default.json) — without them the calls are DENIED by the ACL, which is what</td></tr>
 <tr class="nil"><td class="ln">21</td><td class="code">    // made this silently do nothing before. Don&#x27;t swallow errors: a rejected call</td></tr>
-<tr class="cov"><td class="ln">22</td><td class="code">    // means a missing permission, and we want that to surface, not hide.</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">    // means a missing permission, and we want that to surface, not hide.</td></tr>
 <tr class="cov"><td class="ln">23</td><td class="code">    await existing.unminimize();</td></tr>
 <tr class="cov"><td class="ln">24</td><td class="code">    await existing.show();</td></tr>
-<tr class="cov"><td class="ln">25</td><td class="code">    await existing.setFocus();</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">    await existing.setFocus();</td></tr>
 <tr class="cov"><td class="ln">26</td><td class="code">    await emitTo(&#x27;security&#x27;, &#x27;security:init&#x27;, payload);</td></tr>
 <tr class="cov"><td class="ln">27</td><td class="code">    return;</td></tr>
 <tr class="nil"><td class="ln">28</td><td class="code">  }</td></tr>
@@ -48,17 +49,17 @@
 <tr class="nil"><td class="ln">31</td><td class="code">  // emits `security:ready` on mount; if we only start listening after creating it,</td></tr>
 <tr class="nil"><td class="ln">32</td><td class="code">  // a fast child can fire first and we miss it — leaving the window stuck on</td></tr>
 <tr class="nil"><td class="ln">33</td><td class="code">  // &quot;Loading…&quot; until a retrigger (the transient blank).</td></tr>
-<tr class="cov"><td class="ln">34</td><td class="code">  //</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">  //</td></tr>
 <tr class="nil"><td class="ln">35</td><td class="code">  // Send `security:init` EXACTLY ONCE. Each init bumps the child&#x27;s initKey and</td></tr>
 <tr class="nil"><td class="ln">36</td><td class="code">  // REMOUNTS the app, so a second (redundant) init makes the window visibly blink.</td></tr>
 <tr class="nil"><td class="ln">37</td><td class="code">  // The 1500ms timer is a FALLBACK for a missed ready event only — it no-ops once</td></tr>
 <tr class="nil"><td class="ln">38</td><td class="code">  // the handshake has already sent.</td></tr>
 <tr class="cov"><td class="ln">39</td><td class="code">  let sent = false;</td></tr>
-<tr class="cov"><td class="ln">40</td><td class="code">  const sendInit = () =&gt; { if (sent) return; sent = true; void emitTo(&#x27;security&#x27;, &#x27;security:init&#x27;, payload).catch(() =&gt; {}); };</td></tr>
-<tr class="cov"><td class="ln">41</td><td class="code">  const unlisten = await listen(&#x27;security:ready&#x27;, () =&gt; sendInit());</td></tr>
-<tr class="cov"><td class="ln">42</td><td class="code">  setTimeout(() =&gt; { unlisten(); }, 15000);</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">  const sendInit = () =&gt; { if (sent) return; sent = true; void emitTo(&#x27;security&#x27;, &#x27;security:init&#x27;, payload).catch(() =&gt; {}); };</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">  const unlisten = await listen(&#x27;security:ready&#x27;, () =&gt; sendInit());</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">  setTimeout(() =&gt; { unlisten(); }, 15000);</td></tr>
 <tr class="nil"><td class="ln">43</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">44</td><td class="code">  new WebviewWindow(&#x27;security&#x27;, {</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">  new WebviewWindow(&#x27;security&#x27;, {</td></tr>
 <tr class="nil"><td class="ln">45</td><td class="code">    url: &#x27;/security.html&#x27;,</td></tr>
 <tr class="nil"><td class="ln">46</td><td class="code">    title: &#x27;Security &amp; linked files&#x27;,</td></tr>
 <tr class="nil"><td class="ln">47</td><td class="code">    width: 760,</td></tr>
@@ -67,6 +68,6 @@
 <tr class="nil"><td class="ln">50</td><td class="code">    focus: true,</td></tr>
 <tr class="nil"><td class="ln">51</td><td class="code">  });</td></tr>
 <tr class="nil"><td class="ln">52</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">53</td><td class="code">  setTimeout(() =&gt; sendInit(), 1500);  // fallback ONLY if `security:ready` never arrived</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">  setTimeout(() =&gt; sendInit(), 1500);  // fallback ONLY if `security:ready` never arrived</td></tr>
 <tr class="nil"><td class="ln">54</td><td class="code">}</td></tr></table>
 </body></html>

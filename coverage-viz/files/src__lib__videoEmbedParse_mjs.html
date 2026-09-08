@@ -5,13 +5,14 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/videoEmbedParse.mjs </h1>
   <div class="stats">
-    <span class="stat"><b>100%</b> covered</span>
-    <span class="stat">51/51 executable</span>
-    <span class="stat unc-txt">0 uncovered</span>
+    <span class="stat"><b>91%</b> covered</span>
+    <span class="stat">74/81 statements</span>
+    <span class="stat unc-txt">7 uncovered</span>
     <span class="stat">97 raw lines</span>
     <span class="stat">0.23% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:52.577%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:47.423%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:91.358%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:8.642%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src__lib__exportCore_mjs.html">exportCore.mjs</a> <a href="src__lib__videoEmbed_ts.html">videoEmbed.ts</a></div>
 </header>
@@ -42,17 +43,17 @@
 <tr class="cov"><td class="ln">25</td><td class="code">  try { u = new URL(String(raw).trim()); } catch { return null; }</td></tr>
 <tr class="cov"><td class="ln">26</td><td class="code">  const host = u.hostname.replace(/^www\./, &#x27;&#x27;);</td></tr>
 <tr class="nil"><td class="ln">27</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">28</td><td class="code">  if (host === &#x27;youtube.com&#x27; || host === &#x27;m.youtube.com&#x27; || host === &#x27;youtube-nocookie.com&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">  if (host === &#x27;youtube.com&#x27; || host === &#x27;m.youtube.com&#x27; || host === &#x27;youtube-nocookie.com&#x27;) {</td></tr>
 <tr class="cov"><td class="ln">29</td><td class="code">    const v = u.searchParams.get(&#x27;v&#x27;);</td></tr>
 <tr class="cov"><td class="ln">30</td><td class="code">    if (v) return YOUTUBE_ID.test(v) ? { provider: &#x27;youtube&#x27;, id: v } : null;</td></tr>
 <tr class="cov"><td class="ln">31</td><td class="code">    const m = u.pathname.match(/^\/(?:embed|shorts|live)\/([^/?#]+)/);</td></tr>
 <tr class="cov"><td class="ln">32</td><td class="code">    if (m) return YOUTUBE_ID.test(m[1]) ? { provider: &#x27;youtube&#x27;, id: m[1] } : null;</td></tr>
 <tr class="nil"><td class="ln">33</td><td class="code">  }</td></tr>
-<tr class="cov"><td class="ln">34</td><td class="code">  if (host === &#x27;youtu.be&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">  if (host === &#x27;youtu.be&#x27;) {</td></tr>
 <tr class="cov"><td class="ln">35</td><td class="code">    const id = u.pathname.slice(1).split(&#x27;/&#x27;)[0];</td></tr>
 <tr class="cov"><td class="ln">36</td><td class="code">    if (id) return YOUTUBE_ID.test(id) ? { provider: &#x27;youtube&#x27;, id } : null;</td></tr>
 <tr class="nil"><td class="ln">37</td><td class="code">  }</td></tr>
-<tr class="cov"><td class="ln">38</td><td class="code">  if (host === &#x27;vimeo.com&#x27; || host === &#x27;player.vimeo.com&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">  if (host === &#x27;vimeo.com&#x27; || host === &#x27;player.vimeo.com&#x27;) {</td></tr>
 <tr class="cov"><td class="ln">39</td><td class="code">    const m = u.pathname.match(/(\d+)/);</td></tr>
 <tr class="cov"><td class="ln">40</td><td class="code">    if (m) return { provider: &#x27;vimeo&#x27;, id: m[1] };</td></tr>
 <tr class="nil"><td class="ln">41</td><td class="code">  }</td></tr>
@@ -83,9 +84,9 @@
 <tr class="cov"><td class="ln">66</td><td class="code">  const p = new URLSearchParams();</td></tr>
 <tr class="cov"><td class="ln">67</td><td class="code">  const showControls = !!el.controls || !el.autoplay;</td></tr>
 <tr class="nil"><td class="ln">68</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">69</td><td class="code">  if (provider === &#x27;youtube&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code">  if (provider === &#x27;youtube&#x27;) {</td></tr>
 <tr class="cov"><td class="ln">70</td><td class="code">    if (el.autoplay) p.set(&#x27;autoplay&#x27;, &#x27;1&#x27;);</td></tr>
-<tr class="cov"><td class="ln">71</td><td class="code">    if (el.muted) p.set(&#x27;mute&#x27;, &#x27;1&#x27;);</td></tr>
+<tr class="part"><td class="ln">71</td><td class="code">    if (el.muted) p.set(&#x27;mute&#x27;, &#x27;1&#x27;);</td></tr>
 <tr class="cov"><td class="ln">72</td><td class="code">    if (el.loop) { p.set(&#x27;loop&#x27;, &#x27;1&#x27;); p.set(&#x27;playlist&#x27;, id); }  // single-video loop needs playlist=id</td></tr>
 <tr class="cov"><td class="ln">73</td><td class="code">    p.set(&#x27;controls&#x27;, showControls ? &#x27;1&#x27; : &#x27;0&#x27;);</td></tr>
 <tr class="cov"><td class="ln">74</td><td class="code">    if (el.captions) p.set(&#x27;cc_load_policy&#x27;, &#x27;1&#x27;);</td></tr>
@@ -93,17 +94,17 @@
 <tr class="cov"><td class="ln">76</td><td class="code">    p.set(&#x27;rel&#x27;, &#x27;0&#x27;);</td></tr>
 <tr class="cov"><td class="ln">77</td><td class="code">    return `https://www.youtube-nocookie.com/embed/${id}?${p.toString()}`;</td></tr>
 <tr class="nil"><td class="ln">78</td><td class="code">  }</td></tr>
-<tr class="cov"><td class="ln">79</td><td class="code">  if (provider === &#x27;vimeo&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">79</td><td class="code">  if (provider === &#x27;vimeo&#x27;) {</td></tr>
 <tr class="cov"><td class="ln">80</td><td class="code">    if (el.autoplay) p.set(&#x27;autoplay&#x27;, &#x27;1&#x27;);</td></tr>
-<tr class="cov"><td class="ln">81</td><td class="code">    if (el.muted) p.set(&#x27;muted&#x27;, &#x27;1&#x27;);</td></tr>
+<tr class="part"><td class="ln">81</td><td class="code">    if (el.muted) p.set(&#x27;muted&#x27;, &#x27;1&#x27;);</td></tr>
 <tr class="cov"><td class="ln">82</td><td class="code">    if (el.loop) p.set(&#x27;loop&#x27;, &#x27;1&#x27;);</td></tr>
 <tr class="cov"><td class="ln">83</td><td class="code">    if (!showControls) p.set(&#x27;controls&#x27;, &#x27;0&#x27;);</td></tr>
-<tr class="cov"><td class="ln">84</td><td class="code">    if (el.captions) p.set(&#x27;texttrack&#x27;, &#x27;en&#x27;);</td></tr>
+<tr class="part"><td class="ln">84</td><td class="code">    if (el.captions) p.set(&#x27;texttrack&#x27;, &#x27;en&#x27;);</td></tr>
 <tr class="cov"><td class="ln">85</td><td class="code">    return `https://player.vimeo.com/video/${id}?${p.toString()}`;</td></tr>
 <tr class="nil"><td class="ln">86</td><td class="code">  }</td></tr>
 <tr class="nil"><td class="ln">87</td><td class="code">  // PeerTube</td></tr>
-<tr class="cov"><td class="ln">88</td><td class="code">  const base = origin ?? (() =&gt; { try { return new URL(el.url).origin; } catch { return &#x27;&#x27;; } })();</td></tr>
-<tr class="cov"><td class="ln">89</td><td class="code">  if (!base) return null;</td></tr>
+<tr class="part"><td class="ln">88</td><td class="code">  const base = origin ?? (() =&gt; { try { return new URL(el.url).origin; } catch { return &#x27;&#x27;; } })();</td></tr>
+<tr class="part"><td class="ln">89</td><td class="code">  if (!base) return null;</td></tr>
 <tr class="cov"><td class="ln">90</td><td class="code">  if (el.autoplay) p.set(&#x27;autoplay&#x27;, &#x27;1&#x27;);</td></tr>
 <tr class="cov"><td class="ln">91</td><td class="code">  if (el.muted) p.set(&#x27;muted&#x27;, &#x27;1&#x27;);</td></tr>
 <tr class="cov"><td class="ln">92</td><td class="code">  if (el.loop) p.set(&#x27;loop&#x27;, &#x27;1&#x27;);</td></tr>

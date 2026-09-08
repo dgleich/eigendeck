@@ -5,29 +5,30 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/tauriInvoke.ts </h1>
   <div class="stats">
-    <span class="stat"><b>38%</b> covered</span>
-    <span class="stat">3/8 executable</span>
-    <span class="stat unc-txt">5 uncovered</span>
+    <span class="stat"><b>75%</b> covered</span>
+    <span class="stat">3/4 statements</span>
+    <span class="stat unc-txt">1 uncovered</span>
     <span class="stat">15 raw lines</span>
     <span class="stat">0.04% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:20.000%"></span><span class="seg unc" style="width:33.333%"></span><span class="seg nil" style="width:46.667%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:75.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:25.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a></div>
 </header>
 <table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Thin wrapper around Tauri&#x27;s `invoke` that lazy-imports the core module, no-ops</td></tr>
-<tr class="cov"><td class="ln">2</td><td class="code">// off Tauri, and swallows errors — collapses the repeated</td></tr>
-<tr class="cov"><td class="ln">3</td><td class="code">// `import(&#x27;@tauri-apps/api/core&#x27;).then(({invoke}) =&gt; invoke(...)).catch(()=&gt;{})`</td></tr>
-<tr class="cov"><td class="ln">4</td><td class="code">// boilerplate (esp. the native-toolbar bridge effects in App.tsx).</td></tr>
-<tr class="nil"><td class="ln">5</td><td class="code">export async function invokeSafe&lt;T = void&gt;(</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// off Tauri, and swallows errors — collapses the repeated</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// `import(&#x27;@tauri-apps/api/core&#x27;).then(({invoke}) =&gt; invoke(...)).catch(()=&gt;{})`</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// boilerplate (esp. the native-toolbar bridge effects in App.tsx).</td></tr>
+<tr class="cov"><td class="ln">5</td><td class="code">export async function invokeSafe&lt;T = void&gt;(</td></tr>
 <tr class="unc"><td class="ln">6</td><td class="code">  cmd: string,</td></tr>
 <tr class="nil"><td class="ln">7</td><td class="code">  args?: Record&lt;string, unknown&gt;,</td></tr>
 <tr class="nil"><td class="ln">8</td><td class="code">): Promise&lt;T | undefined&gt; {</td></tr>
-<tr class="unc"><td class="ln">9</td><td class="code">  try {</td></tr>
-<tr class="unc"><td class="ln">10</td><td class="code">    const { invoke } = await import(&#x27;@tauri-apps/api/core&#x27;);</td></tr>
-<tr class="unc"><td class="ln">11</td><td class="code">    return await invoke&lt;T&gt;(cmd, args);</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">  try {</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">    const { invoke } = await import(&#x27;@tauri-apps/api/core&#x27;);</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">    return await invoke&lt;T&gt;(cmd, args);</td></tr>
 <tr class="nil"><td class="ln">12</td><td class="code">  } catch {</td></tr>
-<tr class="unc"><td class="ln">13</td><td class="code">    return undefined;</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">    return undefined;</td></tr>
 <tr class="nil"><td class="ln">14</td><td class="code">  }</td></tr>
 <tr class="nil"><td class="ln">15</td><td class="code">}</td></tr></table>
 </body></html>

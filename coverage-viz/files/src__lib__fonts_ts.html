@@ -5,13 +5,14 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/fonts.ts </h1>
   <div class="stats">
-    <span class="stat"><b>91%</b> covered</span>
-    <span class="stat">49/54 executable</span>
-    <span class="stat unc-txt">5 uncovered</span>
+    <span class="stat"><b>97%</b> covered</span>
+    <span class="stat">34/35 statements</span>
+    <span class="stat unc-txt">1 uncovered</span>
     <span class="stat">105 raw lines</span>
     <span class="stat">0.25% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:46.667%"></span><span class="seg unc" style="width:4.762%"></span><span class="seg nil" style="width:48.571%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:97.143%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:2.857%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__lib__base64_ts.html">base64.ts</a> <a href="src__lib__fontRegistry_mjs.html">fontRegistry.mjs</a></div>
   <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__components__PropertiesPanel_tsx.html">PropertiesPanel.tsx</a> <a href="src__components__SlideEditor_tsx.html">SlideEditor.tsx</a> <a href="src__components__SlideElementRenderer_tsx.html">SlideElementRenderer.tsx</a> <a href="src__components__TextElementSvg_tsx.html">TextElementSvg.tsx</a> <a href="src__debug__batchCacheAudit_ts.html">batchCacheAudit.ts</a> <a href="src__debug__batchExportHtml_ts.html">batchExportHtml.ts</a> <a href="src__debug__batchWarmCache_ts.html">batchWarmCache.ts</a> <a href="src__export-cli_ts.html">export-cli.ts</a> <a href="src__lib__demoMount_ts.html">demoMount.ts</a> <a href="src__lib__elementClipboard_ts.html">elementClipboard.ts</a> <a href="src__lib__mathjax_ts.html">mathjax.ts</a> <a href="src__lib__mathjaxRenderer_ts.html">mathjaxRenderer.ts</a> <a href="src__lib__printLayer_ts.html">printLayer.ts</a> <a href="src__lib__runtime_ts.html">runtime.ts</a></div>
 </header>
@@ -44,38 +45,38 @@
 <tr class="nil"><td class="ln">27</td><td class="code">  resolveFontPackage,</td></tr>
 <tr class="nil"><td class="ln">28</td><td class="code">  resolveMonoFontPackage,</td></tr>
 <tr class="nil"><td class="ln">29</td><td class="code">  resolveAnyFontPackage,</td></tr>
-<tr class="cov"><td class="ln">30</td><td class="code">  fontForPreset,</td></tr>
-<tr class="cov"><td class="ln">31</td><td class="code">  fontFamilyForPreset,</td></tr>
-<tr class="cov"><td class="ln">32</td><td class="code">  fontFaceCSSForPackage,</td></tr>
-<tr class="cov"><td class="ln">33</td><td class="code">  allFontFacesCSS,</td></tr>
-<tr class="cov"><td class="ln">34</td><td class="code">  collectUsedFontIds,</td></tr>
-<tr class="cov"><td class="ln">35</td><td class="code">  fontFilesForPackage,</td></tr>
-<tr class="cov"><td class="ln">36</td><td class="code">  bareFamilyName,</td></tr>
-<tr class="cov"><td class="ln">37</td><td class="code">  bareNarrowFamilyName,</td></tr>
-<tr class="cov"><td class="ln">38</td><td class="code">} from &#x27;./fontRegistry.mjs&#x27;;</td></tr>
-<tr class="cov"><td class="ln">39</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">40</td><td class="code">/**</td></tr>
-<tr class="cov"><td class="ln">41</td><td class="code"> * Build embedded @font-face declarations as data: URLs for all fonts used</td></tr>
-<tr class="cov"><td class="ln">42</td><td class="code"> * by a presentation. Fetches font files via fetch() (so works in browser/</td></tr>
-<tr class="cov"><td class="ln">43</td><td class="code"> * Tauri contexts where /fonts/ is served).</td></tr>
-<tr class="unc"><td class="ln">44</td><td class="code"> *</td></tr>
-<tr class="unc"><td class="ln">45</td><td class="code"> * Returns the CSS string ready to drop in &lt;style&gt;.</td></tr>
-<tr class="unc"><td class="ln">46</td><td class="code"> */</td></tr>
-<tr class="unc"><td class="ln">47</td><td class="code">export async function buildEmbeddedFontFacesCSS(presentation: {</td></tr>
-<tr class="unc"><td class="ln">48</td><td class="code">  config?: { defaultTitleFont?: string; defaultBodyFont?: string; defaultHypeFont?: string };</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">  fontForPreset,</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">  fontFamilyForPreset,</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code">  fontFaceCSSForPackage,</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">  allFontFacesCSS,</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">  collectUsedFontIds,</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code">  fontFilesForPackage,</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">  bareFamilyName,</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">  bareNarrowFamilyName,</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">} from &#x27;./fontRegistry.mjs&#x27;;</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code"> * Build embedded @font-face declarations as data: URLs for all fonts used</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code"> * by a presentation. Fetches font files via fetch() (so works in browser/</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code"> * Tauri contexts where /fonts/ is served).</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code"> * Returns the CSS string ready to drop in &lt;style&gt;.</td></tr>
+<tr class="nil"><td class="ln">46</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">export async function buildEmbeddedFontFacesCSS(presentation: {</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">  config?: { defaultTitleFont?: string; defaultBodyFont?: string; defaultHypeFont?: string };</td></tr>
 <tr class="nil"><td class="ln">49</td><td class="code">  slides?: Array&lt;{ titleFont?: string; bodyFont?: string; hypeFont?: string }&gt;;</td></tr>
-<tr class="cov"><td class="ln">50</td><td class="code">}): Promise&lt;string&gt; {</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">}): Promise&lt;string&gt; {</td></tr>
 <tr class="cov"><td class="ln">51</td><td class="code">  const usedFontIds = collectUsedFontIds(presentation);</td></tr>
 <tr class="cov"><td class="ln">52</td><td class="code">  const lines: string[] = [];</td></tr>
-<tr class="cov"><td class="ln">53</td><td class="code">  for (const id of usedFontIds) {</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">  for (const id of usedFontIds) {</td></tr>
 <tr class="cov"><td class="ln">54</td><td class="code">    const pkg = resolveAnyFontPackage(id);</td></tr>
 <tr class="cov"><td class="ln">55</td><td class="code">    const family = bareFamilyName(pkg);</td></tr>
 <tr class="cov"><td class="ln">56</td><td class="code">    const narrowFamily = bareNarrowFamilyName(pkg);</td></tr>
-<tr class="cov"><td class="ln">57</td><td class="code">    for (const { filename, cssAttrs } of fontFilesForPackage(pkg)) {</td></tr>
-<tr class="cov"><td class="ln">58</td><td class="code">      try {</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">    for (const { filename, cssAttrs } of fontFilesForPackage(pkg)) {</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code">      try {</td></tr>
 <tr class="nil"><td class="ln">59</td><td class="code">        // Prefer the WOFF2 sibling (Brotli, ~40% of the TTF): this CSS is inlined</td></tr>
 <tr class="nil"><td class="ln">60</td><td class="code">        // as base64 into every demo/export document, so the smaller payload is</td></tr>
-<tr class="cov"><td class="ln">61</td><td class="code">        // re-parsed far faster on each opaque-iframe mount (docs/perf-report.md,</td></tr>
+<tr class="nil"><td class="ln">61</td><td class="code">        // re-parsed far faster on each opaque-iframe mount (docs/perf-report.md,</td></tr>
 <tr class="nil"><td class="ln">62</td><td class="code">        // &quot;Demos&quot;). Falls back to the raw TTF/OTF when no .woff2 exists (a build</td></tr>
 <tr class="nil"><td class="ln">63</td><td class="code">        // that hasn&#x27;t run tools/build_font_woff2.py).</td></tr>
 <tr class="cov"><td class="ln">64</td><td class="code">        const base = `/fonts/${pkg.id}/${filename}`;</td></tr>
@@ -83,7 +84,7 @@
 <tr class="cov"><td class="ln">66</td><td class="code">        let mime = &#x27;font/woff2&#x27;;</td></tr>
 <tr class="cov"><td class="ln">67</td><td class="code">        let fmt = &quot;format(&#x27;woff2&#x27;)&quot;;</td></tr>
 <tr class="cov"><td class="ln">68</td><td class="code">        let resp = await fetch(woff2Url);</td></tr>
-<tr class="cov"><td class="ln">69</td><td class="code">        if (!resp.ok) {</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code">        if (!resp.ok) {</td></tr>
 <tr class="cov"><td class="ln">70</td><td class="code">          const ext = filename.split(&#x27;.&#x27;).pop() || &#x27;ttf&#x27;;</td></tr>
 <tr class="cov"><td class="ln">71</td><td class="code">          mime = ext === &#x27;otf&#x27; ? &#x27;font/otf&#x27; : &#x27;font/ttf&#x27;;</td></tr>
 <tr class="cov"><td class="ln">72</td><td class="code">          fmt = ext === &#x27;otf&#x27; ? &quot;format(&#x27;opentype&#x27;)&quot; : &quot;format(&#x27;truetype&#x27;)&quot;;</td></tr>
@@ -94,8 +95,8 @@
 <tr class="cov"><td class="ln">77</td><td class="code">        const dataUrl = `data:${mime};base64,${bytesToBase64(buf)}`;</td></tr>
 <tr class="cov"><td class="ln">78</td><td class="code">        const fontFamily = cssAttrs.isNarrow &amp;&amp; narrowFamily ? narrowFamily : family;</td></tr>
 <tr class="cov"><td class="ln">79</td><td class="code">        lines.push(</td></tr>
-<tr class="nil"><td class="ln">80</td><td class="code">          `@font-face { font-family: &#x27;${fontFamily}&#x27;; src: url(&#x27;${dataUrl}&#x27;) ${fmt}; ` +</td></tr>
-<tr class="nil"><td class="ln">81</td><td class="code">          `font-weight: ${cssAttrs.weight}; font-style: ${cssAttrs.style}; font-display: swap; }`</td></tr>
+<tr class="cov"><td class="ln">80</td><td class="code">          `@font-face { font-family: &#x27;${fontFamily}&#x27;; src: url(&#x27;${dataUrl}&#x27;) ${fmt}; ` +</td></tr>
+<tr class="cov"><td class="ln">81</td><td class="code">          `font-weight: ${cssAttrs.weight}; font-style: ${cssAttrs.style}; font-display: swap; }`</td></tr>
 <tr class="nil"><td class="ln">82</td><td class="code">        );</td></tr>
 <tr class="nil"><td class="ln">83</td><td class="code">      } catch (e) {</td></tr>
 <tr class="cov"><td class="ln">84</td><td class="code">        console.warn(`Failed to embed font ${pkg.id}/${filename}:`, e);</td></tr>
@@ -110,10 +111,10 @@
 <tr class="nil"><td class="ln">93</td><td class="code"> * Idempotent: subsequent calls replace the existing block.</td></tr>
 <tr class="nil"><td class="ln">94</td><td class="code"> */</td></tr>
 <tr class="nil"><td class="ln">95</td><td class="code">export function injectFontFaces(): void {</td></tr>
-<tr class="cov"><td class="ln">96</td><td class="code">  if (typeof document === &#x27;undefined&#x27;) return;</td></tr>
+<tr class="part"><td class="ln">96</td><td class="code">  if (typeof document === &#x27;undefined&#x27;) return;</td></tr>
 <tr class="cov"><td class="ln">97</td><td class="code">  const STYLE_ID = &#x27;eigendeck-font-faces&#x27;;</td></tr>
 <tr class="cov"><td class="ln">98</td><td class="code">  let style = document.getElementById(STYLE_ID) as HTMLStyleElement | null;</td></tr>
-<tr class="cov"><td class="ln">99</td><td class="code">  if (!style) {</td></tr>
+<tr class="nil"><td class="ln">99</td><td class="code">  if (!style) {</td></tr>
 <tr class="cov"><td class="ln">100</td><td class="code">    style = document.createElement(&#x27;style&#x27;);</td></tr>
 <tr class="cov"><td class="ln">101</td><td class="code">    style.id = STYLE_ID;</td></tr>
 <tr class="cov"><td class="ln">102</td><td class="code">    document.head.appendChild(style);</td></tr>

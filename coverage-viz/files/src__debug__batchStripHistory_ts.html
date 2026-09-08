@@ -6,12 +6,13 @@
   <h1>src/debug/batchStripHistory.ts </h1>
   <div class="stats">
     <span class="stat"><b>0%</b> covered</span>
-    <span class="stat">0/57 executable</span>
-    <span class="stat unc-txt">57 uncovered</span>
+    <span class="stat">0/39 statements</span>
+    <span class="stat unc-txt">39 uncovered</span>
     <span class="stat">91 raw lines</span>
     <span class="stat">0.21% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:0.000%"></span><span class="seg unc" style="width:62.637%"></span><span class="seg nil" style="width:37.363%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:0.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:100.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__debug__dirPicker_ts.html">dirPicker.ts</a> <a href="src__debug__report_ts.html">report.ts</a> <a href="src__debug__types_ts.html">types.ts</a> <a href="src__store__presentation_ts.html">presentation.ts</a></div>
   <div class="links"><span>imported by:</span> <a href="src__debug__DebugMenu_tsx.html">DebugMenu.tsx</a></div>
 </header>
@@ -20,90 +21,90 @@
 <tr class="nil"><td class="ln">3</td><td class="code">// elements/slides/slide_elements and runs VACUUM. Reports per-file</td></tr>
 <tr class="nil"><td class="ln">4</td><td class="code">// before/after size.</td></tr>
 <tr class="nil"><td class="ln">5</td><td class="code">//</td></tr>
-<tr class="unc"><td class="ln">6</td><td class="code">// Write-in-place: source files are modified directly. Confirmation gate</td></tr>
-<tr class="unc"><td class="ln">7</td><td class="code">// in DebugMenu before this runs.</td></tr>
-<tr class="unc"><td class="ln">8</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">// Write-in-place: source files are modified directly. Confirmation gate</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">// in DebugMenu before this runs.</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">9</td><td class="code">import { invoke } from &#x27;@tauri-apps/api/core&#x27;;</td></tr>
 <tr class="unc"><td class="ln">10</td><td class="code">import { usePresentationStore, openSqliteProject } from &#x27;../store/presentation&#x27;;<a class="jump" href="src__store__presentation_ts.html" title="src/store/presentation.ts">→ presentation.ts</a></td></tr>
 <tr class="unc"><td class="ln">11</td><td class="code">import { pickDirectoryWithEigendecks } from &#x27;./dirPicker&#x27;;<a class="jump" href="src__debug__dirPicker_ts.html" title="src/debug/dirPicker.ts">→ dirPicker.ts</a></td></tr>
 <tr class="unc"><td class="ln">12</td><td class="code">import { writeReportAndAlert, showBatchError, confirmWriteInPlace } from &#x27;./report&#x27;;<a class="jump" href="src__debug__report_ts.html" title="src/debug/report.ts">→ report.ts</a></td></tr>
-<tr class="nil"><td class="ln">13</td><td class="code">import type { StripHistoryReport, StripHistoryFileReport, RunMeta } from &#x27;./types&#x27;;<a class="jump" href="src__debug__types_ts.html" title="src/debug/types.ts">→ types.ts</a></td></tr>
+<tr class="unc"><td class="ln">13</td><td class="code">import type { StripHistoryReport, StripHistoryFileReport, RunMeta } from &#x27;./types&#x27;;<a class="jump" href="src__debug__types_ts.html" title="src/debug/types.ts">→ types.ts</a></td></tr>
 <tr class="nil"><td class="ln">14</td><td class="code">&nbsp;</td></tr>
-<tr class="nil"><td class="ln">15</td><td class="code">interface CompactResult { beforeBytes: number; afterBytes: number; savedBytes: number }</td></tr>
+<tr class="unc"><td class="ln">15</td><td class="code">interface CompactResult { beforeBytes: number; afterBytes: number; savedBytes: number }</td></tr>
 <tr class="nil"><td class="ln">16</td><td class="code">&nbsp;</td></tr>
-<tr class="nil"><td class="ln">17</td><td class="code">async function stripOne(input: string): Promise&lt;StripHistoryFileReport&gt; {</td></tr>
+<tr class="unc"><td class="ln">17</td><td class="code">async function stripOne(input: string): Promise&lt;StripHistoryFileReport&gt; {</td></tr>
 <tr class="unc"><td class="ln">18</td><td class="code">  const start = performance.now();</td></tr>
 <tr class="unc"><td class="ln">19</td><td class="code">  try {</td></tr>
-<tr class="unc"><td class="ln">20</td><td class="code">    await invoke(&#x27;db_open&#x27;, { path: input });</td></tr>
-<tr class="unc"><td class="ln">21</td><td class="code">    // keepAll: true is misnamed in the Rust API — it means &quot;delete ALL history&quot;</td></tr>
-<tr class="unc"><td class="ln">22</td><td class="code">    // (vs the default exponential thinning). That&#x27;s what we want here.</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">    await invoke(&#x27;db_open&#x27;, { path: input });</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">    // keepAll: true is misnamed in the Rust API — it means &quot;delete ALL history&quot;</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">    // (vs the default exponential thinning). That&#x27;s what we want here.</td></tr>
 <tr class="unc"><td class="ln">23</td><td class="code">    const json = await invoke&lt;string&gt;(&#x27;db_compact&#x27;, { keepAll: true });</td></tr>
-<tr class="unc"><td class="ln">24</td><td class="code">    const r = JSON.parse(json) as CompactResult;</td></tr>
-<tr class="unc"><td class="ln">25</td><td class="code">    // db_close runs PRAGMA wal_checkpoint(TRUNCATE) and drops the</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">    const r = JSON.parse(json) as CompactResult;</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">    // db_close runs PRAGMA wal_checkpoint(TRUNCATE) and drops the</td></tr>
 <tr class="nil"><td class="ln">26</td><td class="code">    // connection — without this the .eigendeck-{wal,shm} sidecars</td></tr>
 <tr class="nil"><td class="ln">27</td><td class="code">    // stay alongside the stripped file. (The next iteration&#x27;s</td></tr>
 <tr class="nil"><td class="ln">28</td><td class="code">    // db_open replaces the connection in DB.lock() and rusqlite&#x27;s</td></tr>
 <tr class="nil"><td class="ln">29</td><td class="code">    // Drop closes it, but Drop alone doesn&#x27;t checkpoint.)</td></tr>
 <tr class="unc"><td class="ln">30</td><td class="code">    await invoke(&#x27;db_close&#x27;);</td></tr>
 <tr class="unc"><td class="ln">31</td><td class="code">    return {</td></tr>
-<tr class="nil"><td class="ln">32</td><td class="code">      input, ok: true,</td></tr>
-<tr class="nil"><td class="ln">33</td><td class="code">      sizeBeforeBytes: r.beforeBytes,</td></tr>
+<tr class="unc"><td class="ln">32</td><td class="code">      input, ok: true,</td></tr>
+<tr class="unc"><td class="ln">33</td><td class="code">      sizeBeforeBytes: r.beforeBytes,</td></tr>
 <tr class="nil"><td class="ln">34</td><td class="code">      sizeAfterBytes: r.afterBytes,</td></tr>
 <tr class="nil"><td class="ln">35</td><td class="code">      savedBytes: r.savedBytes,</td></tr>
 <tr class="nil"><td class="ln">36</td><td class="code">      elapsedMs: performance.now() - start,</td></tr>
-<tr class="unc"><td class="ln">37</td><td class="code">    };</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">    };</td></tr>
 <tr class="unc"><td class="ln">38</td><td class="code">  } catch (e) {</td></tr>
-<tr class="unc"><td class="ln">39</td><td class="code">    // Best-effort close so a half-failed strip still checkpoints if</td></tr>
-<tr class="unc"><td class="ln">40</td><td class="code">    // db_open succeeded. Ignore close errors (the original one is</td></tr>
-<tr class="unc"><td class="ln">41</td><td class="code">    // the useful signal).</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">    // Best-effort close so a half-failed strip still checkpoints if</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">    // db_open succeeded. Ignore close errors (the original one is</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">    // the useful signal).</td></tr>
 <tr class="unc"><td class="ln">42</td><td class="code">    try { await invoke(&#x27;db_close&#x27;); } catch { /* swallow */ }</td></tr>
 <tr class="unc"><td class="ln">43</td><td class="code">    return {</td></tr>
 <tr class="nil"><td class="ln">44</td><td class="code">      input, ok: false, error: e instanceof Error ? e.message : String(e),</td></tr>
 <tr class="unc"><td class="ln">45</td><td class="code">      sizeBeforeBytes: 0, sizeAfterBytes: 0, savedBytes: 0,</td></tr>
 <tr class="unc"><td class="ln">46</td><td class="code">      elapsedMs: performance.now() - start,</td></tr>
-<tr class="unc"><td class="ln">47</td><td class="code">    };</td></tr>
-<tr class="unc"><td class="ln">48</td><td class="code">  }</td></tr>
-<tr class="unc"><td class="ln">49</td><td class="code">}</td></tr>
-<tr class="unc"><td class="ln">50</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">    };</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">51</td><td class="code">export async function runBatchStripHistory(): Promise&lt;void&gt; {</td></tr>
-<tr class="unc"><td class="ln">52</td><td class="code">  try {</td></tr>
-<tr class="unc"><td class="ln">53</td><td class="code">    const picked = await pickDirectoryWithEigendecks(&#x27;Pick a directory of .eigendeck files to strip history from (rewrites in place)&#x27;);</td></tr>
-<tr class="unc"><td class="ln">54</td><td class="code">    if (!picked) return;</td></tr>
-<tr class="unc"><td class="ln">55</td><td class="code">    const { dir, files } = picked;</td></tr>
-<tr class="unc"><td class="ln">56</td><td class="code">    if (files.length === 0) {</td></tr>
-<tr class="unc"><td class="ln">57</td><td class="code">      await showBatchError(&#x27;batch-strip-history&#x27;, &#x27;No .eigendeck files in the chosen directory.&#x27;);</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">  try {</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">    const picked = await pickDirectoryWithEigendecks(&#x27;Pick a directory of .eigendeck files to strip history from (rewrites in place)&#x27;);</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">    if (!picked) return;</td></tr>
+<tr class="nil"><td class="ln">55</td><td class="code">    const { dir, files } = picked;</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code">    if (files.length === 0) {</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">      await showBatchError(&#x27;batch-strip-history&#x27;, &#x27;No .eigendeck files in the chosen directory.&#x27;);</td></tr>
 <tr class="unc"><td class="ln">58</td><td class="code">      return;</td></tr>
-<tr class="unc"><td class="ln">59</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code">    }</td></tr>
 <tr class="unc"><td class="ln">60</td><td class="code">    if (!(await confirmWriteInPlace(&#x27;Batch Strip History&#x27;, dir, files.length))) return;</td></tr>
-<tr class="unc"><td class="ln">61</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">61</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">62</td><td class="code">    const originalPath = usePresentationStore.getState().projectPath;</td></tr>
-<tr class="unc"><td class="ln">63</td><td class="code">    const startWall = performance.now();</td></tr>
-<tr class="unc"><td class="ln">64</td><td class="code">    const reports: StripHistoryFileReport[] = [];</td></tr>
+<tr class="nil"><td class="ln">63</td><td class="code">    const startWall = performance.now();</td></tr>
+<tr class="nil"><td class="ln">64</td><td class="code">    const reports: StripHistoryFileReport[] = [];</td></tr>
 <tr class="unc"><td class="ln">65</td><td class="code">    for (const f of files) reports.push(await stripOne(f));</td></tr>
-<tr class="unc"><td class="ln">66</td><td class="code">    const elapsedSeconds = (performance.now() - startWall) / 1000;</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code">    const elapsedSeconds = (performance.now() - startWall) / 1000;</td></tr>
 <tr class="nil"><td class="ln">67</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">68</td><td class="code">    const totalSaved = reports.reduce((n, r) =&gt; n + r.savedBytes, 0);</td></tr>
-<tr class="unc"><td class="ln">69</td><td class="code">    const meta: RunMeta = {</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code">    const totalSaved = reports.reduce((n, r) =&gt; n + r.savedBytes, 0);</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code">    const meta: RunMeta = {</td></tr>
 <tr class="unc"><td class="ln">70</td><td class="code">      action: &#x27;batch-strip-history&#x27;,</td></tr>
 <tr class="nil"><td class="ln">71</td><td class="code">      startedAt: new Date().toISOString(),</td></tr>
 <tr class="nil"><td class="ln">72</td><td class="code">      directory: dir,</td></tr>
 <tr class="nil"><td class="ln">73</td><td class="code">      totalFiles: files.length,</td></tr>
 <tr class="nil"><td class="ln">74</td><td class="code">      elapsedSeconds,</td></tr>
 <tr class="unc"><td class="ln">75</td><td class="code">      passed: reports.filter((r) =&gt; r.ok).length,</td></tr>
-<tr class="unc"><td class="ln">76</td><td class="code">      failed: reports.filter((r) =&gt; !r.ok).length,</td></tr>
+<tr class="nil"><td class="ln">76</td><td class="code">      failed: reports.filter((r) =&gt; !r.ok).length,</td></tr>
 <tr class="nil"><td class="ln">77</td><td class="code">    };</td></tr>
 <tr class="nil"><td class="ln">78</td><td class="code">    // Add the aggregate savings into the report; not part of RunMeta so we</td></tr>
 <tr class="nil"><td class="ln">79</td><td class="code">    // tuck it onto the report itself for visibility.</td></tr>
-<tr class="unc"><td class="ln">80</td><td class="code">    const report = { meta, files: reports, totalSavedBytes: totalSaved } as StripHistoryReport &amp; { totalSavedBytes: number };</td></tr>
-<tr class="unc"><td class="ln">81</td><td class="code">    await writeReportAndAlert(dir, meta, report);</td></tr>
+<tr class="nil"><td class="ln">80</td><td class="code">    const report = { meta, files: reports, totalSavedBytes: totalSaved } as StripHistoryReport &amp; { totalSavedBytes: number };</td></tr>
+<tr class="nil"><td class="ln">81</td><td class="code">    await writeReportAndAlert(dir, meta, report);</td></tr>
 <tr class="nil"><td class="ln">82</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">83</td><td class="code">    if (originalPath) {</td></tr>
-<tr class="unc"><td class="ln">84</td><td class="code">      try { await openSqliteProject(originalPath); } catch { /* manual reopen */ }</td></tr>
+<tr class="nil"><td class="ln">83</td><td class="code">    if (originalPath) {</td></tr>
+<tr class="nil"><td class="ln">84</td><td class="code">      try { await openSqliteProject(originalPath); } catch { /* manual reopen */ }</td></tr>
 <tr class="nil"><td class="ln">85</td><td class="code">    } else {</td></tr>
-<tr class="unc"><td class="ln">86</td><td class="code">      try { await invoke(&#x27;db_close&#x27;); } catch { /* nothing open */ }</td></tr>
+<tr class="nil"><td class="ln">86</td><td class="code">      try { await invoke(&#x27;db_close&#x27;); } catch { /* nothing open */ }</td></tr>
 <tr class="nil"><td class="ln">87</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">88</td><td class="code">  } catch (e) {</td></tr>
-<tr class="unc"><td class="ln">89</td><td class="code">    await showBatchError(&#x27;batch-strip-history&#x27;, e);</td></tr>
+<tr class="nil"><td class="ln">89</td><td class="code">    await showBatchError(&#x27;batch-strip-history&#x27;, e);</td></tr>
 <tr class="nil"><td class="ln">90</td><td class="code">  }</td></tr>
 <tr class="nil"><td class="ln">91</td><td class="code">}</td></tr></table>
 </body></html>

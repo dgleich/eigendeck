@@ -6,38 +6,39 @@
   <h1>src/lib/assetUsage.ts </h1>
   <div class="stats">
     <span class="stat"><b>100%</b> covered</span>
-    <span class="stat">28/28 executable</span>
+    <span class="stat">17/17 statements</span>
     <span class="stat unc-txt">0 uncovered</span>
     <span class="stat">63 raw lines</span>
     <span class="stat">0.15% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:44.444%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:55.556%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:100.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:0.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
   <div class="links"><span>imported by:</span> <a href="src__components__AssetSection_tsx.html">AssetSection.tsx</a> <a href="src__lib__assetInsert_ts.html">assetInsert.ts</a> <a href="src__lib__securityReport_ts.html">securityReport.ts</a></div>
 </header>
 <table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Pure helpers for &quot;how many elements / slides currently use this asset?&quot;</td></tr>
 <tr class="nil"><td class="ln">2</td><td class="code">//</td></tr>
-<tr class="cov"><td class="ln">3</td><td class="code">// Asset binding is exclusively through `assetId` — the path-label fallback</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// Asset binding is exclusively through `assetId` — the path-label fallback</td></tr>
 <tr class="nil"><td class="ln">4</td><td class="code">// is gone (phase 4). Used by AssetSection (for the &quot;Used N times across</td></tr>
 <tr class="nil"><td class="ln">5</td><td class="code">// M slides&quot; caption, for the Restore confirm wording, and for deciding</td></tr>
-<tr class="cov"><td class="ln">6</td><td class="code">// whether Restore needs a confirm at all) and by assetInsert (for the</td></tr>
-<tr class="cov"><td class="ln">7</td><td class="code">// findSlidesUsingAsset helper). Pure functions for easy unit testing.</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">// whether Restore needs a confirm at all) and by assetInsert (for the</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">// findSlidesUsingAsset helper). Pure functions for easy unit testing.</td></tr>
 <tr class="nil"><td class="ln">8</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">9</td><td class="code">import type { Presentation, Slide } from &#x27;../types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
-<tr class="cov"><td class="ln">10</td><td class="code">import { getSlideNumber } from &#x27;../types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
-<tr class="cov"><td class="ln">11</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">12</td><td class="code">type AssetBearingElement = { assetId?: string };</td></tr>
-<tr class="cov"><td class="ln">13</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">14</td><td class="code">// Every element type that carries an `assetId` binding (src/types/presentation.ts):</td></tr>
-<tr class="cov"><td class="ln">15</td><td class="code">// image, demo, demo-piece, notebook, and file-kind video. Omitting notebook/video made</td></tr>
-<tr class="cov"><td class="ln">16</td><td class="code">// their linked assets count as &quot;unused&quot; everywhere usage is shown (e.g. the Security</td></tr>
-<tr class="cov"><td class="ln">17</td><td class="code">// window) and under-counted the blast radius of asset-scoped actions (Restore, collision).</td></tr>
-<tr class="cov"><td class="ln">18</td><td class="code">function isAssetBearing(elType: string): boolean {</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">import { getSlideNumber } from &#x27;../types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">type AssetBearingElement = { assetId?: string };</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">// Every element type that carries an `assetId` binding (src/types/presentation.ts):</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">// image, demo, demo-piece, notebook, and file-kind video. Omitting notebook/video made</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">// their linked assets count as &quot;unused&quot; everywhere usage is shown (e.g. the Security</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">// window) and under-counted the blast radius of asset-scoped actions (Restore, collision).</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">function isAssetBearing(elType: string): boolean {</td></tr>
 <tr class="cov"><td class="ln">19</td><td class="code">  return elType === &#x27;image&#x27; || elType === &#x27;demo&#x27; || elType === &#x27;demo-piece&#x27;</td></tr>
-<tr class="nil"><td class="ln">20</td><td class="code">    || elType === &#x27;notebook&#x27; || elType === &#x27;video&#x27;;</td></tr>
-<tr class="cov"><td class="ln">21</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">20</td><td class="code">    || elType === &#x27;notebook&#x27; || elType === &#x27;video&#x27;;</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">22</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">23</td><td class="code">function elementBoundToAsset(</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">function elementBoundToAsset(</td></tr>
 <tr class="nil"><td class="ln">24</td><td class="code">  el: { type: string } &amp; AssetBearingElement,</td></tr>
 <tr class="nil"><td class="ln">25</td><td class="code">  assetId: string,</td></tr>
 <tr class="nil"><td class="ln">26</td><td class="code">): boolean {</td></tr>
@@ -66,10 +67,10 @@
 <tr class="cov"><td class="ln">49</td><td class="code">  if (!presentation) return { elementCount: 0, slideCount: 0, slideNumbers: [] };</td></tr>
 <tr class="cov"><td class="ln">50</td><td class="code">  let elementCount = 0;</td></tr>
 <tr class="cov"><td class="ln">51</td><td class="code">  const slideNumbers: number[] = [];</td></tr>
-<tr class="cov"><td class="ln">52</td><td class="code">  presentation.slides.forEach((slide: Slide, idx: number) =&gt; {</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">  presentation.slides.forEach((slide: Slide, idx: number) =&gt; {</td></tr>
 <tr class="cov"><td class="ln">53</td><td class="code">    let slideHit = false;</td></tr>
-<tr class="cov"><td class="ln">54</td><td class="code">    for (const el of slide.elements) {</td></tr>
-<tr class="cov"><td class="ln">55</td><td class="code">      if (elementBoundToAsset(el as { type: string } &amp; AssetBearingElement, assetId)) {</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">    for (const el of slide.elements) {</td></tr>
+<tr class="nil"><td class="ln">55</td><td class="code">      if (elementBoundToAsset(el as { type: string } &amp; AssetBearingElement, assetId)) {</td></tr>
 <tr class="cov"><td class="ln">56</td><td class="code">        elementCount++;</td></tr>
 <tr class="cov"><td class="ln">57</td><td class="code">        slideHit = true;</td></tr>
 <tr class="nil"><td class="ln">58</td><td class="code">      }</td></tr>

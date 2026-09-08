@@ -5,13 +5,14 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/demoTheme.mjs </h1>
   <div class="stats">
-    <span class="stat"><b>61%</b> covered</span>
-    <span class="stat">25/41 executable</span>
-    <span class="stat unc-txt">16 uncovered</span>
+    <span class="stat"><b>63%</b> covered</span>
+    <span class="stat">34/54 statements</span>
+    <span class="stat unc-txt">20 uncovered</span>
     <span class="stat">123 raw lines</span>
     <span class="stat">0.29% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:20.325%"></span><span class="seg unc" style="width:13.008%"></span><span class="seg nil" style="width:66.667%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:62.963%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:37.037%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src__lib__demoMount_ts.html">demoMount.ts</a> <a href="src__lib__demoThemeInject_ts.html">demoThemeInject.ts</a> <a href="src__lib__exportCore_mjs.html">exportCore.mjs</a></div>
 </header>
@@ -44,11 +45,11 @@
 <tr class="nil"><td class="ln">27</td><td class="code">export function demoThemeVarsCss(colors, opts = {}) {</td></tr>
 <tr class="cov"><td class="ln">28</td><td class="code">  const { font, narrow, mono, baseSize } = opts;</td></tr>
 <tr class="cov"><td class="ln">29</td><td class="code">  const lines = [</td></tr>
-<tr class="nil"><td class="ln">30</td><td class="code">    `--eigendeck-bg: ${colors.background};`,</td></tr>
-<tr class="nil"><td class="ln">31</td><td class="code">    `--eigendeck-fg: ${colors.text};`,</td></tr>
-<tr class="nil"><td class="ln">32</td><td class="code">    `--eigendeck-heading: ${colors.heading};`,</td></tr>
-<tr class="nil"><td class="ln">33</td><td class="code">    `--eigendeck-accent: ${colors.accent};`,</td></tr>
-<tr class="nil"><td class="ln">34</td><td class="code">    `--eigendeck-muted: ${colors.muted};`,</td></tr>
+<tr class="cov"><td class="ln">30</td><td class="code">    `--eigendeck-bg: ${colors.background};`,</td></tr>
+<tr class="cov"><td class="ln">31</td><td class="code">    `--eigendeck-fg: ${colors.text};`,</td></tr>
+<tr class="cov"><td class="ln">32</td><td class="code">    `--eigendeck-heading: ${colors.heading};`,</td></tr>
+<tr class="cov"><td class="ln">33</td><td class="code">    `--eigendeck-accent: ${colors.accent};`,</td></tr>
+<tr class="cov"><td class="ln">34</td><td class="code">    `--eigendeck-muted: ${colors.muted};`,</td></tr>
 <tr class="nil"><td class="ln">35</td><td class="code">  ];</td></tr>
 <tr class="cov"><td class="ln">36</td><td class="code">  if (font) lines.push(`--eigendeck-font: &#x27;${font}&#x27;;`);</td></tr>
 <tr class="cov"><td class="ln">37</td><td class="code">  if (narrow) lines.push(`--eigendeck-narrow: &#x27;${narrow}&#x27;;`);</td></tr>
@@ -72,7 +73,7 @@
 <tr class="cov"><td class="ln">55</td><td class="code">  if (/--eigendeck-(?:font|narrow|mono)\b/.test(html)) return true;</td></tr>
 <tr class="cov"><td class="ln">56</td><td class="code">  const re = /font-family:\s*([&#x27;&quot;])([^&#x27;&quot;]+)\1/gi;</td></tr>
 <tr class="nil"><td class="ln">57</td><td class="code">  let m;</td></tr>
-<tr class="cov"><td class="ln">58</td><td class="code">  while ((m = re.exec(fontFacesCss)) !== null) {</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code">  while ((m = re.exec(fontFacesCss)) !== null) {</td></tr>
 <tr class="cov"><td class="ln">59</td><td class="code">    if (html.includes(m[2])) return true;</td></tr>
 <tr class="nil"><td class="ln">60</td><td class="code">  }</td></tr>
 <tr class="cov"><td class="ln">61</td><td class="code">  return false;</td></tr>
@@ -96,7 +97,7 @@
 <tr class="cov"><td class="ln">79</td><td class="code">  const tag = demoThemeStyleTag(fontFacesCss, varsCss);</td></tr>
 <tr class="cov"><td class="ln">80</td><td class="code">  if (!tag) return html;</td></tr>
 <tr class="cov"><td class="ln">81</td><td class="code">  const headOpen = html.match(/&lt;head[^&gt;]*&gt;/i);</td></tr>
-<tr class="cov"><td class="ln">82</td><td class="code">  if (headOpen) {</td></tr>
+<tr class="nil"><td class="ln">82</td><td class="code">  if (headOpen) {</td></tr>
 <tr class="cov"><td class="ln">83</td><td class="code">    const at = headOpen.index + headOpen[0].length;</td></tr>
 <tr class="cov"><td class="ln">84</td><td class="code">    return html.slice(0, at) + &#x27;\n&#x27; + tag + html.slice(at);</td></tr>
 <tr class="nil"><td class="ln">85</td><td class="code">  }</td></tr>
@@ -120,9 +121,9 @@
 <tr class="unc"><td class="ln">103</td><td class="code">  if (!head) return;</td></tr>
 <tr class="nil"><td class="ln">104</td><td class="code">  // Fonts: set once (or when the css changes) — keyed by content length+head</td></tr>
 <tr class="nil"><td class="ln">105</td><td class="code">  // so we don&#x27;t re-parse a megabyte of base64 on every theme switch.</td></tr>
-<tr class="unc"><td class="ln">106</td><td class="code">  if (fontFacesCss) {</td></tr>
+<tr class="nil"><td class="ln">106</td><td class="code">  if (fontFacesCss) {</td></tr>
 <tr class="unc"><td class="ln">107</td><td class="code">    let fs = doc.getElementById(DEMO_FONTS_STYLE_ID);</td></tr>
-<tr class="unc"><td class="ln">108</td><td class="code">    if (!fs) {</td></tr>
+<tr class="nil"><td class="ln">108</td><td class="code">    if (!fs) {</td></tr>
 <tr class="unc"><td class="ln">109</td><td class="code">      fs = doc.createElement(&#x27;style&#x27;);</td></tr>
 <tr class="unc"><td class="ln">110</td><td class="code">      fs.id = DEMO_FONTS_STYLE_ID;</td></tr>
 <tr class="unc"><td class="ln">111</td><td class="code">      head.appendChild(fs);</td></tr>
@@ -131,7 +132,7 @@
 <tr class="nil"><td class="ln">114</td><td class="code">  }</td></tr>
 <tr class="nil"><td class="ln">115</td><td class="code">  // Vars: cheap, update freely.</td></tr>
 <tr class="unc"><td class="ln">116</td><td class="code">  let vs = doc.getElementById(DEMO_VARS_STYLE_ID);</td></tr>
-<tr class="unc"><td class="ln">117</td><td class="code">  if (!vs) {</td></tr>
+<tr class="nil"><td class="ln">117</td><td class="code">  if (!vs) {</td></tr>
 <tr class="unc"><td class="ln">118</td><td class="code">    vs = doc.createElement(&#x27;style&#x27;);</td></tr>
 <tr class="unc"><td class="ln">119</td><td class="code">    vs.id = DEMO_VARS_STYLE_ID;</td></tr>
 <tr class="unc"><td class="ln">120</td><td class="code">    head.appendChild(vs);</td></tr>

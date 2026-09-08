@@ -5,13 +5,14 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/components/notebook/CellOutput.tsx </h1>
   <div class="stats">
-    <span class="stat"><b>90%</b> covered</span>
-    <span class="stat">45/50 executable</span>
-    <span class="stat unc-txt">5 uncovered</span>
+    <span class="stat"><b>94%</b> covered</span>
+    <span class="stat">30/32 statements</span>
+    <span class="stat unc-txt">2 uncovered</span>
     <span class="stat">101 raw lines</span>
     <span class="stat">0.24% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:44.554%"></span><span class="seg unc" style="width:4.950%"></span><span class="seg nil" style="width:50.495%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:93.750%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:6.250%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__components__notebook__IsolatedOutput_tsx.html">IsolatedOutput.tsx</a> <a href="src__lib__notebookFormat_ts.html">notebookFormat.ts</a> <a href="src__lib__sanitizeHtml_ts.html">sanitizeHtml.ts</a></div>
   <div class="links"><span>imported by:</span> <a href="src__components__notebook__CodeCell_tsx.html">CodeCell.tsx</a> <a href="src__lib__notebookExport_tsx.html">notebookExport.tsx</a></div>
 </header>
@@ -20,16 +21,16 @@
 <tr class="nil"><td class="ln">3</td><td class="code">//</td></tr>
 <tr class="nil"><td class="ln">4</td><td class="code">// MIME bundle preference order: image/png → image/svg+xml →</td></tr>
 <tr class="nil"><td class="ln">5</td><td class="code">// text/html → text/plain. Matches what Jupyter Lab does.</td></tr>
-<tr class="cov"><td class="ln">6</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">//</td></tr>
 <tr class="nil"><td class="ln">7</td><td class="code">// A .eigendeck is UNTRUSTED shared input, so notebook output can&#x27;t be</td></tr>
-<tr class="cov"><td class="ln">8</td><td class="code">// innerHTML&#x27;d raw into the privileged window (audit C-1). Routing</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">// innerHTML&#x27;d raw into the privileged window (audit C-1). Routing</td></tr>
 <tr class="nil"><td class="ln">9</td><td class="code">// (docs/NOTEBOOK-ISOLATION.md): image/svg+xml and static text/html are</td></tr>
-<tr class="cov"><td class="ln">10</td><td class="code">// DOMPurify&#x27;d inline; text/html that carries executable content (Plotly etc.)</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">// DOMPurify&#x27;d inline; text/html that carries executable content (Plotly etc.)</td></tr>
 <tr class="nil"><td class="ln">11</td><td class="code">// is mounted in an opaque-origin sandboxed iframe, kept interactive + contained.</td></tr>
 <tr class="nil"><td class="ln">12</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">13</td><td class="code">import { createContext, useContext, useEffect, useMemo, useState } from &#x27;react&#x27;;</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">import { createContext, useContext, useEffect, useMemo, useState } from &#x27;react&#x27;;</td></tr>
 <tr class="nil"><td class="ln">14</td><td class="code">import { CellOutput as CellOutputT, MimeBundle, joinMultiline } from &#x27;../../lib/notebookFormat&#x27;;<a class="jump" href="src__lib__notebookFormat_ts.html" title="src/lib/notebookFormat.ts">→ notebookFormat.ts</a></td></tr>
-<tr class="cov"><td class="ln">15</td><td class="code">import { sanitizeHtml, sanitizeSvg, sanitizeHtmlSync, sanitizeSvgSync, outputHasExecutable } from &#x27;../../lib/sanitizeHtml&#x27;;<a class="jump" href="src__lib__sanitizeHtml_ts.html" title="src/lib/sanitizeHtml.ts">→ sanitizeHtml.ts</a></td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">import { sanitizeHtml, sanitizeSvg, sanitizeHtmlSync, sanitizeSvgSync, outputHasExecutable } from &#x27;../../lib/sanitizeHtml&#x27;;<a class="jump" href="src__lib__sanitizeHtml_ts.html" title="src/lib/sanitizeHtml.ts">→ sanitizeHtml.ts</a></td></tr>
 <tr class="nil"><td class="ln">16</td><td class="code">import { IsolatedOutput } from &#x27;./IsolatedOutput&#x27;;<a class="jump" href="src__components__notebook__IsolatedOutput_tsx.html" title="src/components/notebook/IsolatedOutput.tsx">→ IsolatedOutput.tsx</a></td></tr>
 <tr class="nil"><td class="ln">17</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">18</td><td class="code">// Static-HTML-export mode: the export renders via renderToStaticMarkup (no</td></tr>
@@ -39,58 +40,58 @@
 <tr class="cov"><td class="ln">22</td><td class="code">export const StaticExportContext = createContext(false);</td></tr>
 <tr class="nil"><td class="ln">23</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">24</td><td class="code">export function CellOutput({ output }: { output: CellOutputT }) {</td></tr>
-<tr class="cov"><td class="ln">25</td><td class="code">  switch (output.kind) {</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">  switch (output.kind) {</td></tr>
 <tr class="nil"><td class="ln">26</td><td class="code">    case &#x27;stream&#x27;:</td></tr>
 <tr class="cov"><td class="ln">27</td><td class="code">      return (</td></tr>
 <tr class="cov"><td class="ln">28</td><td class="code">        &lt;pre className={`nb-output nb-stream nb-${output.name}`}&gt;</td></tr>
 <tr class="cov"><td class="ln">29</td><td class="code">          {output.text}</td></tr>
 <tr class="cov"><td class="ln">30</td><td class="code">        &lt;/pre&gt;</td></tr>
-<tr class="cov"><td class="ln">31</td><td class="code">      );</td></tr>
-<tr class="cov"><td class="ln">32</td><td class="code">    case &#x27;display_data&#x27;:</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">      );</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code">    case &#x27;display_data&#x27;:</td></tr>
 <tr class="nil"><td class="ln">33</td><td class="code">    case &#x27;execute_result&#x27;:</td></tr>
 <tr class="cov"><td class="ln">34</td><td class="code">      return &lt;MimeRender bundle={output.data} /&gt;;</td></tr>
-<tr class="cov"><td class="ln">35</td><td class="code">    case &#x27;error&#x27;:</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code">    case &#x27;error&#x27;:</td></tr>
 <tr class="cov"><td class="ln">36</td><td class="code">      return (</td></tr>
-<tr class="nil"><td class="ln">37</td><td class="code">        &lt;pre className=&quot;nb-output nb-error&quot;&gt;</td></tr>
+<tr class="cov"><td class="ln">37</td><td class="code">        &lt;pre className=&quot;nb-output nb-error&quot;&gt;</td></tr>
 <tr class="cov"><td class="ln">38</td><td class="code">          &lt;strong&gt;{output.ename}&lt;/strong&gt;: {output.evalue}</td></tr>
 <tr class="cov"><td class="ln">39</td><td class="code">          {output.traceback.length &gt; 0 &amp;&amp; (</td></tr>
-<tr class="unc"><td class="ln">40</td><td class="code">            &lt;&gt;{&#x27;\n&#x27;}{stripAnsi(output.traceback.join(&#x27;\n&#x27;))}&lt;/&gt;</td></tr>
+<tr class="cov"><td class="ln">40</td><td class="code">            &lt;&gt;{&#x27;\n&#x27;}{stripAnsi(output.traceback.join(&#x27;\n&#x27;))}&lt;/&gt;</td></tr>
 <tr class="nil"><td class="ln">41</td><td class="code">          )}</td></tr>
 <tr class="cov"><td class="ln">42</td><td class="code">        &lt;/pre&gt;</td></tr>
 <tr class="nil"><td class="ln">43</td><td class="code">      );</td></tr>
-<tr class="cov"><td class="ln">44</td><td class="code">  }</td></tr>
-<tr class="cov"><td class="ln">45</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">46</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">47</td><td class="code">function MimeRender({ bundle }: { bundle: MimeBundle }) {</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">function MimeRender({ bundle }: { bundle: MimeBundle }) {</td></tr>
 <tr class="cov"><td class="ln">48</td><td class="code">  const staticExport = useContext(StaticExportContext);</td></tr>
 <tr class="cov"><td class="ln">49</td><td class="code">  const html = bundle[&#x27;text/html&#x27;] ? joinMultiline(bundle[&#x27;text/html&#x27;]) : null;</td></tr>
-<tr class="cov"><td class="ln">50</td><td class="code">  // The routing decision parses the whole output; memoize it per html string.</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">  // The routing decision parses the whole output; memoize it per html string.</td></tr>
 <tr class="cov"><td class="ln">51</td><td class="code">  const htmlExecutable = useMemo(() =&gt; (html != null ? outputHasExecutable(html) : false), [html]);</td></tr>
-<tr class="cov"><td class="ln">52</td><td class="code">  if (bundle[&#x27;image/png&#x27;]) {</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">  if (bundle[&#x27;image/png&#x27;]) {</td></tr>
 <tr class="cov"><td class="ln">53</td><td class="code">    const b64 = typeof bundle[&#x27;image/png&#x27;] === &#x27;string&#x27;</td></tr>
 <tr class="cov"><td class="ln">54</td><td class="code">      ? bundle[&#x27;image/png&#x27;]</td></tr>
-<tr class="nil"><td class="ln">55</td><td class="code">      : bundle[&#x27;image/png&#x27;].join(&#x27;&#x27;);</td></tr>
+<tr class="cov"><td class="ln">55</td><td class="code">      : bundle[&#x27;image/png&#x27;].join(&#x27;&#x27;);</td></tr>
 <tr class="cov"><td class="ln">56</td><td class="code">    return &lt;img src={`data:image/png;base64,${b64}`} className=&quot;nb-output nb-image&quot; alt=&quot;&quot; /&gt;;</td></tr>
-<tr class="unc"><td class="ln">57</td><td class="code">  }</td></tr>
-<tr class="cov"><td class="ln">58</td><td class="code">  if (bundle[&#x27;image/svg+xml&#x27;]) {</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code">  if (bundle[&#x27;image/svg+xml&#x27;]) {</td></tr>
 <tr class="cov"><td class="ln">59</td><td class="code">    const svg = joinMultiline(bundle[&#x27;image/svg+xml&#x27;]);</td></tr>
 <tr class="cov"><td class="ln">60</td><td class="code">    return staticExport</td></tr>
-<tr class="nil"><td class="ln">61</td><td class="code">      ? &lt;div className=&quot;nb-output nb-image&quot; dangerouslySetInnerHTML={{ __html: sanitizeSvgSync(svg) }} /&gt;</td></tr>
-<tr class="nil"><td class="ln">62</td><td class="code">      : &lt;SanitizedBlock raw={svg} kind=&quot;svg&quot; className=&quot;nb-output nb-image&quot; /&gt;;</td></tr>
-<tr class="cov"><td class="ln">63</td><td class="code">  }</td></tr>
-<tr class="cov"><td class="ln">64</td><td class="code">  if (html != null) {</td></tr>
+<tr class="cov"><td class="ln">61</td><td class="code">      ? &lt;div className=&quot;nb-output nb-image&quot; dangerouslySetInnerHTML={{ __html: sanitizeSvgSync(svg) }} /&gt;</td></tr>
+<tr class="cov"><td class="ln">62</td><td class="code">      : &lt;SanitizedBlock raw={svg} kind=&quot;svg&quot; className=&quot;nb-output nb-image&quot; /&gt;;</td></tr>
+<tr class="nil"><td class="ln">63</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">64</td><td class="code">  if (html != null) {</td></tr>
 <tr class="nil"><td class="ln">65</td><td class="code">    // Export: no scripts can run in the srcdoc, so render sanitized-inline (static)</td></tr>
 <tr class="nil"><td class="ln">66</td><td class="code">    // for everything — no blob iframe (it would be a dead src in the exported file).</td></tr>
-<tr class="cov"><td class="ln">67</td><td class="code">    if (staticExport) {</td></tr>
+<tr class="nil"><td class="ln">67</td><td class="code">    if (staticExport) {</td></tr>
 <tr class="unc"><td class="ln">68</td><td class="code">      return &lt;div className=&quot;nb-output nb-html&quot; dangerouslySetInnerHTML={{ __html: sanitizeHtmlSync(html) }} /&gt;;</td></tr>
 <tr class="nil"><td class="ln">69</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">70</td><td class="code">    // Live: executable output (Plotly etc.) → contained-but-interactive iframe;</td></tr>
 <tr class="nil"><td class="ln">71</td><td class="code">    // static output (pandas tables, styled divs) → sanitized inline.</td></tr>
 <tr class="cov"><td class="ln">72</td><td class="code">    return htmlExecutable</td></tr>
-<tr class="nil"><td class="ln">73</td><td class="code">      ? &lt;IsolatedOutput html={html} /&gt;</td></tr>
-<tr class="nil"><td class="ln">74</td><td class="code">      : &lt;SanitizedBlock raw={html} kind=&quot;html&quot; className=&quot;nb-output nb-html&quot; /&gt;;</td></tr>
+<tr class="cov"><td class="ln">73</td><td class="code">      ? &lt;IsolatedOutput html={html} /&gt;</td></tr>
+<tr class="cov"><td class="ln">74</td><td class="code">      : &lt;SanitizedBlock raw={html} kind=&quot;html&quot; className=&quot;nb-output nb-html&quot; /&gt;;</td></tr>
 <tr class="nil"><td class="ln">75</td><td class="code">  }</td></tr>
-<tr class="cov"><td class="ln">76</td><td class="code">  if (bundle[&#x27;text/plain&#x27;]) {</td></tr>
+<tr class="nil"><td class="ln">76</td><td class="code">  if (bundle[&#x27;text/plain&#x27;]) {</td></tr>
 <tr class="cov"><td class="ln">77</td><td class="code">    return &lt;pre className=&quot;nb-output nb-plain&quot;&gt;{joinMultiline(bundle[&#x27;text/plain&#x27;])}&lt;/pre&gt;;</td></tr>
 <tr class="nil"><td class="ln">78</td><td class="code">  }</td></tr>
 <tr class="unc"><td class="ln">79</td><td class="code">  return null;</td></tr>
@@ -101,7 +102,7 @@
 <tr class="nil"><td class="ln">84</td><td class="code"> *  markup — same async shape the notebook already has. */</td></tr>
 <tr class="nil"><td class="ln">85</td><td class="code">function SanitizedBlock({ raw, kind, className }: { raw: string; kind: &#x27;html&#x27; | &#x27;svg&#x27;; className: string }) {</td></tr>
 <tr class="cov"><td class="ln">86</td><td class="code">  const [clean, setClean] = useState(&#x27;&#x27;);</td></tr>
-<tr class="cov"><td class="ln">87</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">87</td><td class="code">  useEffect(() =&gt; {</td></tr>
 <tr class="cov"><td class="ln">88</td><td class="code">    let alive = true;</td></tr>
 <tr class="cov"><td class="ln">89</td><td class="code">    (kind === &#x27;svg&#x27; ? sanitizeSvg : sanitizeHtml)(raw).then((c) =&gt; { if (alive) setClean(c); });</td></tr>
 <tr class="cov"><td class="ln">90</td><td class="code">    return () =&gt; { alive = false; };</td></tr>

@@ -6,12 +6,13 @@
   <h1>src/lib/themeColors.mjs </h1>
   <div class="stats">
     <span class="stat"><b>100%</b> covered</span>
-    <span class="stat">6/6 executable</span>
+    <span class="stat">6/6 statements</span>
     <span class="stat unc-txt">0 uncovered</span>
     <span class="stat">37 raw lines</span>
     <span class="stat">0.09% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:16.216%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:83.784%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:100.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:0.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src__lib__exportCore_mjs.html">exportCore.mjs</a> <a href="src__lib__themeBackgrounds_mjs.html">themeBackgrounds.mjs</a> <a href="src__lib__themes_ts.html">themes.ts</a></div>
 </header>
@@ -26,19 +27,19 @@
 <tr class="nil"><td class="ln">9</td><td class="code">// Values mirror BUILT_IN_THEMES in themes.ts (which now consumes this map).</td></tr>
 <tr class="nil"><td class="ln">10</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">11</td><td class="code">export const THEME_COLORS = {</td></tr>
-<tr class="nil"><td class="ln">12</td><td class="code">  white: { background: &#x27;#ffffff&#x27;, text: &#x27;#222222&#x27;, heading: &#x27;#222222&#x27;, accent: &#x27;#2563eb&#x27;, muted: &#x27;#888888&#x27; },</td></tr>
-<tr class="nil"><td class="ln">13</td><td class="code">  light: { background: &#x27;#f5f0e8&#x27;, text: &#x27;#2c2418&#x27;, heading: &#x27;#2c2418&#x27;, accent: &#x27;#1e5c99&#x27;, muted: &#x27;#8c7e6a&#x27; },</td></tr>
-<tr class="nil"><td class="ln">14</td><td class="code">  dark:  { background: &#x27;#1a1a2e&#x27;, text: &#x27;#e8e8e8&#x27;, heading: &#x27;#f0f0f0&#x27;, accent: &#x27;#60a5fa&#x27;, muted: &#x27;#9ca3af&#x27; },</td></tr>
-<tr class="nil"><td class="ln">15</td><td class="code">  black: { background: &#x27;#000000&#x27;, text: &#x27;#ffffff&#x27;, heading: &#x27;#ffffff&#x27;, accent: &#x27;#93c5fd&#x27;, muted: &#x27;#9ca3af&#x27; },</td></tr>
+<tr class="cov"><td class="ln">12</td><td class="code">  white: { background: &#x27;#ffffff&#x27;, text: &#x27;#222222&#x27;, heading: &#x27;#222222&#x27;, accent: &#x27;#2563eb&#x27;, muted: &#x27;#888888&#x27; },</td></tr>
+<tr class="cov"><td class="ln">13</td><td class="code">  light: { background: &#x27;#f5f0e8&#x27;, text: &#x27;#2c2418&#x27;, heading: &#x27;#2c2418&#x27;, accent: &#x27;#1e5c99&#x27;, muted: &#x27;#8c7e6a&#x27; },</td></tr>
+<tr class="cov"><td class="ln">14</td><td class="code">  dark:  { background: &#x27;#1a1a2e&#x27;, text: &#x27;#e8e8e8&#x27;, heading: &#x27;#f0f0f0&#x27;, accent: &#x27;#60a5fa&#x27;, muted: &#x27;#9ca3af&#x27; },</td></tr>
+<tr class="cov"><td class="ln">15</td><td class="code">  black: { background: &#x27;#000000&#x27;, text: &#x27;#ffffff&#x27;, heading: &#x27;#ffffff&#x27;, accent: &#x27;#93c5fd&#x27;, muted: &#x27;#9ca3af&#x27; },</td></tr>
 <tr class="nil"><td class="ln">16</td><td class="code">};</td></tr>
 <tr class="nil"><td class="ln">17</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">18</td><td class="code">// Text-preset name → which theme color key it draws from.</td></tr>
 <tr class="cov"><td class="ln">19</td><td class="code">export const PRESET_COLOR_MAP = {</td></tr>
-<tr class="nil"><td class="ln">20</td><td class="code">  title: &#x27;heading&#x27;,</td></tr>
-<tr class="nil"><td class="ln">21</td><td class="code">  body: &#x27;text&#x27;,</td></tr>
-<tr class="nil"><td class="ln">22</td><td class="code">  textbox: &#x27;text&#x27;,</td></tr>
-<tr class="nil"><td class="ln">23</td><td class="code">  annotation: &#x27;accent&#x27;,</td></tr>
-<tr class="nil"><td class="ln">24</td><td class="code">  footnote: &#x27;muted&#x27;,</td></tr>
+<tr class="cov"><td class="ln">20</td><td class="code">  title: &#x27;heading&#x27;,</td></tr>
+<tr class="cov"><td class="ln">21</td><td class="code">  body: &#x27;text&#x27;,</td></tr>
+<tr class="cov"><td class="ln">22</td><td class="code">  textbox: &#x27;text&#x27;,</td></tr>
+<tr class="cov"><td class="ln">23</td><td class="code">  annotation: &#x27;accent&#x27;,</td></tr>
+<tr class="cov"><td class="ln">24</td><td class="code">  footnote: &#x27;muted&#x27;,</td></tr>
 <tr class="nil"><td class="ln">25</td><td class="code">};</td></tr>
 <tr class="nil"><td class="ln">26</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">27</td><td class="code">/** Resolve a slide&#x27;s effective theme colors by name (slide theme wins over deck). */</td></tr>

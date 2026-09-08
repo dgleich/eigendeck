@@ -5,120 +5,121 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/components/notebook/NotebookCellEditor.tsx </h1>
   <div class="stats">
-    <span class="stat"><b>44%</b> covered</span>
-    <span class="stat">63/142 executable</span>
-    <span class="stat unc-txt">79 uncovered</span>
+    <span class="stat"><b>73%</b> covered</span>
+    <span class="stat">63/86 statements</span>
+    <span class="stat unc-txt">23 uncovered</span>
     <span class="stat">247 raw lines</span>
     <span class="stat">0.58% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:25.506%"></span><span class="seg unc" style="width:31.984%"></span><span class="seg nil" style="width:42.510%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:73.256%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:26.744%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src__components__notebook__CodeCell_tsx.html">CodeCell.tsx</a></div>
 </header>
 <table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// CodeMirror 6 editor for a single notebook code cell. Lazy-loads</td></tr>
 <tr class="nil"><td class="ln">2</td><td class="code">// the CodeMirror modules + the language grammar on first mount so</td></tr>
-<tr class="cov"><td class="ln">3</td><td class="code">// decks without editable notebooks don&#x27;t pay the cost.</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// decks without editable notebooks don&#x27;t pay the cost.</td></tr>
 <tr class="nil"><td class="ln">4</td><td class="code">//</td></tr>
-<tr class="cov"><td class="ln">5</td><td class="code">// Language support:</td></tr>
-<tr class="cov"><td class="ln">6</td><td class="code">//   - python via @codemirror/lang-python (full grammar + indent)</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// Language support:</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">//   - python via @codemirror/lang-python (full grammar + indent)</td></tr>
 <tr class="nil"><td class="ln">7</td><td class="code">//   - julia / r / sql / shell / etc. via @codemirror/legacy-modes</td></tr>
 <tr class="nil"><td class="ln">8</td><td class="code">//     (StreamLanguage wrappers over the CM5 modes)</td></tr>
 <tr class="nil"><td class="ln">9</td><td class="code">//   - anything else: plain text editing (no grammar)</td></tr>
 <tr class="nil"><td class="ln">10</td><td class="code">//</td></tr>
-<tr class="cov"><td class="ln">11</td><td class="code">// Shift-Enter runs the cell (onRun); the keymap intercepts it before</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">// Shift-Enter runs the cell (onRun); the keymap intercepts it before</td></tr>
 <tr class="nil"><td class="ln">12</td><td class="code">// CodeMirror inserts a newline. Edits flow out via onChange; the</td></tr>
 <tr class="nil"><td class="ln">13</td><td class="code">// parent decides when to commit them (we commit on blur, not per</td></tr>
-<tr class="cov"><td class="ln">14</td><td class="code">// keystroke — see NotebookContent).</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">// keystroke — see NotebookContent).</td></tr>
 <tr class="nil"><td class="ln">15</td><td class="code">&nbsp;</td></tr>
-<tr class="nil"><td class="ln">16</td><td class="code">import { useEffect, useRef } from &#x27;react&#x27;;</td></tr>
-<tr class="cov"><td class="ln">17</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">18</td><td class="code">export interface NotebookCellEditorProps {</td></tr>
-<tr class="cov"><td class="ln">19</td><td class="code">  value: string;</td></tr>
-<tr class="cov"><td class="ln">20</td><td class="code">  /** Kernel language for the grammar (e.g. &#x27;python&#x27;, &#x27;julia&#x27;, &#x27;r&#x27;). */</td></tr>
+<tr class="cov"><td class="ln">16</td><td class="code">import { useEffect, useRef } from &#x27;react&#x27;;</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">&nbsp;</td></tr>
+<tr class="part"><td class="ln">18</td><td class="code">export interface NotebookCellEditorProps {</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">  value: string;</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">  /** Kernel language for the grammar (e.g. &#x27;python&#x27;, &#x27;julia&#x27;, &#x27;r&#x27;). */</td></tr>
 <tr class="cov"><td class="ln">21</td><td class="code">  language: string | null;</td></tr>
-<tr class="cov"><td class="ln">22</td><td class="code">  /** Base font size in slide-pixels (matches the cell&#x27;s --nb-base-size). */</td></tr>
-<tr class="nil"><td class="ln">23</td><td class="code">  fontSize: number;</td></tr>
-<tr class="unc"><td class="ln">24</td><td class="code">  /** Apply syntax highlighting in the editor. Default true. */</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">  /** Base font size in slide-pixels (matches the cell&#x27;s --nb-base-size). */</td></tr>
+<tr class="cov"><td class="ln">23</td><td class="code">  fontSize: number;</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">  /** Apply syntax highlighting in the editor. Default true. */</td></tr>
 <tr class="unc"><td class="ln">25</td><td class="code">  highlight?: boolean;</td></tr>
-<tr class="unc"><td class="ln">26</td><td class="code">  /** Dark slide theme — picks the GitHub-Dark highlight palette to match</td></tr>
-<tr class="unc"><td class="ln">27</td><td class="code">   *  the static view. Default false (GitHub Light). */</td></tr>
-<tr class="nil"><td class="ln">28</td><td class="code">  dark?: boolean;</td></tr>
-<tr class="unc"><td class="ln">29</td><td class="code">  /** Show a line-number gutter. Default false (opt-in). */</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">  /** Dark slide theme — picks the GitHub-Dark highlight palette to match</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">   *  the static view. Default false (GitHub Light). */</td></tr>
+<tr class="unc"><td class="ln">28</td><td class="code">  dark?: boolean;</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">  /** Show a line-number gutter. Default false (opt-in). */</td></tr>
 <tr class="unc"><td class="ln">30</td><td class="code">  showLineNumbers?: boolean;</td></tr>
 <tr class="unc"><td class="ln">31</td><td class="code">  onChange: (next: string) =&gt; void;</td></tr>
 <tr class="nil"><td class="ln">32</td><td class="code">  /** Shift-Enter handler. */</td></tr>
-<tr class="unc"><td class="ln">33</td><td class="code">  onRun: () =&gt; void;</td></tr>
-<tr class="unc"><td class="ln">34</td><td class="code">  /** Fired when the editor loses focus — parent commits the edit. */</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">  onRun: () =&gt; void;</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">  /** Fired when the editor loses focus — parent commits the edit. */</td></tr>
 <tr class="unc"><td class="ln">35</td><td class="code">  onBlur?: () =&gt; void;</td></tr>
 <tr class="nil"><td class="ln">36</td><td class="code">}</td></tr>
-<tr class="unc"><td class="ln">37</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">38</td><td class="code">// Module-level singletons so the heavy imports resolve once.</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">// Module-level singletons so the heavy imports resolve once.</td></tr>
 <tr class="unc"><td class="ln">39</td><td class="code">type CM = typeof import(&#x27;@codemirror/view&#x27;) &amp; {</td></tr>
 <tr class="nil"><td class="ln">40</td><td class="code">  state: typeof import(&#x27;@codemirror/state&#x27;);</td></tr>
 <tr class="nil"><td class="ln">41</td><td class="code">  commands: typeof import(&#x27;@codemirror/commands&#x27;);</td></tr>
 <tr class="nil"><td class="ln">42</td><td class="code">};</td></tr>
-<tr class="cov"><td class="ln">43</td><td class="code">let cmPromise: Promise&lt;CM&gt; | null = null;</td></tr>
+<tr class="unc"><td class="ln">43</td><td class="code">let cmPromise: Promise&lt;CM&gt; | null = null;</td></tr>
 <tr class="nil"><td class="ln">44</td><td class="code">function loadCM(): Promise&lt;CM&gt; {</td></tr>
-<tr class="unc"><td class="ln">45</td><td class="code">  if (!cmPromise) {</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">  if (!cmPromise) {</td></tr>
 <tr class="cov"><td class="ln">46</td><td class="code">    cmPromise = Promise.all([</td></tr>
 <tr class="cov"><td class="ln">47</td><td class="code">      import(&#x27;@codemirror/view&#x27;),</td></tr>
 <tr class="cov"><td class="ln">48</td><td class="code">      import(&#x27;@codemirror/state&#x27;),</td></tr>
-<tr class="nil"><td class="ln">49</td><td class="code">      import(&#x27;@codemirror/commands&#x27;),</td></tr>
-<tr class="nil"><td class="ln">50</td><td class="code">    ]).then(([view, state, commands]) =&gt;</td></tr>
-<tr class="unc"><td class="ln">51</td><td class="code">      Object.assign({}, view, { state, commands }) as CM</td></tr>
+<tr class="cov"><td class="ln">49</td><td class="code">      import(&#x27;@codemirror/commands&#x27;),</td></tr>
+<tr class="cov"><td class="ln">50</td><td class="code">    ]).then(([view, state, commands]) =&gt;</td></tr>
+<tr class="cov"><td class="ln">51</td><td class="code">      Object.assign({}, view, { state, commands }) as CM</td></tr>
 <tr class="nil"><td class="ln">52</td><td class="code">    );</td></tr>
 <tr class="nil"><td class="ln">53</td><td class="code">  }</td></tr>
-<tr class="unc"><td class="ln">54</td><td class="code">  return cmPromise;</td></tr>
+<tr class="cov"><td class="ln">54</td><td class="code">  return cmPromise;</td></tr>
 <tr class="nil"><td class="ln">55</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">56</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">57</td><td class="code">// Resolve a CodeMirror language extension for the kernel language.</td></tr>
 <tr class="nil"><td class="ln">58</td><td class="code">// Returns null for plaintext. Lazy per-language so we only pull the</td></tr>
 <tr class="nil"><td class="ln">59</td><td class="code">// grammar the deck actually uses.</td></tr>
-<tr class="nil"><td class="ln">60</td><td class="code">async function languageExtension(language: string | null): Promise&lt;unknown | null&gt; {</td></tr>
-<tr class="unc"><td class="ln">61</td><td class="code">  if (!language) return null;</td></tr>
-<tr class="unc"><td class="ln">62</td><td class="code">  const l = language.toLowerCase();</td></tr>
-<tr class="unc"><td class="ln">63</td><td class="code">  try {</td></tr>
-<tr class="unc"><td class="ln">64</td><td class="code">    if (l === &#x27;python&#x27; || l.startsWith(&#x27;python&#x27;)) {</td></tr>
+<tr class="cov"><td class="ln">60</td><td class="code">async function languageExtension(language: string | null): Promise&lt;unknown | null&gt; {</td></tr>
+<tr class="cov"><td class="ln">61</td><td class="code">  if (!language) return null;</td></tr>
+<tr class="cov"><td class="ln">62</td><td class="code">  const l = language.toLowerCase();</td></tr>
+<tr class="cov"><td class="ln">63</td><td class="code">  try {</td></tr>
+<tr class="cov"><td class="ln">64</td><td class="code">    if (l === &#x27;python&#x27; || l.startsWith(&#x27;python&#x27;)) {</td></tr>
 <tr class="cov"><td class="ln">65</td><td class="code">      const m = await import(&#x27;@codemirror/lang-python&#x27;);</td></tr>
-<tr class="unc"><td class="ln">66</td><td class="code">      return m.python();</td></tr>
+<tr class="cov"><td class="ln">66</td><td class="code">      return m.python();</td></tr>
 <tr class="nil"><td class="ln">67</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">68</td><td class="code">    // legacy-modes: StreamLanguage wrappers.</td></tr>
-<tr class="unc"><td class="ln">69</td><td class="code">    const { StreamLanguage } = await import(&#x27;@codemirror/language&#x27;);</td></tr>
-<tr class="unc"><td class="ln">70</td><td class="code">    if (l === &#x27;julia&#x27;) {</td></tr>
-<tr class="unc"><td class="ln">71</td><td class="code">      const m = await import(&#x27;@codemirror/legacy-modes/mode/julia&#x27;);</td></tr>
-<tr class="unc"><td class="ln">72</td><td class="code">      return StreamLanguage.define(m.julia);</td></tr>
+<tr class="cov"><td class="ln">69</td><td class="code">    const { StreamLanguage } = await import(&#x27;@codemirror/language&#x27;);</td></tr>
+<tr class="cov"><td class="ln">70</td><td class="code">    if (l === &#x27;julia&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">71</td><td class="code">      const m = await import(&#x27;@codemirror/legacy-modes/mode/julia&#x27;);</td></tr>
+<tr class="cov"><td class="ln">72</td><td class="code">      return StreamLanguage.define(m.julia);</td></tr>
 <tr class="nil"><td class="ln">73</td><td class="code">    }</td></tr>
-<tr class="unc"><td class="ln">74</td><td class="code">    if (l === &#x27;r&#x27; || l === &#x27;ir&#x27;) {</td></tr>
-<tr class="unc"><td class="ln">75</td><td class="code">      const m = await import(&#x27;@codemirror/legacy-modes/mode/r&#x27;);</td></tr>
-<tr class="unc"><td class="ln">76</td><td class="code">      return StreamLanguage.define(m.r);</td></tr>
+<tr class="cov"><td class="ln">74</td><td class="code">    if (l === &#x27;r&#x27; || l === &#x27;ir&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">75</td><td class="code">      const m = await import(&#x27;@codemirror/legacy-modes/mode/r&#x27;);</td></tr>
+<tr class="cov"><td class="ln">76</td><td class="code">      return StreamLanguage.define(m.r);</td></tr>
 <tr class="nil"><td class="ln">77</td><td class="code">    }</td></tr>
-<tr class="unc"><td class="ln">78</td><td class="code">    if (l === &#x27;sql&#x27;) {</td></tr>
-<tr class="unc"><td class="ln">79</td><td class="code">      const m = await import(&#x27;@codemirror/legacy-modes/mode/sql&#x27;);</td></tr>
-<tr class="unc"><td class="ln">80</td><td class="code">      return StreamLanguage.define(m.standardSQL);</td></tr>
+<tr class="cov"><td class="ln">78</td><td class="code">    if (l === &#x27;sql&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">79</td><td class="code">      const m = await import(&#x27;@codemirror/legacy-modes/mode/sql&#x27;);</td></tr>
+<tr class="cov"><td class="ln">80</td><td class="code">      return StreamLanguage.define(m.standardSQL);</td></tr>
 <tr class="nil"><td class="ln">81</td><td class="code">    }</td></tr>
-<tr class="unc"><td class="ln">82</td><td class="code">    if (l === &#x27;shell&#x27; || l === &#x27;bash&#x27; || l === &#x27;sh&#x27;) {</td></tr>
-<tr class="unc"><td class="ln">83</td><td class="code">      const m = await import(&#x27;@codemirror/legacy-modes/mode/shell&#x27;);</td></tr>
-<tr class="unc"><td class="ln">84</td><td class="code">      return StreamLanguage.define(m.shell);</td></tr>
+<tr class="cov"><td class="ln">82</td><td class="code">    if (l === &#x27;shell&#x27; || l === &#x27;bash&#x27; || l === &#x27;sh&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">83</td><td class="code">      const m = await import(&#x27;@codemirror/legacy-modes/mode/shell&#x27;);</td></tr>
+<tr class="cov"><td class="ln">84</td><td class="code">      return StreamLanguage.define(m.shell);</td></tr>
 <tr class="nil"><td class="ln">85</td><td class="code">    }</td></tr>
-<tr class="nil"><td class="ln">86</td><td class="code">  } catch {</td></tr>
+<tr class="cov"><td class="ln">86</td><td class="code">  } catch {</td></tr>
 <tr class="nil"><td class="ln">87</td><td class="code">    // Grammar module missing → plaintext editing.</td></tr>
 <tr class="nil"><td class="ln">88</td><td class="code">  }</td></tr>
-<tr class="unc"><td class="ln">89</td><td class="code">  return null;</td></tr>
+<tr class="cov"><td class="ln">89</td><td class="code">  return null;</td></tr>
 <tr class="nil"><td class="ln">90</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">91</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">92</td><td class="code">// CM6 needs a highlight STYLE separate from the language parser. We mirror</td></tr>
-<tr class="cov"><td class="ln">93</td><td class="code">// the static view&#x27;s highlight.js palette (GitHub Light / Dark, see</td></tr>
+<tr class="nil"><td class="ln">93</td><td class="code">// the static view&#x27;s highlight.js palette (GitHub Light / Dark, see</td></tr>
 <tr class="nil"><td class="ln">94</td><td class="code">// .el-notebook .hljs-* in App.css) so colors DON&#x27;T shift when you double-</td></tr>
 <tr class="nil"><td class="ln">95</td><td class="code">// click a cell to edit. `dark` picks the matching palette.</td></tr>
 <tr class="cov"><td class="ln">96</td><td class="code">async function highlightExtension(dark: boolean): Promise&lt;unknown&gt; {</td></tr>
-<tr class="unc"><td class="ln">97</td><td class="code">  const { syntaxHighlighting, HighlightStyle } = await import(&#x27;@codemirror/language&#x27;);</td></tr>
-<tr class="unc"><td class="ln">98</td><td class="code">  const { tags: t } = await import(&#x27;@lezer/highlight&#x27;);</td></tr>
-<tr class="unc"><td class="ln">99</td><td class="code">  const c = dark</td></tr>
+<tr class="nil"><td class="ln">97</td><td class="code">  const { syntaxHighlighting, HighlightStyle } = await import(&#x27;@codemirror/language&#x27;);</td></tr>
+<tr class="nil"><td class="ln">98</td><td class="code">  const { tags: t } = await import(&#x27;@lezer/highlight&#x27;);</td></tr>
+<tr class="nil"><td class="ln">99</td><td class="code">  const c = dark</td></tr>
 <tr class="nil"><td class="ln">100</td><td class="code">    ? { kw: &#x27;#ff7b72&#x27;, fn: &#x27;#d2a8ff&#x27;, lit: &#x27;#79c0ff&#x27;, str: &#x27;#a5d6ff&#x27;,</td></tr>
 <tr class="nil"><td class="ln">101</td><td class="code">        builtin: &#x27;#ffa657&#x27;, comment: &#x27;#8b949e&#x27;, name: &#x27;#7ee787&#x27; }</td></tr>
 <tr class="nil"><td class="ln">102</td><td class="code">    : { kw: &#x27;#d73a49&#x27;, fn: &#x27;#6f42c1&#x27;, lit: &#x27;#005cc5&#x27;, str: &#x27;#032f62&#x27;,</td></tr>
 <tr class="nil"><td class="ln">103</td><td class="code">        builtin: &#x27;#e36209&#x27;, comment: &#x27;#6a737d&#x27;, name: &#x27;#22863a&#x27; };</td></tr>
-<tr class="unc"><td class="ln">104</td><td class="code">  const style = HighlightStyle.define([</td></tr>
+<tr class="nil"><td class="ln">104</td><td class="code">  const style = HighlightStyle.define([</td></tr>
 <tr class="nil"><td class="ln">105</td><td class="code">    { tag: [t.keyword, t.controlKeyword, t.operatorKeyword, t.moduleKeyword,</td></tr>
 <tr class="nil"><td class="ln">106</td><td class="code">            t.definitionKeyword, t.modifier, t.typeName, t.self], color: c.kw },</td></tr>
 <tr class="nil"><td class="ln">107</td><td class="code">    { tag: [t.function(t.variableName), t.function(t.definition(t.variableName)),</td></tr>
@@ -130,90 +131,90 @@
 <tr class="cov"><td class="ln">113</td><td class="code">    { tag: [t.comment, t.lineComment, t.blockComment, t.docComment],</td></tr>
 <tr class="cov"><td class="ln">114</td><td class="code">      color: c.comment, fontStyle: &#x27;italic&#x27; },</td></tr>
 <tr class="cov"><td class="ln">115</td><td class="code">    { tag: [t.tagName, t.quote], color: c.name },</td></tr>
-<tr class="cov"><td class="ln">116</td><td class="code">  ]);</td></tr>
+<tr class="nil"><td class="ln">116</td><td class="code">  ]);</td></tr>
 <tr class="cov"><td class="ln">117</td><td class="code">  return syntaxHighlighting(style);</td></tr>
-<tr class="cov"><td class="ln">118</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">119</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">120</td><td class="code">// CodeMirror renders a trailing newline as an empty final line — which the</td></tr>
-<tr class="cov"><td class="ln">121</td><td class="code">// static &lt;pre&gt; view doesn&#x27;t show. Strip ONE trailing newline so entering</td></tr>
-<tr class="cov"><td class="ln">122</td><td class="code">// edit mode doesn&#x27;t add a spurious blank line at the bottom of the cell.</td></tr>
+<tr class="nil"><td class="ln">118</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">119</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">120</td><td class="code">// CodeMirror renders a trailing newline as an empty final line — which the</td></tr>
+<tr class="nil"><td class="ln">121</td><td class="code">// static &lt;pre&gt; view doesn&#x27;t show. Strip ONE trailing newline so entering</td></tr>
+<tr class="nil"><td class="ln">122</td><td class="code">// edit mode doesn&#x27;t add a spurious blank line at the bottom of the cell.</td></tr>
 <tr class="cov"><td class="ln">123</td><td class="code">function editorDoc(value: string): string {</td></tr>
-<tr class="cov"><td class="ln">124</td><td class="code">  return value.endsWith(&#x27;\n&#x27;) ? value.slice(0, -1) : value;</td></tr>
-<tr class="cov"><td class="ln">125</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">126</td><td class="code">&nbsp;</td></tr>
+<tr class="part"><td class="ln">124</td><td class="code">  return value.endsWith(&#x27;\n&#x27;) ? value.slice(0, -1) : value;</td></tr>
+<tr class="nil"><td class="ln">125</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">126</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">127</td><td class="code">export function NotebookCellEditor({</td></tr>
-<tr class="cov"><td class="ln">128</td><td class="code">  value, language, fontSize, highlight = true, dark = false,</td></tr>
+<tr class="nil"><td class="ln">128</td><td class="code">  value, language, fontSize, highlight = true, dark = false,</td></tr>
 <tr class="nil"><td class="ln">129</td><td class="code">  showLineNumbers = false, onChange, onRun, onBlur,</td></tr>
 <tr class="nil"><td class="ln">130</td><td class="code">}: NotebookCellEditorProps) {</td></tr>
 <tr class="unc"><td class="ln">131</td><td class="code">  const hostRef = useRef&lt;HTMLDivElement&gt;(null);</td></tr>
-<tr class="unc"><td class="ln">132</td><td class="code">  // Keep the latest callbacks in refs so the CodeMirror instance</td></tr>
+<tr class="nil"><td class="ln">132</td><td class="code">  // Keep the latest callbacks in refs so the CodeMirror instance</td></tr>
 <tr class="nil"><td class="ln">133</td><td class="code">  // (created once) always calls the current handler without rebuild.</td></tr>
-<tr class="cov"><td class="ln">134</td><td class="code">  const onChangeRef = useRef(onChange); onChangeRef.current = onChange;</td></tr>
-<tr class="cov"><td class="ln">135</td><td class="code">  const onRunRef = useRef(onRun); onRunRef.current = onRun;</td></tr>
+<tr class="unc"><td class="ln">134</td><td class="code">  const onChangeRef = useRef(onChange); onChangeRef.current = onChange;</td></tr>
+<tr class="nil"><td class="ln">135</td><td class="code">  const onRunRef = useRef(onRun); onRunRef.current = onRun;</td></tr>
 <tr class="cov"><td class="ln">136</td><td class="code">  const onBlurRef = useRef(onBlur); onBlurRef.current = onBlur;</td></tr>
 <tr class="nil"><td class="ln">137</td><td class="code">  // Editor view, created async. Stored to apply external value</td></tr>
-<tr class="cov"><td class="ln">138</td><td class="code">  // updates + teardown.</td></tr>
-<tr class="unc"><td class="ln">139</td><td class="code">  const viewRef = useRef&lt;import(&#x27;@codemirror/view&#x27;).EditorView | null&gt;(null);</td></tr>
-<tr class="cov"><td class="ln">140</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">138</td><td class="code">  // updates + teardown.</td></tr>
+<tr class="nil"><td class="ln">139</td><td class="code">  const viewRef = useRef&lt;import(&#x27;@codemirror/view&#x27;).EditorView | null&gt;(null);</td></tr>
+<tr class="nil"><td class="ln">140</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">141</td><td class="code">  useEffect(() =&gt; {</td></tr>
-<tr class="unc"><td class="ln">142</td><td class="code">    let cancelled = false;</td></tr>
-<tr class="unc"><td class="ln">143</td><td class="code">    let view: import(&#x27;@codemirror/view&#x27;).EditorView | null = null;</td></tr>
-<tr class="cov"><td class="ln">144</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">142</td><td class="code">    let cancelled = false;</td></tr>
+<tr class="nil"><td class="ln">143</td><td class="code">    let view: import(&#x27;@codemirror/view&#x27;).EditorView | null = null;</td></tr>
+<tr class="nil"><td class="ln">144</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">145</td><td class="code">    (async () =&gt; {</td></tr>
-<tr class="unc"><td class="ln">146</td><td class="code">      const cm = await loadCM();</td></tr>
-<tr class="unc"><td class="ln">147</td><td class="code">      const langExt = await languageExtension(language);</td></tr>
-<tr class="unc"><td class="ln">148</td><td class="code">      const hlExt = highlight ? await highlightExtension(dark) : null;</td></tr>
-<tr class="unc"><td class="ln">149</td><td class="code">      if (cancelled || !hostRef.current) return;</td></tr>
+<tr class="nil"><td class="ln">146</td><td class="code">      const cm = await loadCM();</td></tr>
+<tr class="nil"><td class="ln">147</td><td class="code">      const langExt = await languageExtension(language);</td></tr>
+<tr class="nil"><td class="ln">148</td><td class="code">      const hlExt = highlight ? await highlightExtension(dark) : null;</td></tr>
+<tr class="nil"><td class="ln">149</td><td class="code">      if (cancelled || !hostRef.current) return;</td></tr>
 <tr class="nil"><td class="ln">150</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">151</td><td class="code">      const { EditorView, keymap, lineNumbers } = cm;</td></tr>
-<tr class="unc"><td class="ln">152</td><td class="code">      const { EditorState } = cm.state;</td></tr>
-<tr class="unc"><td class="ln">153</td><td class="code">      const { defaultKeymap, history, historyKeymap, indentWithTab } = cm.commands;</td></tr>
+<tr class="nil"><td class="ln">151</td><td class="code">      const { EditorView, keymap, lineNumbers } = cm;</td></tr>
+<tr class="nil"><td class="ln">152</td><td class="code">      const { EditorState } = cm.state;</td></tr>
+<tr class="nil"><td class="ln">153</td><td class="code">      const { defaultKeymap, history, historyKeymap, indentWithTab } = cm.commands;</td></tr>
 <tr class="nil"><td class="ln">154</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">155</td><td class="code">      const runKeymap = keymap.of([{</td></tr>
+<tr class="nil"><td class="ln">155</td><td class="code">      const runKeymap = keymap.of([{</td></tr>
 <tr class="nil"><td class="ln">156</td><td class="code">        key: &#x27;Shift-Enter&#x27;,</td></tr>
-<tr class="cov"><td class="ln">157</td><td class="code">        run: () =&gt; { onRunRef.current(); return true; },</td></tr>
+<tr class="nil"><td class="ln">157</td><td class="code">        run: () =&gt; { onRunRef.current(); return true; },</td></tr>
 <tr class="nil"><td class="ln">158</td><td class="code">      }]);</td></tr>
 <tr class="nil"><td class="ln">159</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">160</td><td class="code">      const updateListener = EditorView.updateListener.of((u) =&gt; {</td></tr>
-<tr class="unc"><td class="ln">161</td><td class="code">        if (u.docChanged) onChangeRef.current(u.state.doc.toString());</td></tr>
+<tr class="nil"><td class="ln">160</td><td class="code">      const updateListener = EditorView.updateListener.of((u) =&gt; {</td></tr>
+<tr class="nil"><td class="ln">161</td><td class="code">        if (u.docChanged) onChangeRef.current(u.state.doc.toString());</td></tr>
 <tr class="nil"><td class="ln">162</td><td class="code">      });</td></tr>
-<tr class="unc"><td class="ln">163</td><td class="code">      const blurListener = EditorView.domEventHandlers({</td></tr>
-<tr class="cov"><td class="ln">164</td><td class="code">        blur: () =&gt; { onBlurRef.current?.(); return false; },</td></tr>
+<tr class="nil"><td class="ln">163</td><td class="code">      const blurListener = EditorView.domEventHandlers({</td></tr>
+<tr class="nil"><td class="ln">164</td><td class="code">        blur: () =&gt; { onBlurRef.current?.(); return false; },</td></tr>
 <tr class="nil"><td class="ln">165</td><td class="code">      });</td></tr>
 <tr class="nil"><td class="ln">166</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">167</td><td class="code">      // Font size matches the cell&#x27;s code size so the editor doesn&#x27;t</td></tr>
-<tr class="cov"><td class="ln">168</td><td class="code">      // jump when switching between static + editing. Colors come from</td></tr>
+<tr class="nil"><td class="ln">168</td><td class="code">      // jump when switching between static + editing. Colors come from</td></tr>
 <tr class="nil"><td class="ln">169</td><td class="code">      // the notebook&#x27;s theme CSS variables (set on .nb-frame) so the</td></tr>
 <tr class="nil"><td class="ln">170</td><td class="code">      // editor integrates with light/dark/custom slide themes instead</td></tr>
 <tr class="nil"><td class="ln">171</td><td class="code">      // of CodeMirror&#x27;s default black-on-white.</td></tr>
 <tr class="nil"><td class="ln">172</td><td class="code">      // Base text color: when highlighting, match the static .hljs base</td></tr>
 <tr class="nil"><td class="ln">173</td><td class="code">      // (GitHub Light/Dark) so plain identifiers don&#x27;t shift on edit;</td></tr>
 <tr class="nil"><td class="ln">174</td><td class="code">      // otherwise follow the slide theme&#x27;s foreground.</td></tr>
-<tr class="unc"><td class="ln">175</td><td class="code">      const baseColor = highlight ? (dark ? &#x27;#c9d1d9&#x27; : &#x27;#24292e&#x27;) : &#x27;var(--nb-fg, #111827)&#x27;;</td></tr>
-<tr class="cov"><td class="ln">176</td><td class="code">      const theme = EditorView.theme({</td></tr>
-<tr class="cov"><td class="ln">177</td><td class="code">        &#x27;&amp;&#x27;: {</td></tr>
+<tr class="cov"><td class="ln">175</td><td class="code">      const baseColor = highlight ? (dark ? &#x27;#c9d1d9&#x27; : &#x27;#24292e&#x27;) : &#x27;var(--nb-fg, #111827)&#x27;;</td></tr>
+<tr class="unc"><td class="ln">176</td><td class="code">      const theme = EditorView.theme({</td></tr>
+<tr class="nil"><td class="ln">177</td><td class="code">        &#x27;&amp;&#x27;: {</td></tr>
 <tr class="cov"><td class="ln">178</td><td class="code">          fontSize: `${fontSize}px`,</td></tr>
 <tr class="cov"><td class="ln">179</td><td class="code">          backgroundColor: &#x27;transparent&#x27;,</td></tr>
 <tr class="cov"><td class="ln">180</td><td class="code">          color: baseColor,</td></tr>
 <tr class="nil"><td class="ln">181</td><td class="code">        },</td></tr>
-<tr class="nil"><td class="ln">182</td><td class="code">        &#x27;.cm-content&#x27;: {</td></tr>
-<tr class="nil"><td class="ln">183</td><td class="code">          fontFamily: &#x27;var(--nb-mono-family, ui-monospace, Menlo, monospace)&#x27;,</td></tr>
+<tr class="cov"><td class="ln">182</td><td class="code">        &#x27;.cm-content&#x27;: {</td></tr>
+<tr class="cov"><td class="ln">183</td><td class="code">          fontFamily: &#x27;var(--nb-mono-family, ui-monospace, Menlo, monospace)&#x27;,</td></tr>
 <tr class="cov"><td class="ln">184</td><td class="code">          caretColor: &#x27;var(--nb-fg, #111827)&#x27;,</td></tr>
 <tr class="nil"><td class="ln">185</td><td class="code">        },</td></tr>
-<tr class="cov"><td class="ln">186</td><td class="code">        &#x27;.cm-cursor, .cm-dropCursor&#x27;: { borderLeftColor: &#x27;var(--nb-fg, #111827)&#x27; },</td></tr>
+<tr class="nil"><td class="ln">186</td><td class="code">        &#x27;.cm-cursor, .cm-dropCursor&#x27;: { borderLeftColor: &#x27;var(--nb-fg, #111827)&#x27; },</td></tr>
 <tr class="unc"><td class="ln">187</td><td class="code">        &#x27;.cm-gutters&#x27;: {</td></tr>
 <tr class="unc"><td class="ln">188</td><td class="code">          backgroundColor: &#x27;transparent&#x27;, border: &#x27;none&#x27;,</td></tr>
 <tr class="unc"><td class="ln">189</td><td class="code">          color: &#x27;var(--nb-muted, #cbd5e1)&#x27;,</td></tr>
 <tr class="nil"><td class="ln">190</td><td class="code">        },</td></tr>
 <tr class="nil"><td class="ln">191</td><td class="code">        // Line numbers: smaller + subtle than the code (matches the static</td></tr>
-<tr class="cov"><td class="ln">192</td><td class="code">        // gutter). CM aligns gutter elements per-line regardless of font.</td></tr>
+<tr class="nil"><td class="ln">192</td><td class="code">        // gutter). CM aligns gutter elements per-line regardless of font.</td></tr>
 <tr class="cov"><td class="ln">193</td><td class="code">        &#x27;.cm-lineNumbers .cm-gutterElement&#x27;: { fontSize: &#x27;0.72em&#x27;, opacity: &#x27;0.7&#x27; },</td></tr>
 <tr class="cov"><td class="ln">194</td><td class="code">        &#x27;.cm-activeLine, .cm-activeLineGutter&#x27;: { backgroundColor: &#x27;transparent&#x27; },</td></tr>
 <tr class="cov"><td class="ln">195</td><td class="code">        &#x27;&amp;.cm-focused&#x27;: { outline: &#x27;none&#x27; },</td></tr>
 <tr class="cov"><td class="ln">196</td><td class="code">        &#x27;.cm-selectionBackground, ::selection&#x27;: { backgroundColor: &#x27;var(--nb-code-bg, rgba(0,0,0,0.08))&#x27; },</td></tr>
-<tr class="cov"><td class="ln">197</td><td class="code">      });</td></tr>
-<tr class="unc"><td class="ln">198</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">199</td><td class="code">      const extensions = [</td></tr>
+<tr class="nil"><td class="ln">197</td><td class="code">      });</td></tr>
+<tr class="nil"><td class="ln">198</td><td class="code">&nbsp;</td></tr>
+<tr class="part"><td class="ln">199</td><td class="code">      const extensions = [</td></tr>
 <tr class="nil"><td class="ln">200</td><td class="code">        history(),</td></tr>
 <tr class="cov"><td class="ln">201</td><td class="code">        keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),</td></tr>
 <tr class="nil"><td class="ln">202</td><td class="code">        runKeymap,</td></tr>
@@ -224,22 +225,22 @@
 <tr class="nil"><td class="ln">207</td><td class="code">      // With line numbers on, behave like a code editor: no wrap, gutter,</td></tr>
 <tr class="nil"><td class="ln">208</td><td class="code">      // horizontal scroll (consistent with the static gutter view). Without</td></tr>
 <tr class="nil"><td class="ln">209</td><td class="code">      // them, wrap long lines so code stays readable on a slide.</td></tr>
-<tr class="unc"><td class="ln">210</td><td class="code">      if (showLineNumbers) extensions.unshift(lineNumbers());</td></tr>
-<tr class="unc"><td class="ln">211</td><td class="code">      else extensions.push(EditorView.lineWrapping);</td></tr>
-<tr class="unc"><td class="ln">212</td><td class="code">      if (langExt) extensions.push(langExt as never);</td></tr>
-<tr class="unc"><td class="ln">213</td><td class="code">      if (hlExt) extensions.push(hlExt as never);</td></tr>
+<tr class="nil"><td class="ln">210</td><td class="code">      if (showLineNumbers) extensions.unshift(lineNumbers());</td></tr>
+<tr class="nil"><td class="ln">211</td><td class="code">      else extensions.push(EditorView.lineWrapping);</td></tr>
+<tr class="nil"><td class="ln">212</td><td class="code">      if (langExt) extensions.push(langExt as never);</td></tr>
+<tr class="nil"><td class="ln">213</td><td class="code">      if (hlExt) extensions.push(hlExt as never);</td></tr>
 <tr class="nil"><td class="ln">214</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">215</td><td class="code">      view = new EditorView({</td></tr>
+<tr class="nil"><td class="ln">215</td><td class="code">      view = new EditorView({</td></tr>
 <tr class="nil"><td class="ln">216</td><td class="code">        state: EditorState.create({ doc: editorDoc(value), extensions }),</td></tr>
 <tr class="nil"><td class="ln">217</td><td class="code">        parent: hostRef.current,</td></tr>
 <tr class="nil"><td class="ln">218</td><td class="code">      });</td></tr>
-<tr class="unc"><td class="ln">219</td><td class="code">      viewRef.current = view;</td></tr>
+<tr class="nil"><td class="ln">219</td><td class="code">      viewRef.current = view;</td></tr>
 <tr class="nil"><td class="ln">220</td><td class="code">    })();</td></tr>
 <tr class="nil"><td class="ln">221</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">222</td><td class="code">    return () =&gt; {</td></tr>
-<tr class="unc"><td class="ln">223</td><td class="code">      cancelled = true;</td></tr>
-<tr class="unc"><td class="ln">224</td><td class="code">      view?.destroy();</td></tr>
-<tr class="unc"><td class="ln">225</td><td class="code">      viewRef.current = null;</td></tr>
+<tr class="nil"><td class="ln">222</td><td class="code">    return () =&gt; {</td></tr>
+<tr class="nil"><td class="ln">223</td><td class="code">      cancelled = true;</td></tr>
+<tr class="nil"><td class="ln">224</td><td class="code">      view?.destroy();</td></tr>
+<tr class="nil"><td class="ln">225</td><td class="code">      viewRef.current = null;</td></tr>
 <tr class="nil"><td class="ln">226</td><td class="code">    };</td></tr>
 <tr class="nil"><td class="ln">227</td><td class="code">    // Rebuild when language / fontSize / highlight / line-number options</td></tr>
 <tr class="nil"><td class="ln">228</td><td class="code">    // change — value updates are applied imperatively below to avoid losing</td></tr>
@@ -250,16 +251,16 @@
 <tr class="nil"><td class="ln">233</td><td class="code">  // Apply external value changes (e.g. revert, file-watcher reload)</td></tr>
 <tr class="nil"><td class="ln">234</td><td class="code">  // without rebuilding the editor — only when they differ from the</td></tr>
 <tr class="nil"><td class="ln">235</td><td class="code">  // current doc so user typing isn&#x27;t clobbered.</td></tr>
-<tr class="unc"><td class="ln">236</td><td class="code">  useEffect(() =&gt; {</td></tr>
-<tr class="unc"><td class="ln">237</td><td class="code">    const view = viewRef.current;</td></tr>
-<tr class="unc"><td class="ln">238</td><td class="code">    if (!view) return;</td></tr>
-<tr class="unc"><td class="ln">239</td><td class="code">    const next = editorDoc(value);</td></tr>
-<tr class="unc"><td class="ln">240</td><td class="code">    const current = view.state.doc.toString();</td></tr>
-<tr class="unc"><td class="ln">241</td><td class="code">    if (current !== next) {</td></tr>
-<tr class="unc"><td class="ln">242</td><td class="code">      view.dispatch({ changes: { from: 0, to: current.length, insert: next } });</td></tr>
+<tr class="nil"><td class="ln">236</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">237</td><td class="code">    const view = viewRef.current;</td></tr>
+<tr class="nil"><td class="ln">238</td><td class="code">    if (!view) return;</td></tr>
+<tr class="nil"><td class="ln">239</td><td class="code">    const next = editorDoc(value);</td></tr>
+<tr class="nil"><td class="ln">240</td><td class="code">    const current = view.state.doc.toString();</td></tr>
+<tr class="nil"><td class="ln">241</td><td class="code">    if (current !== next) {</td></tr>
+<tr class="nil"><td class="ln">242</td><td class="code">      view.dispatch({ changes: { from: 0, to: current.length, insert: next } });</td></tr>
 <tr class="nil"><td class="ln">243</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">244</td><td class="code">  }, [value]);</td></tr>
 <tr class="nil"><td class="ln">245</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">246</td><td class="code">  return &lt;div ref={hostRef} className=&quot;nb-cell-editor&quot; /&gt;;</td></tr>
+<tr class="nil"><td class="ln">246</td><td class="code">  return &lt;div ref={hostRef} className=&quot;nb-cell-editor&quot; /&gt;;</td></tr>
 <tr class="nil"><td class="ln">247</td><td class="code">}</td></tr></table>
 </body></html>

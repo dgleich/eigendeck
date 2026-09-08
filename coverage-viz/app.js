@@ -53,7 +53,7 @@ function drawTreemap(){
     if(d.w<0.5||d.h<0.5) continue;
     var a=document.createElement('a');
     a.href=d.href; a.className='cell';
-    a.title=d.p+'\n'+(d.cov*100).toFixed(0)+'% covered · '+d.unc+' uncovered · '+d.v+' exec lines';
+    a.title=d.p+'\n'+(d.cov*100).toFixed(0)+'% covered · '+d.unc+' uncovered · '+d.v+' units';
     a.style.cssText='left:'+d.x+'px;top:'+d.y+'px;width:'+d.w+'px;height:'+d.h+'px;background:'+colorFor(d.cov);
     if(d.w>46&&d.h>16){ var s=document.createElement('span'); s.textContent=d.p.split('/').pop(); a.appendChild(s); }
     el.appendChild(a);

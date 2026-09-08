@@ -6,12 +6,13 @@
   <h1>src/lib/htmlDropRoute.ts </h1>
   <div class="stats">
     <span class="stat"><b>100%</b> covered</span>
-    <span class="stat">8/8 executable</span>
+    <span class="stat">9/9 statements</span>
     <span class="stat unc-txt">0 uncovered</span>
     <span class="stat">41 raw lines</span>
     <span class="stat">0.10% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:19.512%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:80.488%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:100.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:0.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__lib__assetTypes_mjs.html">assetTypes.mjs</a> <a href="src__lib__demoPieces_ts.html">demoPieces.ts</a> <a href="src__lib__htmlSnippet_ts.html">htmlSnippet.ts</a></div>
   <div class="links"><span>imported by:</span> <a href="src__components__SlideEditor_tsx.html">SlideEditor.tsx</a></div>
 </header>
@@ -45,9 +46,9 @@
 <tr class="nil"><td class="ln">28</td><td class="code"> * (the piece-coordination transport) — matching the original insertion logic.</td></tr>
 <tr class="nil"><td class="ln">29</td><td class="code"> */</td></tr>
 <tr class="nil"><td class="ln">30</td><td class="code">export function classifyDroppedHtml(html: string): DroppedHtmlRoute {</td></tr>
-<tr class="cov"><td class="ln">31</td><td class="code">  if (isEigendeckDemo(html).ok) {</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">  if (isEigendeckDemo(html).ok) {</td></tr>
 <tr class="cov"><td class="ln">32</td><td class="code">    const pieces = extractDemoPieceNames(html);</td></tr>
-<tr class="cov"><td class="ln">33</td><td class="code">    if (pieces.length &gt; 0 &amp;&amp; html.includes(&#x27;BroadcastChannel&#x27;)) {</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">    if (pieces.length &gt; 0 &amp;&amp; html.includes(&#x27;BroadcastChannel&#x27;)) {</td></tr>
 <tr class="cov"><td class="ln">34</td><td class="code">      return { kind: &#x27;demo-pieces&#x27;, pieces };</td></tr>
 <tr class="nil"><td class="ln">35</td><td class="code">    }</td></tr>
 <tr class="cov"><td class="ln">36</td><td class="code">    return { kind: &#x27;demo&#x27; };</td></tr>

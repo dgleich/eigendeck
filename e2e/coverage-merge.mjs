@@ -35,6 +35,10 @@ const ctx = createContext({ coverageMap: map, dir: OUT });
 reports.create('text-summary').execute(ctx);
 reports.create('lcov').execute(ctx);
 reports.create('html').execute(ctx);
+// Emit the merged Istanbul JSON (statementMap/branchMap + counts) so downstream
+// tools (e.g. scripts/gen_coverage_viz.py) can color by statement, not by the
+// lossy lcov line projection that smears covered statements onto comment lines.
+reports.create('json').execute(ctx);
 
 const s = map.getCoverageSummary();
 console.log(`\nmerged ${n} e2e page map(s)${foldedVitest ? ' + vitest' : ''} over ${map.files().length} files`);

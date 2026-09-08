@@ -6,12 +6,13 @@
   <h1>src-tauri/src/pasteboard.rs </h1>
   <div class="stats">
     <span class="stat"><b>0%</b> covered</span>
-    <span class="stat">0/19 executable</span>
-    <span class="stat unc-txt">19 uncovered</span>
+    <span class="stat">0/14 line</span>
+    <span class="stat unc-txt">14 uncovered</span>
     <span class="stat">244 raw lines</span>
     <span class="stat">0.57% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:0.000%"></span><span class="seg unc" style="width:7.787%"></span><span class="seg nil" style="width:92.213%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:0.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:100.000%"></span></span>
+  <div class="metricnote">llvm-cov <b>line</b> coverage (region-precise). A red <code>)?;</code> = the <code>?</code> error path was never taken.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src-tauri__src__lib_rs.html">lib.rs</a></div>
 </header>
@@ -50,7 +51,7 @@
 <tr class="nil"><td class="ln">33</td><td class="code">    {</td></tr>
 <tr class="unc"><td class="ln">34</td><td class="code">        Ok(Vec::new())</td></tr>
 <tr class="nil"><td class="ln">35</td><td class="code">    }</td></tr>
-<tr class="unc"><td class="ln">36</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">37</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">38</td><td class="code">/// Same as pasteboard_list_types but reads the drag pasteboard (the</td></tr>
 <tr class="nil"><td class="ln">39</td><td class="code">/// in-flight payload from a cross-app drag, e.g. dragging a shape out</td></tr>
@@ -74,7 +75,7 @@
 <tr class="nil"><td class="ln">57</td><td class="code">    {</td></tr>
 <tr class="unc"><td class="ln">58</td><td class="code">        Ok(Vec::new())</td></tr>
 <tr class="nil"><td class="ln">59</td><td class="code">    }</td></tr>
-<tr class="unc"><td class="ln">60</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">61</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">62</td><td class="code">/// Read raw bytes for a specific UTI from the drag pasteboard.</td></tr>
 <tr class="nil"><td class="ln">63</td><td class="code">#[tauri::command]</td></tr>
@@ -93,7 +94,7 @@
 <tr class="unc"><td class="ln">76</td><td class="code">        let _ = uti;</td></tr>
 <tr class="unc"><td class="ln">77</td><td class="code">        Ok(None)</td></tr>
 <tr class="nil"><td class="ln">78</td><td class="code">    }</td></tr>
-<tr class="unc"><td class="ln">79</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">79</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">80</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">81</td><td class="code">/// Read the raw bytes for a specific UTI from the general pasteboard.</td></tr>
 <tr class="nil"><td class="ln">82</td><td class="code">/// Returns None if that UTI isn&#x27;t present. Used immediately after</td></tr>
@@ -114,7 +115,7 @@
 <tr class="unc"><td class="ln">97</td><td class="code">        let _ = uti;</td></tr>
 <tr class="unc"><td class="ln">98</td><td class="code">        Ok(None)</td></tr>
 <tr class="nil"><td class="ln">99</td><td class="code">    }</td></tr>
-<tr class="unc"><td class="ln">100</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">100</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">101</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">102</td><td class="code">/// DEBUG: dump every UTI currently on the general pasteboard with a byte length</td></tr>
 <tr class="nil"><td class="ln">103</td><td class="code">/// and a text preview, to BOTH stdout (visible when the app is run from a</td></tr>
@@ -145,7 +146,7 @@
 <tr class="unc"><td class="ln">128</td><td class="code">        println!(&quot;[pasteboard_dump] {msg}&quot;);</td></tr>
 <tr class="unc"><td class="ln">129</td><td class="code">        Ok(msg)</td></tr>
 <tr class="nil"><td class="ln">130</td><td class="code">    }</td></tr>
-<tr class="unc"><td class="ln">131</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">131</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">132</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">133</td><td class="code">// generalPasteboard() in objc2-app-kit 0.3 takes no MainThreadMarker</td></tr>
 <tr class="nil"><td class="ln">134</td><td class="code">// (NSPasteboard read methods are thread-safe per Apple&#x27;s docs). We still</td></tr>

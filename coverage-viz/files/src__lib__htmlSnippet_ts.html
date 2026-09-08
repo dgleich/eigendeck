@@ -6,12 +6,13 @@
   <h1>src/lib/htmlSnippet.ts </h1>
   <div class="stats">
     <span class="stat"><b>100%</b> covered</span>
-    <span class="stat">21/21 executable</span>
+    <span class="stat">22/22 statements</span>
     <span class="stat unc-txt">0 uncovered</span>
     <span class="stat">73 raw lines</span>
     <span class="stat">0.17% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:28.767%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:71.233%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:100.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:0.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__lib__htmlVars_mjs.html">htmlVars.mjs</a></div>
   <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__lib__htmlDropRoute_ts.html">htmlDropRoute.ts</a></div>
 </header>
@@ -43,11 +44,11 @@
 <tr class="nil"><td class="ln">26</td><td class="code">// A remote resource reference the sandbox CSP would block (http/https/protocol-</td></tr>
 <tr class="nil"><td class="ln">27</td><td class="code">// relative) in a load context: src / srcset / CSS url() / @import / &lt;link href&gt;.</td></tr>
 <tr class="cov"><td class="ln">28</td><td class="code">const REMOTE_PATTERNS: RegExp[] = [</td></tr>
-<tr class="nil"><td class="ln">29</td><td class="code">  /\bsrc\s*=\s*[&quot;&#x27;]?\s*(?:https?:)?\/\//i,</td></tr>
-<tr class="nil"><td class="ln">30</td><td class="code">  /\bsrcset\s*=\s*[&quot;&#x27;]?\s*(?:https?:)?\/\//i,</td></tr>
-<tr class="nil"><td class="ln">31</td><td class="code">  /url\(\s*[&quot;&#x27;]?\s*(?:https?:)?\/\//i,</td></tr>
-<tr class="nil"><td class="ln">32</td><td class="code">  /@import\s+(?:url\(\s*)?[&quot;&#x27;]?\s*(?:https?:)?\/\//i,</td></tr>
-<tr class="nil"><td class="ln">33</td><td class="code">  /&lt;link\b[^&gt;]*\bhref\s*=\s*[&quot;&#x27;]?\s*(?:https?:)?\/\//i,</td></tr>
+<tr class="cov"><td class="ln">29</td><td class="code">  /\bsrc\s*=\s*[&quot;&#x27;]?\s*(?:https?:)?\/\//i,</td></tr>
+<tr class="cov"><td class="ln">30</td><td class="code">  /\bsrcset\s*=\s*[&quot;&#x27;]?\s*(?:https?:)?\/\//i,</td></tr>
+<tr class="cov"><td class="ln">31</td><td class="code">  /url\(\s*[&quot;&#x27;]?\s*(?:https?:)?\/\//i,</td></tr>
+<tr class="cov"><td class="ln">32</td><td class="code">  /@import\s+(?:url\(\s*)?[&quot;&#x27;]?\s*(?:https?:)?\/\//i,</td></tr>
+<tr class="cov"><td class="ln">33</td><td class="code">  /&lt;link\b[^&gt;]*\bhref\s*=\s*[&quot;&#x27;]?\s*(?:https?:)?\/\//i,</td></tr>
 <tr class="nil"><td class="ln">34</td><td class="code">];</td></tr>
 <tr class="nil"><td class="ln">35</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">36</td><td class="code">/** Read the interactive flag from the `&lt;!-- eigendeck-html-element … interactive --&gt;`</td></tr>
@@ -62,24 +63,24 @@
 <tr class="cov"><td class="ln">45</td><td class="code">  const html = typeof raw === &#x27;string&#x27; ? raw : &#x27;&#x27;;</td></tr>
 <tr class="cov"><td class="ln">46</td><td class="code">  const trimmed = html.trim();</td></tr>
 <tr class="nil"><td class="ln">47</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">48</td><td class="code">  if (!trimmed) {</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">  if (!trimmed) {</td></tr>
 <tr class="cov"><td class="ln">49</td><td class="code">    problems.push(&#x27;The file is empty.&#x27;);</td></tr>
 <tr class="cov"><td class="ln">50</td><td class="code">    return { ok: false, html, interactive: false, problems };</td></tr>
 <tr class="nil"><td class="ln">51</td><td class="code">  }</td></tr>
-<tr class="cov"><td class="ln">52</td><td class="code">  if (html.length &gt; MAX_BYTES) {</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">  if (html.length &gt; MAX_BYTES) {</td></tr>
 <tr class="cov"><td class="ln">53</td><td class="code">    problems.push(`Too large (${(html.length / 1e6).toFixed(1)} MB, max 2 MB) — snippets should be small; embed a big image as a real image element instead.`);</td></tr>
 <tr class="nil"><td class="ln">54</td><td class="code">  }</td></tr>
 <tr class="nil"><td class="ln">55</td><td class="code">  // Must actually be HTML — at least one element tag.</td></tr>
-<tr class="cov"><td class="ln">56</td><td class="code">  if (!/&lt;([a-z][a-z0-9-]*)\b[^&gt;]*&gt;/i.test(trimmed)) {</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code">  if (!/&lt;([a-z][a-z0-9-]*)\b[^&gt;]*&gt;/i.test(trimmed)) {</td></tr>
 <tr class="cov"><td class="ln">57</td><td class="code">    problems.push(&#x27;This doesn’t look like HTML — no elements were found.&#x27;);</td></tr>
 <tr class="nil"><td class="ln">58</td><td class="code">  }</td></tr>
 <tr class="nil"><td class="ln">59</td><td class="code">  // The variables manifest (`&lt;script type=&quot;application/eigendeck-vars+json&quot;&gt;`, #138)</td></tr>
 <tr class="nil"><td class="ln">60</td><td class="code">  // is a non-executing data island — strip it before the script check so it&#x27;s exempt</td></tr>
 <tr class="nil"><td class="ln">61</td><td class="code">  // while real scripts still trip the gate.</td></tr>
-<tr class="cov"><td class="ln">62</td><td class="code">  if (/&lt;script[\s&gt;/]/i.test(stripVarsManifest(html))) {</td></tr>
+<tr class="nil"><td class="ln">62</td><td class="code">  if (/&lt;script[\s&gt;/]/i.test(stripVarsManifest(html))) {</td></tr>
 <tr class="cov"><td class="ln">63</td><td class="code">    problems.push(&#x27;Contains a &lt;script&gt; — scripts don’t run in the sandbox. Use CSS animation or native form controls instead.&#x27;);</td></tr>
 <tr class="nil"><td class="ln">64</td><td class="code">  }</td></tr>
-<tr class="cov"><td class="ln">65</td><td class="code">  if (/&lt;[a-z][^&gt;]*\son[a-z]+\s*=/i.test(html)) {</td></tr>
+<tr class="nil"><td class="ln">65</td><td class="code">  if (/&lt;[a-z][^&gt;]*\son[a-z]+\s*=/i.test(html)) {</td></tr>
 <tr class="cov"><td class="ln">66</td><td class="code">    problems.push(&#x27;Contains inline event handlers (onclick, onerror, …) — they don’t run in the sandbox.&#x27;);</td></tr>
 <tr class="nil"><td class="ln">67</td><td class="code">  }</td></tr>
 <tr class="cov"><td class="ln">68</td><td class="code">  if (REMOTE_PATTERNS.some((re) =&gt; re.test(html))) {</td></tr>

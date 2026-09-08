@@ -5,13 +5,14 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/trustLedger.mjs </h1>
   <div class="stats">
-    <span class="stat"><b>100%</b> covered</span>
-    <span class="stat">97/97 executable</span>
-    <span class="stat unc-txt">0 uncovered</span>
+    <span class="stat"><b>95%</b> covered</span>
+    <span class="stat">116/122 statements</span>
+    <span class="stat unc-txt">6 uncovered</span>
     <span class="stat">310 raw lines</span>
     <span class="stat">0.73% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:31.290%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:68.710%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:95.082%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:4.918%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src__lib__trustStore_ts.html">trustStore.ts</a></div>
 </header>
@@ -76,11 +77,11 @@
 <tr class="cov"><td class="ln">59</td><td class="code">    const lapsed = now - e.lastOpenMs &gt; TRUST_TTL_MS;</td></tr>
 <tr class="cov"><td class="ln">60</td><td class="code">    const approvals = uniq(Object.values(e.approvals).map((a) =&gt; a.resolved)); // resolved paths (deduped)</td></tr>
 <tr class="cov"><td class="ln">61</td><td class="code">    return {</td></tr>
-<tr class="nil"><td class="ln">62</td><td class="code">      status: lapsed ? &#x27;untrusted-ttl&#x27; : &#x27;trusted&#x27;,</td></tr>
-<tr class="nil"><td class="ln">63</td><td class="code">      approvals,</td></tr>
-<tr class="nil"><td class="ln">64</td><td class="code">      lapsed,</td></tr>
-<tr class="nil"><td class="ln">65</td><td class="code">      trustedAt: e.trustedAt,</td></tr>
-<tr class="nil"><td class="ln">66</td><td class="code">      trustReason: e.trustReason,</td></tr>
+<tr class="cov"><td class="ln">62</td><td class="code">      status: lapsed ? &#x27;untrusted-ttl&#x27; : &#x27;trusted&#x27;,</td></tr>
+<tr class="cov"><td class="ln">63</td><td class="code">      approvals,</td></tr>
+<tr class="cov"><td class="ln">64</td><td class="code">      lapsed,</td></tr>
+<tr class="cov"><td class="ln">65</td><td class="code">      trustedAt: e.trustedAt,</td></tr>
+<tr class="cov"><td class="ln">66</td><td class="code">      trustReason: e.trustReason,</td></tr>
 <tr class="nil"><td class="ln">67</td><td class="code">    };</td></tr>
 <tr class="nil"><td class="ln">68</td><td class="code">  }</td></tr>
 <tr class="nil"><td class="ln">69</td><td class="code">&nbsp;</td></tr>
@@ -89,8 +90,8 @@
 <tr class="nil"><td class="ln">72</td><td class="code">   *  useful in the re-confirm UI, so this returns them regardless of TTL). */</td></tr>
 <tr class="nil"><td class="ln">73</td><td class="code">  approvalDetail(token, resolvedPath) {</td></tr>
 <tr class="cov"><td class="ln">74</td><td class="code">    const e = this.decks.get(token);</td></tr>
-<tr class="cov"><td class="ln">75</td><td class="code">    if (!e || !e.trusted) return null;</td></tr>
-<tr class="cov"><td class="ln">76</td><td class="code">    for (const a of Object.values(e.approvals)) {</td></tr>
+<tr class="part"><td class="ln">75</td><td class="code">    if (!e || !e.trusted) return null;</td></tr>
+<tr class="nil"><td class="ln">76</td><td class="code">    for (const a of Object.values(e.approvals)) {</td></tr>
 <tr class="cov"><td class="ln">77</td><td class="code">      if (a.resolved === resolvedPath) return { at: a.at, reason: a.reason };</td></tr>
 <tr class="nil"><td class="ln">78</td><td class="code">    }</td></tr>
 <tr class="cov"><td class="ln">79</td><td class="code">    return null;</td></tr>
@@ -119,8 +120,8 @@
 <tr class="nil"><td class="ln">102</td><td class="code">   *  deck has none yet, so the choice persists for any deck. Mutating; caller persists. */</td></tr>
 <tr class="nil"><td class="ln">103</td><td class="code">  setInternetBlocked(token, blocked, now) {</td></tr>
 <tr class="cov"><td class="ln">104</td><td class="code">    let e = this.decks.get(token);</td></tr>
-<tr class="cov"><td class="ln">105</td><td class="code">    if (!e) {</td></tr>
-<tr class="cov"><td class="ln">106</td><td class="code">      if (!blocked) return this; // nothing to store</td></tr>
+<tr class="nil"><td class="ln">105</td><td class="code">    if (!e) {</td></tr>
+<tr class="part"><td class="ln">106</td><td class="code">      if (!blocked) return this; // nothing to store</td></tr>
 <tr class="cov"><td class="ln">107</td><td class="code">      e = { trusted: false, trustedAt: 0, trustReason: &#x27;trusted&#x27;, lastOpenMs: now || 0, approvals: {}, seenEligible: [], blockInternet: true };</td></tr>
 <tr class="cov"><td class="ln">108</td><td class="code">      this.decks.set(token, e);</td></tr>
 <tr class="nil"><td class="ln">109</td><td class="code">    } else {</td></tr>
@@ -141,8 +142,8 @@
 <tr class="nil"><td class="ln">124</td><td class="code">   *  entry if the deck has none. Mutating; caller persists. */</td></tr>
 <tr class="nil"><td class="ln">125</td><td class="code">  setDemoBlocked(token, assetId, blocked, now) {</td></tr>
 <tr class="cov"><td class="ln">126</td><td class="code">    let e = this.decks.get(token);</td></tr>
-<tr class="cov"><td class="ln">127</td><td class="code">    if (!e) {</td></tr>
-<tr class="cov"><td class="ln">128</td><td class="code">      if (!blocked) return this; // nothing to store</td></tr>
+<tr class="nil"><td class="ln">127</td><td class="code">    if (!e) {</td></tr>
+<tr class="part"><td class="ln">128</td><td class="code">      if (!blocked) return this; // nothing to store</td></tr>
 <tr class="cov"><td class="ln">129</td><td class="code">      e = { trusted: false, trustedAt: 0, trustReason: &#x27;trusted&#x27;, lastOpenMs: now || 0, approvals: {}, seenEligible: [], blockInternet: false, blockedDemos: [] };</td></tr>
 <tr class="cov"><td class="ln">130</td><td class="code">      this.decks.set(token, e);</td></tr>
 <tr class="nil"><td class="ln">131</td><td class="code">    }</td></tr>
@@ -162,7 +163,7 @@
 <tr class="nil"><td class="ln">145</td><td class="code">    // transition — those are independent of trust and must NOT be reset by trusting.</td></tr>
 <tr class="cov"><td class="ln">146</td><td class="code">    const prev = this.decks.get(token);</td></tr>
 <tr class="cov"><td class="ln">147</td><td class="code">    this.decks.set(token, { trusted: true, trustedAt: now, trustReason: reason, lastOpenMs: now, approvals: {}, seenEligible: [],</td></tr>
-<tr class="nil"><td class="ln">148</td><td class="code">      blockInternet: !!(prev &amp;&amp; prev.blockInternet), blockedDemos: [...((prev &amp;&amp; prev.blockedDemos) || [])] });</td></tr>
+<tr class="cov"><td class="ln">148</td><td class="code">      blockInternet: !!(prev &amp;&amp; prev.blockInternet), blockedDemos: [...((prev &amp;&amp; prev.blockedDemos) || [])] });</td></tr>
 <tr class="cov"><td class="ln">149</td><td class="code">    return this;</td></tr>
 <tr class="nil"><td class="ln">150</td><td class="code">  }</td></tr>
 <tr class="nil"><td class="ln">151</td><td class="code">&nbsp;</td></tr>
@@ -171,14 +172,14 @@
 <tr class="nil"><td class="ln">154</td><td class="code">   *  Replaces any prior approval set. */</td></tr>
 <tr class="nil"><td class="ln">155</td><td class="code">  trust(token, approvals, now) {</td></tr>
 <tr class="cov"><td class="ln">156</td><td class="code">    const stamped = {};</td></tr>
-<tr class="cov"><td class="ln">157</td><td class="code">    for (const [assetId, resolved] of Object.entries(approvals || {})) {</td></tr>
-<tr class="cov"><td class="ln">158</td><td class="code">      if (typeof assetId === &#x27;string&#x27; &amp;&amp; typeof resolved === &#x27;string&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">157</td><td class="code">    for (const [assetId, resolved] of Object.entries(approvals || {})) {</td></tr>
+<tr class="nil"><td class="ln">158</td><td class="code">      if (typeof assetId === &#x27;string&#x27; &amp;&amp; typeof resolved === &#x27;string&#x27;) {</td></tr>
 <tr class="cov"><td class="ln">159</td><td class="code">        stamped[assetId] = { resolved, at: now, reason: &#x27;trusted&#x27; };</td></tr>
 <tr class="nil"><td class="ln">160</td><td class="code">      }</td></tr>
 <tr class="nil"><td class="ln">161</td><td class="code">    }</td></tr>
 <tr class="cov"><td class="ln">162</td><td class="code">    const prev = this.decks.get(token);</td></tr>
 <tr class="cov"><td class="ln">163</td><td class="code">    this.decks.set(token, { trusted: true, trustedAt: now, trustReason: &#x27;trusted&#x27;, lastOpenMs: now, approvals: stamped, seenEligible: [],</td></tr>
-<tr class="nil"><td class="ln">164</td><td class="code">      blockInternet: !!(prev &amp;&amp; prev.blockInternet), blockedDemos: [...((prev &amp;&amp; prev.blockedDemos) || [])] });</td></tr>
+<tr class="cov"><td class="ln">164</td><td class="code">      blockInternet: !!(prev &amp;&amp; prev.blockInternet), blockedDemos: [...((prev &amp;&amp; prev.blockedDemos) || [])] });</td></tr>
 <tr class="cov"><td class="ln">165</td><td class="code">    return this;</td></tr>
 <tr class="nil"><td class="ln">166</td><td class="code">  }</td></tr>
 <tr class="nil"><td class="ln">167</td><td class="code">&nbsp;</td></tr>
@@ -204,7 +205,7 @@
 <tr class="nil"><td class="ln">187</td><td class="code">   *  false) if the deck isn&#x27;t effectively trusted right now. */</td></tr>
 <tr class="nil"><td class="ln">188</td><td class="code">  approve(token, assetId, resolvedPath, reason, now) {</td></tr>
 <tr class="cov"><td class="ln">189</td><td class="code">    if (!this.isTrusted(token, now)) return false;</td></tr>
-<tr class="cov"><td class="ln">190</td><td class="code">    if (typeof assetId !== &#x27;string&#x27; || typeof resolvedPath !== &#x27;string&#x27;) return false;</td></tr>
+<tr class="part"><td class="ln">190</td><td class="code">    if (typeof assetId !== &#x27;string&#x27; || typeof resolvedPath !== &#x27;string&#x27;) return false;</td></tr>
 <tr class="cov"><td class="ln">191</td><td class="code">    this.decks.get(token).approvals[assetId] = { resolved: resolvedPath, at: now, reason: reason || &#x27;approve&#x27; };</td></tr>
 <tr class="cov"><td class="ln">192</td><td class="code">    return true;</td></tr>
 <tr class="nil"><td class="ln">193</td><td class="code">  }</td></tr>
@@ -231,7 +232,7 @@
 <tr class="cov"><td class="ln">214</td><td class="code">    const keep = new Set(keepAssetIds);</td></tr>
 <tr class="cov"><td class="ln">215</td><td class="code">    const e = this.decks.get(token);</td></tr>
 <tr class="cov"><td class="ln">216</td><td class="code">    let removed = 0;</td></tr>
-<tr class="cov"><td class="ln">217</td><td class="code">    for (const id of Object.keys(e.approvals)) {</td></tr>
+<tr class="nil"><td class="ln">217</td><td class="code">    for (const id of Object.keys(e.approvals)) {</td></tr>
 <tr class="cov"><td class="ln">218</td><td class="code">      if (!keep.has(id)) { delete e.approvals[id]; removed++; }</td></tr>
 <tr class="nil"><td class="ln">219</td><td class="code">    }</td></tr>
 <tr class="cov"><td class="ln">220</td><td class="code">    return removed;</td></tr>
@@ -251,7 +252,7 @@
 <tr class="nil"><td class="ln">234</td><td class="code">   *  longer pass the gate is the caller&#x27;s job (it re-checks at read anyway). */</td></tr>
 <tr class="nil"><td class="ln">235</td><td class="code">  reconfirm(token, now) {</td></tr>
 <tr class="cov"><td class="ln">236</td><td class="code">    const e = this.decks.get(token);</td></tr>
-<tr class="cov"><td class="ln">237</td><td class="code">    if (!e) return false;</td></tr>
+<tr class="part"><td class="ln">237</td><td class="code">    if (!e) return false;</td></tr>
 <tr class="cov"><td class="ln">238</td><td class="code">    e.trusted = true;</td></tr>
 <tr class="cov"><td class="ln">239</td><td class="code">    e.lastOpenMs = now;</td></tr>
 <tr class="cov"><td class="ln">240</td><td class="code">    return true;</td></tr>
@@ -269,7 +270,7 @@
 <tr class="nil"><td class="ln">252</td><td class="code">  serialize() {</td></tr>
 <tr class="nil"><td class="ln">253</td><td class="code">    /** @type {Record&lt;string, DeckEntry&gt;} */</td></tr>
 <tr class="cov"><td class="ln">254</td><td class="code">    const out = {};</td></tr>
-<tr class="cov"><td class="ln">255</td><td class="code">    for (const [k, v] of this.decks) {</td></tr>
+<tr class="nil"><td class="ln">255</td><td class="code">    for (const [k, v] of this.decks) {</td></tr>
 <tr class="cov"><td class="ln">256</td><td class="code">      const approvals = {};</td></tr>
 <tr class="cov"><td class="ln">257</td><td class="code">      for (const [id, a] of Object.entries(v.approvals)) approvals[id] = { resolved: a.resolved, at: a.at, reason: a.reason };</td></tr>
 <tr class="cov"><td class="ln">258</td><td class="code">      out[k] = { trusted: v.trusted, trustedAt: v.trustedAt, trustReason: v.trustReason, lastOpenMs: v.lastOpenMs, approvals, seenEligible: [...v.seenEligible], blockInternet: !!v.blockInternet, blockedDemos: [...(v.blockedDemos || [])] };</td></tr>
@@ -292,16 +293,16 @@
 <tr class="nil"><td class="ln">275</td><td class="code"> *  resolvedString}` (older shape) → stamped with at:0, reason:&#x27;unknown&#x27;. Junk dropped. */</td></tr>
 <tr class="nil"><td class="ln">276</td><td class="code">function normApprovals(a) {</td></tr>
 <tr class="cov"><td class="ln">277</td><td class="code">  const out = {};</td></tr>
-<tr class="cov"><td class="ln">278</td><td class="code">  if (a &amp;&amp; typeof a === &#x27;object&#x27; &amp;&amp; !Array.isArray(a)) {</td></tr>
-<tr class="cov"><td class="ln">279</td><td class="code">    for (const [k, v] of Object.entries(a)) {</td></tr>
-<tr class="cov"><td class="ln">280</td><td class="code">      if (typeof k !== &#x27;string&#x27;) continue;</td></tr>
-<tr class="cov"><td class="ln">281</td><td class="code">      if (typeof v === &#x27;string&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">278</td><td class="code">  if (a &amp;&amp; typeof a === &#x27;object&#x27; &amp;&amp; !Array.isArray(a)) {</td></tr>
+<tr class="nil"><td class="ln">279</td><td class="code">    for (const [k, v] of Object.entries(a)) {</td></tr>
+<tr class="part"><td class="ln">280</td><td class="code">      if (typeof k !== &#x27;string&#x27;) continue;</td></tr>
+<tr class="nil"><td class="ln">281</td><td class="code">      if (typeof v === &#x27;string&#x27;) {</td></tr>
 <tr class="cov"><td class="ln">282</td><td class="code">        out[k] = { resolved: v, at: 0, reason: &#x27;unknown&#x27; };</td></tr>
-<tr class="cov"><td class="ln">283</td><td class="code">      } else if (v &amp;&amp; typeof v === &#x27;object&#x27; &amp;&amp; typeof v.resolved === &#x27;string&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">283</td><td class="code">      } else if (v &amp;&amp; typeof v === &#x27;object&#x27; &amp;&amp; typeof v.resolved === &#x27;string&#x27;) {</td></tr>
 <tr class="cov"><td class="ln">284</td><td class="code">        out[k] = {</td></tr>
-<tr class="nil"><td class="ln">285</td><td class="code">          resolved: v.resolved,</td></tr>
-<tr class="nil"><td class="ln">286</td><td class="code">          at: Number.isFinite(v.at) ? v.at : 0,</td></tr>
-<tr class="nil"><td class="ln">287</td><td class="code">          reason: typeof v.reason === &#x27;string&#x27; ? v.reason : &#x27;unknown&#x27;,</td></tr>
+<tr class="cov"><td class="ln">285</td><td class="code">          resolved: v.resolved,</td></tr>
+<tr class="cov"><td class="ln">286</td><td class="code">          at: Number.isFinite(v.at) ? v.at : 0,</td></tr>
+<tr class="cov"><td class="ln">287</td><td class="code">          reason: typeof v.reason === &#x27;string&#x27; ? v.reason : &#x27;unknown&#x27;,</td></tr>
 <tr class="nil"><td class="ln">288</td><td class="code">        };</td></tr>
 <tr class="nil"><td class="ln">289</td><td class="code">      }</td></tr>
 <tr class="nil"><td class="ln">290</td><td class="code">    }</td></tr>
@@ -311,18 +312,18 @@
 <tr class="nil"><td class="ln">294</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">295</td><td class="code">function normalizeEntry(v) {</td></tr>
 <tr class="cov"><td class="ln">296</td><td class="code">  return {</td></tr>
-<tr class="nil"><td class="ln">297</td><td class="code">    trusted: !!(v &amp;&amp; v.trusted),</td></tr>
-<tr class="nil"><td class="ln">298</td><td class="code">    trustedAt: v &amp;&amp; Number.isFinite(v.trustedAt) ? v.trustedAt : (v &amp;&amp; Number.isFinite(v.lastOpenMs) ? v.lastOpenMs : 0),</td></tr>
-<tr class="nil"><td class="ln">299</td><td class="code">    trustReason: v &amp;&amp; typeof v.trustReason === &#x27;string&#x27; ? v.trustReason : &#x27;trusted&#x27;,</td></tr>
-<tr class="nil"><td class="ln">300</td><td class="code">    lastOpenMs: v &amp;&amp; Number.isFinite(v.lastOpenMs) ? v.lastOpenMs : 0,</td></tr>
-<tr class="nil"><td class="ln">301</td><td class="code">    approvals: normApprovals(v &amp;&amp; v.approvals),</td></tr>
-<tr class="nil"><td class="ln">302</td><td class="code">    seenEligible: uniq(v &amp;&amp; v.seenEligible),</td></tr>
+<tr class="cov"><td class="ln">297</td><td class="code">    trusted: !!(v &amp;&amp; v.trusted),</td></tr>
+<tr class="cov"><td class="ln">298</td><td class="code">    trustedAt: v &amp;&amp; Number.isFinite(v.trustedAt) ? v.trustedAt : (v &amp;&amp; Number.isFinite(v.lastOpenMs) ? v.lastOpenMs : 0),</td></tr>
+<tr class="cov"><td class="ln">299</td><td class="code">    trustReason: v &amp;&amp; typeof v.trustReason === &#x27;string&#x27; ? v.trustReason : &#x27;trusted&#x27;,</td></tr>
+<tr class="cov"><td class="ln">300</td><td class="code">    lastOpenMs: v &amp;&amp; Number.isFinite(v.lastOpenMs) ? v.lastOpenMs : 0,</td></tr>
+<tr class="cov"><td class="ln">301</td><td class="code">    approvals: normApprovals(v &amp;&amp; v.approvals),</td></tr>
+<tr class="cov"><td class="ln">302</td><td class="code">    seenEligible: uniq(v &amp;&amp; v.seenEligible),</td></tr>
 <tr class="nil"><td class="ln">303</td><td class="code">    // Per-deck: block this deck&#x27;s demos from the internet (independent of trust —</td></tr>
 <tr class="nil"><td class="ln">304</td><td class="code">    // you can block a deck you don&#x27;t otherwise trust). Default false (allowed).</td></tr>
-<tr class="nil"><td class="ln">305</td><td class="code">    blockInternet: !!(v &amp;&amp; v.blockInternet),</td></tr>
+<tr class="cov"><td class="ln">305</td><td class="code">    blockInternet: !!(v &amp;&amp; v.blockInternet),</td></tr>
 <tr class="nil"><td class="ln">306</td><td class="code">    // Per-demo: assetIds of demos in this deck denied internet individually</td></tr>
 <tr class="nil"><td class="ln">307</td><td class="code">    // (layered under the deck + global switches). Default [] (all declared allowed).</td></tr>
-<tr class="nil"><td class="ln">308</td><td class="code">    blockedDemos: uniq(v &amp;&amp; v.blockedDemos),</td></tr>
+<tr class="cov"><td class="ln">308</td><td class="code">    blockedDemos: uniq(v &amp;&amp; v.blockedDemos),</td></tr>
 <tr class="nil"><td class="ln">309</td><td class="code">  };</td></tr>
 <tr class="nil"><td class="ln">310</td><td class="code">}</td></tr></table>
 </body></html>

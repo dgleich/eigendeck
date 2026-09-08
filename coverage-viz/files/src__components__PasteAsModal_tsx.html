@@ -5,19 +5,20 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/components/PasteAsModal.tsx </h1>
   <div class="stats">
-    <span class="stat"><b>62%</b> covered</span>
-    <span class="stat">20/32 executable</span>
-    <span class="stat unc-txt">12 uncovered</span>
+    <span class="stat"><b>96%</b> covered</span>
+    <span class="stat">23/24 statements</span>
+    <span class="stat unc-txt">1 uncovered</span>
     <span class="stat">98 raw lines</span>
     <span class="stat">0.23% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:20.408%"></span><span class="seg unc" style="width:12.245%"></span><span class="seg nil" style="width:67.347%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:95.833%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:4.167%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__lib__pasteAs_ts.html">pasteAs.ts</a></div>
   <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a></div>
 </header>
 <table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// &quot;Paste as…&quot; chooser (docs/copy-and-paste.md Stage 4). Lists the</td></tr>
 <tr class="nil"><td class="ln">2</td><td class="code">// representations actually on the clipboard and lets the user pick one, instead</td></tr>
-<tr class="cov"><td class="ln">3</td><td class="code">// of the automatic paste ladder. In-webview modal (cross-platform + testable);</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// of the automatic paste ladder. In-webview modal (cross-platform + testable);</td></tr>
 <tr class="nil"><td class="ln">4</td><td class="code">// a native popup-menu version is tracked separately.</td></tr>
 <tr class="nil"><td class="ln">5</td><td class="code">import { useEffect, useRef } from &#x27;react&#x27;;</td></tr>
 <tr class="nil"><td class="ln">6</td><td class="code">import type { PasteRep, PasteKind } from &#x27;../lib/pasteAs&#x27;;<a class="jump" href="src__lib__pasteAs_ts.html" title="src/lib/pasteAs.ts">→ pasteAs.ts</a></td></tr>
@@ -26,28 +27,28 @@
 <tr class="nil"><td class="ln">9</td><td class="code">  reps: PasteRep[];</td></tr>
 <tr class="nil"><td class="ln">10</td><td class="code">  onPick: (kind: PasteKind) =&gt; void;</td></tr>
 <tr class="nil"><td class="ln">11</td><td class="code">  onCancel: () =&gt; void;</td></tr>
-<tr class="unc"><td class="ln">12</td><td class="code">}</td></tr>
-<tr class="unc"><td class="ln">13</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">14</td><td class="code">const HINTS: Record&lt;PasteKind, string&gt; = {</td></tr>
-<tr class="nil"><td class="ln">15</td><td class="code">  image: &#x27;Insert the bitmap as an image element&#x27;,</td></tr>
-<tr class="unc"><td class="ln">16</td><td class="code">  svg: &#x27;Insert the vector as an image element&#x27;,</td></tr>
-<tr class="unc"><td class="ln">17</td><td class="code">  pdf: &#x27;Insert the PDF as an image element&#x27;,</td></tr>
-<tr class="unc"><td class="ln">18</td><td class="code">  &#x27;html-image&#x27;: &#x27;Rasterize the HTML to a static image (no network access)&#x27;,</td></tr>
-<tr class="unc"><td class="ln">19</td><td class="code">  html: &#x27;Insert the raw HTML as an HTML element&#x27;,</td></tr>
-<tr class="unc"><td class="ln">20</td><td class="code">  text: &#x27;Insert as an editable text element (adopts the deck style)&#x27;,</td></tr>
-<tr class="unc"><td class="ln">21</td><td class="code">};</td></tr>
+<tr class="cov"><td class="ln">15</td><td class="code">  image: &#x27;Insert the bitmap as an image element&#x27;,</td></tr>
+<tr class="cov"><td class="ln">16</td><td class="code">  svg: &#x27;Insert the vector as an image element&#x27;,</td></tr>
+<tr class="cov"><td class="ln">17</td><td class="code">  pdf: &#x27;Insert the PDF as an image element&#x27;,</td></tr>
+<tr class="cov"><td class="ln">18</td><td class="code">  &#x27;html-image&#x27;: &#x27;Rasterize the HTML to a static image (no network access)&#x27;,</td></tr>
+<tr class="cov"><td class="ln">19</td><td class="code">  html: &#x27;Insert the raw HTML as an HTML element&#x27;,</td></tr>
+<tr class="cov"><td class="ln">20</td><td class="code">  text: &#x27;Insert as an editable text element (adopts the deck style)&#x27;,</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">};</td></tr>
 <tr class="nil"><td class="ln">22</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">23</td><td class="code">export function PasteAsModal({ reps, onPick, onCancel }: Props) {</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">export function PasteAsModal({ reps, onPick, onCancel }: Props) {</td></tr>
 <tr class="cov"><td class="ln">24</td><td class="code">  const firstRef = useRef&lt;HTMLButtonElement&gt;(null);</td></tr>
-<tr class="unc"><td class="ln">25</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">26</td><td class="code">  useEffect(() =&gt; { firstRef.current?.focus(); }, []);</td></tr>
 <tr class="nil"><td class="ln">27</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">28</td><td class="code">  useEffect(() =&gt; {</td></tr>
-<tr class="cov"><td class="ln">29</td><td class="code">    const onKey = (e: KeyboardEvent) =&gt; {</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">    const onKey = (e: KeyboardEvent) =&gt; {</td></tr>
 <tr class="cov"><td class="ln">30</td><td class="code">      if (e.key === &#x27;Escape&#x27;) { e.preventDefault(); onCancel(); return; }</td></tr>
 <tr class="nil"><td class="ln">31</td><td class="code">      // Number keys 1..N pick the nth representation.</td></tr>
 <tr class="cov"><td class="ln">32</td><td class="code">      const n = parseInt(e.key, 10);</td></tr>
-<tr class="cov"><td class="ln">33</td><td class="code">      if (!Number.isNaN(n) &amp;&amp; n &gt;= 1 &amp;&amp; n &lt;= reps.length) {</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">      if (!Number.isNaN(n) &amp;&amp; n &gt;= 1 &amp;&amp; n &lt;= reps.length) {</td></tr>
 <tr class="cov"><td class="ln">34</td><td class="code">        e.preventDefault();</td></tr>
 <tr class="cov"><td class="ln">35</td><td class="code">        onPick(reps[n - 1].kind);</td></tr>
 <tr class="nil"><td class="ln">36</td><td class="code">      }</td></tr>
@@ -56,7 +57,7 @@
 <tr class="cov"><td class="ln">39</td><td class="code">    return () =&gt; window.removeEventListener(&#x27;keydown&#x27;, onKey, true);</td></tr>
 <tr class="nil"><td class="ln">40</td><td class="code">  }, [reps, onPick, onCancel]);</td></tr>
 <tr class="nil"><td class="ln">41</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">42</td><td class="code">  return (</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">  return (</td></tr>
 <tr class="nil"><td class="ln">43</td><td class="code">    &lt;div</td></tr>
 <tr class="nil"><td class="ln">44</td><td class="code">      role=&quot;dialog&quot; aria-modal=&quot;true&quot; aria-label=&quot;Paste as&quot;</td></tr>
 <tr class="nil"><td class="ln">45</td><td class="code">      style={{</td></tr>
@@ -65,8 +66,8 @@
 <tr class="nil"><td class="ln">48</td><td class="code">        display: &#x27;flex&#x27;, alignItems: &#x27;flex-start&#x27;, justifyContent: &#x27;center&#x27;,</td></tr>
 <tr class="nil"><td class="ln">49</td><td class="code">        zIndex: 100000, paddingTop: 60,</td></tr>
 <tr class="nil"><td class="ln">50</td><td class="code">      }}</td></tr>
-<tr class="cov"><td class="ln">51</td><td class="code">      onClick={(e) =&gt; { if (e.target === e.currentTarget) onCancel(); }}</td></tr>
-<tr class="unc"><td class="ln">52</td><td class="code">    &gt;</td></tr>
+<tr class="part"><td class="ln">51</td><td class="code">      onClick={(e) =&gt; { if (e.target === e.currentTarget) onCancel(); }}</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">    &gt;</td></tr>
 <tr class="nil"><td class="ln">53</td><td class="code">      &lt;div style={{</td></tr>
 <tr class="nil"><td class="ln">54</td><td class="code">        background: &#x27;#fff&#x27;, borderRadius: 8, boxShadow: &#x27;0 12px 48px rgba(0,0,0,0.25)&#x27;,</td></tr>
 <tr class="nil"><td class="ln">55</td><td class="code">        padding: &#x27;20px 22px 16px&#x27;, width: 420,</td></tr>
@@ -78,11 +79,11 @@
 <tr class="nil"><td class="ln">61</td><td class="code">        &lt;/div&gt;</td></tr>
 <tr class="nil"><td class="ln">62</td><td class="code">        &lt;div style={{ display: &#x27;flex&#x27;, flexDirection: &#x27;column&#x27;, gap: 6, marginBottom: 14 }}&gt;</td></tr>
 <tr class="nil"><td class="ln">63</td><td class="code">          {reps.map((r, i) =&gt; (</td></tr>
-<tr class="cov"><td class="ln">64</td><td class="code">            &lt;button</td></tr>
+<tr class="nil"><td class="ln">64</td><td class="code">            &lt;button</td></tr>
 <tr class="nil"><td class="ln">65</td><td class="code">              key={r.kind}</td></tr>
 <tr class="nil"><td class="ln">66</td><td class="code">              ref={i === 0 ? firstRef : undefined}</td></tr>
 <tr class="cov"><td class="ln">67</td><td class="code">              onClick={() =&gt; onPick(r.kind)}</td></tr>
-<tr class="unc"><td class="ln">68</td><td class="code">              style={repButton}</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code">              style={repButton}</td></tr>
 <tr class="nil"><td class="ln">69</td><td class="code">            &gt;</td></tr>
 <tr class="nil"><td class="ln">70</td><td class="code">              &lt;span style={{ display: &#x27;flex&#x27;, alignItems: &#x27;center&#x27;, gap: 10 }}&gt;</td></tr>
 <tr class="nil"><td class="ln">71</td><td class="code">                &lt;span style={{</td></tr>
@@ -104,13 +105,13 @@
 <tr class="nil"><td class="ln">87</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">88</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">89</td><td class="code">const repButton: React.CSSProperties = {</td></tr>
-<tr class="nil"><td class="ln">90</td><td class="code">  display: &#x27;flex&#x27;, flexDirection: &#x27;column&#x27;, alignItems: &#x27;flex-start&#x27;, gap: 3,</td></tr>
-<tr class="nil"><td class="ln">91</td><td class="code">  padding: &#x27;9px 12px&#x27;, border: &#x27;1px solid #e5e7eb&#x27;, borderRadius: 6, background: &#x27;#fff&#x27;,</td></tr>
-<tr class="nil"><td class="ln">92</td><td class="code">  cursor: &#x27;pointer&#x27;, textAlign: &#x27;left&#x27;, font: &#x27;inherit&#x27;, width: &#x27;100%&#x27;,</td></tr>
+<tr class="cov"><td class="ln">90</td><td class="code">  display: &#x27;flex&#x27;, flexDirection: &#x27;column&#x27;, alignItems: &#x27;flex-start&#x27;, gap: 3,</td></tr>
+<tr class="cov"><td class="ln">91</td><td class="code">  padding: &#x27;9px 12px&#x27;, border: &#x27;1px solid #e5e7eb&#x27;, borderRadius: 6, background: &#x27;#fff&#x27;,</td></tr>
+<tr class="cov"><td class="ln">92</td><td class="code">  cursor: &#x27;pointer&#x27;, textAlign: &#x27;left&#x27;, font: &#x27;inherit&#x27;, width: &#x27;100%&#x27;,</td></tr>
 <tr class="nil"><td class="ln">93</td><td class="code">};</td></tr>
 <tr class="nil"><td class="ln">94</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">95</td><td class="code">const cancelButton: React.CSSProperties = {</td></tr>
 <tr class="cov"><td class="ln">96</td><td class="code">  padding: &#x27;6px 14px&#x27;, border: &#x27;1px solid #d1d5db&#x27;, borderRadius: 5, background: &#x27;#fff&#x27;,</td></tr>
-<tr class="nil"><td class="ln">97</td><td class="code">  fontSize: 13, cursor: &#x27;pointer&#x27;, minWidth: 80, font: &#x27;inherit&#x27;,</td></tr>
+<tr class="cov"><td class="ln">97</td><td class="code">  fontSize: 13, cursor: &#x27;pointer&#x27;, minWidth: 80, font: &#x27;inherit&#x27;,</td></tr>
 <tr class="nil"><td class="ln">98</td><td class="code">};</td></tr></table>
 </body></html>

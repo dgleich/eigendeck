@@ -5,45 +5,46 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/collisionDialog.ts </h1>
   <div class="stats">
-    <span class="stat"><b>37%</b> covered</span>
-    <span class="stat">10/27 executable</span>
-    <span class="stat unc-txt">17 uncovered</span>
+    <span class="stat"><b>47%</b> covered</span>
+    <span class="stat">7/15 statements</span>
+    <span class="stat unc-txt">8 uncovered</span>
     <span class="stat">85 raw lines</span>
     <span class="stat">0.20% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:11.765%"></span><span class="seg unc" style="width:20.000%"></span><span class="seg nil" style="width:68.235%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:46.667%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:53.333%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src__components__CollisionDialog_tsx.html">CollisionDialog.tsx</a> <a href="src__lib__assetInsert_ts.html">assetInsert.ts</a></div>
 </header>
-<table class="src"><tr class="cov"><td class="ln">1</td><td class="code">// Module-level subscribe pattern for the &quot;asset has silently changed</td></tr>
-<tr class="cov"><td class="ln">2</td><td class="code">// since first add&quot; awareness dialog.</td></tr>
-<tr class="cov"><td class="ln">3</td><td class="code">//</td></tr>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Module-level subscribe pattern for the &quot;asset has silently changed</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// since first add&quot; awareness dialog.</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">//</td></tr>
 <tr class="nil"><td class="ln">4</td><td class="code">// Fired when a user re-inserts an asset (drag-drop or file picker) whose</td></tr>
-<tr class="unc"><td class="ln">5</td><td class="code">// path already exists in the project AND the existing asset&#x27;s current</td></tr>
-<tr class="unc"><td class="ln">6</td><td class="code">// bytes differ from its ORIGINAL bytes (oldest version in history). The</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// path already exists in the project AND the existing asset&#x27;s current</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">// bytes differ from its ORIGINAL bytes (oldest version in history). The</td></tr>
 <tr class="nil"><td class="ln">7</td><td class="code">// user-visible surprise the dialog surfaces: file-watching silently</td></tr>
 <tr class="nil"><td class="ln">8</td><td class="code">// updated their existing copy when the source file changed on disk;</td></tr>
 <tr class="nil"><td class="ln">9</td><td class="code">// they may not have noticed.</td></tr>
-<tr class="unc"><td class="ln">10</td><td class="code">//</td></tr>
-<tr class="unc"><td class="ln">11</td><td class="code">// User picks one of two intents:</td></tr>
-<tr class="unc"><td class="ln">12</td><td class="code">//   &#x27;accept&#x27; : &quot;I understand and want the auto-updating behavior.&quot;</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">// User picks one of two intents:</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">//   &#x27;accept&#x27; : &quot;I understand and want the auto-updating behavior.&quot;</td></tr>
 <tr class="nil"><td class="ln">13</td><td class="code">//              Existing asset stays as-is (silently-updated bytes);</td></tr>
 <tr class="nil"><td class="ln">14</td><td class="code">//              new element is added pointing at it; same outcome as if</td></tr>
-<tr class="unc"><td class="ln">15</td><td class="code">//              the dialog had never appeared. The dialog is FYI in this</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">//              the dialog had never appeared. The dialog is FYI in this</td></tr>
 <tr class="nil"><td class="ln">16</td><td class="code">//              path.</td></tr>
 <tr class="nil"><td class="ln">17</td><td class="code">//   &#x27;revert&#x27; : &quot;I want to revert the existing copy to its original and</td></tr>
 <tr class="nil"><td class="ln">18</td><td class="code">//              add this as a separate new asset; disable auto-updating</td></tr>
-<tr class="cov"><td class="ln">19</td><td class="code">//              for this presentation.&quot; Existing asset&#x27;s original bytes</td></tr>
-<tr class="cov"><td class="ln">20</td><td class="code">//              are restored (old element shows the originally-added</td></tr>
-<tr class="cov"><td class="ln">21</td><td class="code">//              version again); a NEW asset is created with the bytes</td></tr>
-<tr class="cov"><td class="ln">22</td><td class="code">//              being inserted now; presentation auto-reload set to OFF.</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">//              for this presentation.&quot; Existing asset&#x27;s original bytes</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">//              are restored (old element shows the originally-added</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">//              version again); a NEW asset is created with the bytes</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">//              being inserted now; presentation auto-reload set to OFF.</td></tr>
 <tr class="nil"><td class="ln">23</td><td class="code">//   &#x27;cancel&#x27; : Esc / outside-click. Abort the insertion entirely. No</td></tr>
 <tr class="nil"><td class="ln">24</td><td class="code">//              visible button — paternalism cap; users expect Esc to</td></tr>
 <tr class="nil"><td class="ln">25</td><td class="code">//              get out of a modal.</td></tr>
-<tr class="unc"><td class="ln">26</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">//</td></tr>
 <tr class="nil"><td class="ln">27</td><td class="code">// See docs/ASSETS.md → &quot;Path collision dialog&quot; for the design.</td></tr>
 <tr class="nil"><td class="ln">28</td><td class="code">&nbsp;</td></tr>
-<tr class="nil"><td class="ln">29</td><td class="code">export type CollisionChoice = &#x27;accept&#x27; | &#x27;revert&#x27; | &#x27;cancel&#x27;;</td></tr>
+<tr class="unc"><td class="ln">29</td><td class="code">export type CollisionChoice = &#x27;accept&#x27; | &#x27;revert&#x27; | &#x27;cancel&#x27;;</td></tr>
 <tr class="nil"><td class="ln">30</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">31</td><td class="code">export interface CollisionRequest {</td></tr>
 <tr class="nil"><td class="ln">32</td><td class="code">  /** Path label of the asset (e.g. &#x27;images/chart.svg&#x27;). */</td></tr>
@@ -70,34 +71,34 @@
 <tr class="nil"><td class="ln">53</td><td class="code">  resolve: (choice: CollisionChoice) =&gt; void;</td></tr>
 <tr class="nil"><td class="ln">54</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">55</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">56</td><td class="code">let pending: PendingRequest | null = null;</td></tr>
-<tr class="cov"><td class="ln">57</td><td class="code">let nextId = 1;</td></tr>
-<tr class="cov"><td class="ln">58</td><td class="code">const subscribers = new Set&lt;(req: PendingRequest | null) =&gt; void&gt;();</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code">let pending: PendingRequest | null = null;</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">let nextId = 1;</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code">const subscribers = new Set&lt;(req: PendingRequest | null) =&gt; void&gt;();</td></tr>
 <tr class="nil"><td class="ln">59</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">60</td><td class="code">/** Show the dialog. Caller awaits a Promise resolving to the choice. */</td></tr>
 <tr class="nil"><td class="ln">61</td><td class="code">export function showCollisionDialog(req: CollisionRequest): Promise&lt;CollisionChoice&gt; {</td></tr>
-<tr class="unc"><td class="ln">62</td><td class="code">  return new Promise((resolve) =&gt; {</td></tr>
-<tr class="unc"><td class="ln">63</td><td class="code">    pending = {</td></tr>
+<tr class="nil"><td class="ln">62</td><td class="code">  return new Promise((resolve) =&gt; {</td></tr>
+<tr class="nil"><td class="ln">63</td><td class="code">    pending = {</td></tr>
 <tr class="nil"><td class="ln">64</td><td class="code">      ...req,</td></tr>
 <tr class="nil"><td class="ln">65</td><td class="code">      id: nextId++,</td></tr>
 <tr class="nil"><td class="ln">66</td><td class="code">      resolve: (choice) =&gt; {</td></tr>
-<tr class="unc"><td class="ln">67</td><td class="code">        pending = null;</td></tr>
-<tr class="unc"><td class="ln">68</td><td class="code">        emit();</td></tr>
-<tr class="unc"><td class="ln">69</td><td class="code">        resolve(choice);</td></tr>
+<tr class="nil"><td class="ln">67</td><td class="code">        pending = null;</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code">        emit();</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code">        resolve(choice);</td></tr>
 <tr class="nil"><td class="ln">70</td><td class="code">      },</td></tr>
 <tr class="nil"><td class="ln">71</td><td class="code">    };</td></tr>
-<tr class="unc"><td class="ln">72</td><td class="code">    emit();</td></tr>
+<tr class="nil"><td class="ln">72</td><td class="code">    emit();</td></tr>
 <tr class="nil"><td class="ln">73</td><td class="code">  });</td></tr>
 <tr class="nil"><td class="ln">74</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">75</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">76</td><td class="code">/** Component subscribes to be notified when the pending request changes. */</td></tr>
 <tr class="nil"><td class="ln">77</td><td class="code">export function subscribeCollisionDialog(cb: (req: PendingRequest | null) =&gt; void): () =&gt; void {</td></tr>
-<tr class="unc"><td class="ln">78</td><td class="code">  subscribers.add(cb);</td></tr>
-<tr class="unc"><td class="ln">79</td><td class="code">  cb(pending);</td></tr>
-<tr class="unc"><td class="ln">80</td><td class="code">  return () =&gt; { subscribers.delete(cb); };</td></tr>
+<tr class="nil"><td class="ln">78</td><td class="code">  subscribers.add(cb);</td></tr>
+<tr class="nil"><td class="ln">79</td><td class="code">  cb(pending);</td></tr>
+<tr class="nil"><td class="ln">80</td><td class="code">  return () =&gt; { subscribers.delete(cb); };</td></tr>
 <tr class="nil"><td class="ln">81</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">82</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">83</td><td class="code">function emit() {</td></tr>
-<tr class="unc"><td class="ln">84</td><td class="code">  for (const cb of subscribers) cb(pending);</td></tr>
+<tr class="nil"><td class="ln">84</td><td class="code">  for (const cb of subscribers) cb(pending);</td></tr>
 <tr class="nil"><td class="ln">85</td><td class="code">}</td></tr></table>
 </body></html>

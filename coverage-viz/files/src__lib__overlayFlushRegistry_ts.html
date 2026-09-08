@@ -5,26 +5,27 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/overlayFlushRegistry.ts </h1>
   <div class="stats">
-    <span class="stat"><b>91%</b> covered</span>
-    <span class="stat">10/11 executable</span>
-    <span class="stat unc-txt">1 uncovered</span>
+    <span class="stat"><b>100%</b> covered</span>
+    <span class="stat">7/7 statements</span>
+    <span class="stat unc-txt">0 uncovered</span>
     <span class="stat">32 raw lines</span>
     <span class="stat">0.07% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:31.250%"></span><span class="seg unc" style="width:3.125%"></span><span class="seg nil" style="width:65.625%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:100.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:0.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__lib__useOverlay_ts.html">useOverlay.ts</a> <a href="src__store__presentation_ts.html">presentation.ts</a></div>
 </header>
-<table class="src"><tr class="cov"><td class="ln">1</td><td class="code">// Registry of pending notebook-overlay flushers.</td></tr>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Registry of pending notebook-overlay flushers.</td></tr>
 <tr class="nil"><td class="ln">2</td><td class="code">//</td></tr>
-<tr class="cov"><td class="ln">3</td><td class="code">// Each `useOverlay()` instance persists its overlay (the sidecar holding</td></tr>
-<tr class="cov"><td class="ln">4</td><td class="code">// cellEdits + cellOutputs) via its OWN 800ms debounced flush. That flush is</td></tr>
-<tr class="cov"><td class="ln">5</td><td class="code">// independent of the deck save, so a deck saved or closed within ~800ms of an</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// Each `useOverlay()` instance persists its overlay (the sidecar holding</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// cellEdits + cellOutputs) via its OWN 800ms debounced flush. That flush is</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// independent of the deck save, so a deck saved or closed within ~800ms of an</td></tr>
 <tr class="nil"><td class="ln">6</td><td class="code">// edit/run could drop the overlay (#123). Each hook registers its flush here so</td></tr>
 <tr class="nil"><td class="ln">7</td><td class="code">// the save path (flushToSqlite) and the close/quit path can FORCE any pending</td></tr>
 <tr class="nil"><td class="ln">8</td><td class="code">// overlay to disk immediately, bypassing the debounce.</td></tr>
-<tr class="cov"><td class="ln">9</td><td class="code">//</td></tr>
-<tr class="unc"><td class="ln">10</td><td class="code">// Plain module (no React / no store import) so both the hook and the store can</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">// Plain module (no React / no store import) so both the hook and the store can</td></tr>
 <tr class="nil"><td class="ln">11</td><td class="code">// depend on it without a cycle.</td></tr>
 <tr class="nil"><td class="ln">12</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">13</td><td class="code">type Flusher = () =&gt; Promise&lt;void&gt;;</td></tr>
@@ -43,7 +44,7 @@
 <tr class="nil"><td class="ln">26</td><td class="code"> * errors are swallowed so one bad overlay can&#x27;t block the deck save.</td></tr>
 <tr class="nil"><td class="ln">27</td><td class="code"> */</td></tr>
 <tr class="nil"><td class="ln">28</td><td class="code">export async function flushAllOverlays(): Promise&lt;void&gt; {</td></tr>
-<tr class="cov"><td class="ln">29</td><td class="code">  await Promise.all([...flushers].map((f) =&gt; f().catch((e) =&gt; {</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">  await Promise.all([...flushers].map((f) =&gt; f().catch((e) =&gt; {</td></tr>
 <tr class="cov"><td class="ln">30</td><td class="code">    console.warn(&#x27;overlay flush failed during forced flush:&#x27;, e);</td></tr>
 <tr class="nil"><td class="ln">31</td><td class="code">  })));</td></tr>
 <tr class="nil"><td class="ln">32</td><td class="code">}</td></tr></table>

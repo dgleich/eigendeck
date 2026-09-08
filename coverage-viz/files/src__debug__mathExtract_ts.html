@@ -6,38 +6,39 @@
   <h1>src/debug/mathExtract.ts </h1>
   <div class="stats">
     <span class="stat"><b>0%</b> covered</span>
-    <span class="stat">0/22 executable</span>
-    <span class="stat unc-txt">22 uncovered</span>
+    <span class="stat">0/20 statements</span>
+    <span class="stat unc-txt">20 uncovered</span>
     <span class="stat">26 raw lines</span>
     <span class="stat">0.06% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:0.000%"></span><span class="seg unc" style="width:84.615%"></span><span class="seg nil" style="width:15.385%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:0.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:100.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src__debug__batchCacheAudit_ts.html">batchCacheAudit.ts</a> <a href="src__debug__batchWarmCache_ts.html">batchWarmCache.ts</a></div>
 </header>
 <table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Shared math expression walker. Mirrors renderMathInHtml in</td></tr>
-<tr class="unc"><td class="ln">2</td><td class="code">// src/lib/mathjaxRenderer.ts EXACTLY: skip inside tags, $$..$$ for display</td></tr>
-<tr class="unc"><td class="ln">3</td><td class="code">// math, $..$ for inline (with newline guard). The (tex, bundle, display)</td></tr>
-<tr class="unc"><td class="ln">4</td><td class="code">// tuple a batch action computes must match what the editor stored —</td></tr>
-<tr class="unc"><td class="ln">5</td><td class="code">// that depends on byte-identical tex extraction here.</td></tr>
-<tr class="unc"><td class="ln">6</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// src/lib/mathjaxRenderer.ts EXACTLY: skip inside tags, $$..$$ for display</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// math, $..$ for inline (with newline guard). The (tex, bundle, display)</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// tuple a batch action computes must match what the editor stored —</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// that depends on byte-identical tex extraction here.</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">7</td><td class="code">export function* extractMath(html: string): Generator&lt;[string, boolean]&gt; {</td></tr>
 <tr class="unc"><td class="ln">8</td><td class="code">  let i = 0;</td></tr>
-<tr class="unc"><td class="ln">9</td><td class="code">  while (i &lt; html.length) {</td></tr>
-<tr class="unc"><td class="ln">10</td><td class="code">    if (html[i] === &#x27;&lt;&#x27;) {</td></tr>
-<tr class="unc"><td class="ln">11</td><td class="code">      const end = html.indexOf(&#x27;&gt;&#x27;, i);</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">  while (i &lt; html.length) {</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">    if (html[i] === &#x27;&lt;&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">      const end = html.indexOf(&#x27;&gt;&#x27;, i);</td></tr>
 <tr class="unc"><td class="ln">12</td><td class="code">      if (end !== -1) { i = end + 1; continue; }</td></tr>
-<tr class="unc"><td class="ln">13</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">    }</td></tr>
 <tr class="unc"><td class="ln">14</td><td class="code">    if (html[i] === &#x27;$&#x27; &amp;&amp; html[i + 1] === &#x27;$&#x27;) {</td></tr>
 <tr class="unc"><td class="ln">15</td><td class="code">      const end = html.indexOf(&#x27;$$&#x27;, i + 2);</td></tr>
 <tr class="unc"><td class="ln">16</td><td class="code">      if (end !== -1) { yield [html.slice(i + 2, end), true]; i = end + 2; continue; }</td></tr>
 <tr class="nil"><td class="ln">17</td><td class="code">    }</td></tr>
-<tr class="unc"><td class="ln">18</td><td class="code">    if (html[i] === &#x27;$&#x27;) {</td></tr>
-<tr class="unc"><td class="ln">19</td><td class="code">      const end = html.indexOf(&#x27;$&#x27;, i + 1);</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">    if (html[i] === &#x27;$&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">      const end = html.indexOf(&#x27;$&#x27;, i + 1);</td></tr>
 <tr class="unc"><td class="ln">20</td><td class="code">      if (end !== -1 &amp;&amp; !html.slice(i + 1, end).includes(&#x27;\n&#x27;)) {</td></tr>
-<tr class="unc"><td class="ln">21</td><td class="code">        yield [html.slice(i + 1, end), false]; i = end + 1; continue;</td></tr>
-<tr class="unc"><td class="ln">22</td><td class="code">      }</td></tr>
-<tr class="unc"><td class="ln">23</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">        yield [html.slice(i + 1, end), false]; i = end + 1; continue;</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">    }</td></tr>
 <tr class="unc"><td class="ln">24</td><td class="code">    i++;</td></tr>
 <tr class="nil"><td class="ln">25</td><td class="code">  }</td></tr>
 <tr class="nil"><td class="ln">26</td><td class="code">}</td></tr></table>

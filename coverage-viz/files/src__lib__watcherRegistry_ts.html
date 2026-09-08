@@ -5,13 +5,14 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/watcherRegistry.ts </h1>
   <div class="stats">
-    <span class="stat"><b>86%</b> covered</span>
-    <span class="stat">282/329 executable</span>
-    <span class="stat unc-txt">47 uncovered</span>
+    <span class="stat"><b>87%</b> covered</span>
+    <span class="stat">203/233 statements</span>
+    <span class="stat unc-txt">30 uncovered</span>
     <span class="stat">528 raw lines</span>
     <span class="stat">1.24% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:53.409%"></span><span class="seg unc" style="width:8.902%"></span><span class="seg nil" style="width:37.689%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:87.124%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:12.876%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__lib__assetGate_ts.html">assetGate.ts</a> <a href="src__lib__assetInsert_ts.html">assetInsert.ts</a> <a href="src__lib__assetRenderer_ts.html">assetRenderer.ts</a> <a href="src__lib__hash_ts.html">hash.ts</a> <a href="src__lib__missingAssets_ts.html">missingAssets.ts</a> <a href="src__lib__preferences_ts.html">preferences.ts</a> <a href="src__lib__trustStore_ts.html">trustStore.ts</a> <a href="src__store__presentation_ts.html">presentation.ts</a></div>
   <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__components__AssetSection_tsx.html">AssetSection.tsx</a> <a href="src__lib__assetInsert_ts.html">assetInsert.ts</a> <a href="src__lib__assetWatcher_ts.html">assetWatcher.ts</a> <a href="src__lib__securityReport_ts.html">securityReport.ts</a> <a href="src__store__fileOps_ts.html">fileOps.ts</a> <a href="src__store__presentation_ts.html">presentation.ts</a></div>
 </header>
@@ -21,69 +22,69 @@
 <tr class="nil"><td class="ln">4</td><td class="code">// — projectPath can change underneath us (macOS in-place rename keeps</td></tr>
 <tr class="nil"><td class="ln">5</td><td class="code">// the file handle alive but mutates the filename; Save As writes to a</td></tr>
 <tr class="nil"><td class="ln">6</td><td class="code">// new path). Keying on the stable id means the registry survives</td></tr>
-<tr class="cov"><td class="ln">7</td><td class="code">// renames cleanly; only Save As (which generates a fresh project_id)</td></tr>
-<tr class="cov"><td class="ln">8</td><td class="code">// gets a fresh registry.</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">// renames cleanly; only Save As (which generates a fresh project_id)</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">// gets a fresh registry.</td></tr>
 <tr class="nil"><td class="ln">9</td><td class="code">//</td></tr>
-<tr class="cov"><td class="ln">10</td><td class="code">// Within a registry: one `fs.watch` per external_path even if multiple</td></tr>
-<tr class="cov"><td class="ln">11</td><td class="code">// assets reference it (e.g. two ImageElements both pointing at the</td></tr>
-<tr class="cov"><td class="ln">12</td><td class="code">// same source SVG). The Set fan-out means a single disk event causes</td></tr>
-<tr class="cov"><td class="ln">13</td><td class="code">// db_store_asset for each subscribed asset_id; hash dedup at the</td></tr>
-<tr class="cov"><td class="ln">14</td><td class="code">// storage layer makes redundant writes silent.</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">// Within a registry: one `fs.watch` per external_path even if multiple</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">// assets reference it (e.g. two ImageElements both pointing at the</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">// same source SVG). The Set fan-out means a single disk event causes</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">// db_store_asset for each subscribed asset_id; hash dedup at the</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">// storage layer makes redundant writes silent.</td></tr>
 <tr class="nil"><td class="ln">15</td><td class="code">//</td></tr>
 <tr class="nil"><td class="ln">16</td><td class="code">// Lifecycle:</td></tr>
-<tr class="unc"><td class="ln">17</td><td class="code">//   - getWatcherRegistry(projectId) -&gt; get-or-create</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">//   - getWatcherRegistry(projectId) -&gt; get-or-create</td></tr>
 <tr class="nil"><td class="ln">18</td><td class="code">//   - addRef / removeRef from useAssetFileWatcher mount/cleanup</td></tr>
 <tr class="nil"><td class="ln">19</td><td class="code">//   - closeWatcherRegistry(projectId) on project switch or window close</td></tr>
 <tr class="nil"><td class="ln">20</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">21</td><td class="code">import { invoke } from &#x27;@tauri-apps/api/core&#x27;;</td></tr>
+<tr class="part"><td class="ln">21</td><td class="code">import { invoke } from &#x27;@tauri-apps/api/core&#x27;;</td></tr>
 <tr class="cov"><td class="ln">22</td><td class="code">import { listen } from &#x27;@tauri-apps/api/event&#x27;;</td></tr>
 <tr class="cov"><td class="ln">23</td><td class="code">import { sha256Hex } from &#x27;./hash&#x27;;<a class="jump" href="src__lib__hash_ts.html" title="src/lib/hash.ts">→ hash.ts</a></td></tr>
-<tr class="cov"><td class="ln">24</td><td class="code">import { invalidateRenderedAsset } from &#x27;./assetRenderer&#x27;;<a class="jump" href="src__lib__assetRenderer_ts.html" title="src/lib/assetRenderer.ts">→ assetRenderer.ts</a></td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">import { invalidateRenderedAsset } from &#x27;./assetRenderer&#x27;;<a class="jump" href="src__lib__assetRenderer_ts.html" title="src/lib/assetRenderer.ts">→ assetRenderer.ts</a></td></tr>
 <tr class="cov"><td class="ln">25</td><td class="code">import { effectiveAutoReload, getPreference } from &#x27;./preferences&#x27;;<a class="jump" href="src__lib__preferences_ts.html" title="src/lib/preferences.ts">→ preferences.ts</a></td></tr>
 <tr class="cov"><td class="ln">26</td><td class="code">import { markAssetMissing, markAssetFound, isAssetMissing } from &#x27;./missingAssets&#x27;;<a class="jump" href="src__lib__missingAssets_ts.html" title="src/lib/missingAssets.ts">→ missingAssets.ts</a></td></tr>
 <tr class="nil"><td class="ln">27</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">28</td><td class="code">// --- Rust file-watch glue (replaces the JS fs-plugin `watch`) ----------------</td></tr>
 <tr class="nil"><td class="ln">29</td><td class="code">// watch_path returns an id; the Rust side emits `fs-watch-event` {id,path} per</td></tr>
 <tr class="nil"><td class="ln">30</td><td class="code">// change. One process-wide listener fans each event to the registered callback by</td></tr>
-<tr class="cov"><td class="ln">31</td><td class="code">// id. There is no delayMs anymore — Rust emits raw notify events and the per-path</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">// id. There is no delayMs anymore — Rust emits raw notify events and the per-path</td></tr>
 <tr class="nil"><td class="ln">32</td><td class="code">// COALESCE_MS window in handleChange collapses a save burst (as before).</td></tr>
 <tr class="cov"><td class="ln">33</td><td class="code">const watchCbs = new Map&lt;number, () =&gt; void&gt;();</td></tr>
 <tr class="cov"><td class="ln">34</td><td class="code">let watchListenerStarted = false;</td></tr>
 <tr class="nil"><td class="ln">35</td><td class="code">async function ensureWatchListener(): Promise&lt;void&gt; {</td></tr>
 <tr class="cov"><td class="ln">36</td><td class="code">  if (watchListenerStarted) return;</td></tr>
-<tr class="cov"><td class="ln">37</td><td class="code">  watchListenerStarted = true;</td></tr>
-<tr class="cov"><td class="ln">38</td><td class="code">  try {</td></tr>
-<tr class="cov"><td class="ln">39</td><td class="code">    await listen&lt;{ id: number; path: string }&gt;(&#x27;fs-watch-event&#x27;, (e) =&gt; {</td></tr>
-<tr class="cov"><td class="ln">40</td><td class="code">      watchCbs.get(e.payload.id)?.();</td></tr>
-<tr class="cov"><td class="ln">41</td><td class="code">    });</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">  watchListenerStarted = true;</td></tr>
+<tr class="part"><td class="ln">38</td><td class="code">  try {</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">    await listen&lt;{ id: number; path: string }&gt;(&#x27;fs-watch-event&#x27;, (e) =&gt; {</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">      watchCbs.get(e.payload.id)?.();</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">    });</td></tr>
 <tr class="cov"><td class="ln">42</td><td class="code">  } catch { watchListenerStarted = false; } // non-Tauri context</td></tr>
-<tr class="cov"><td class="ln">43</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">44</td><td class="code">/** Start watching `absPath`; returns an unwatch fn. */</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">/** Start watching `absPath`; returns an unwatch fn. */</td></tr>
 <tr class="cov"><td class="ln">45</td><td class="code">async function startWatch(absPath: string, cb: () =&gt; void): Promise&lt;() =&gt; void&gt; {</td></tr>
 <tr class="cov"><td class="ln">46</td><td class="code">  await ensureWatchListener();</td></tr>
 <tr class="cov"><td class="ln">47</td><td class="code">  const id = await invoke&lt;number&gt;(&#x27;watch_path&#x27;, { path: absPath });</td></tr>
 <tr class="cov"><td class="ln">48</td><td class="code">  watchCbs.set(id, cb);</td></tr>
 <tr class="cov"><td class="ln">49</td><td class="code">  return () =&gt; { watchCbs.delete(id); void invoke(&#x27;unwatch_path&#x27;, { id }).catch(() =&gt; {}); };</td></tr>
-<tr class="cov"><td class="ln">50</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">51</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">52</td><td class="code">interface PathStat { mtimeMs: number | null; size: number; isFile: boolean; isDir: boolean }</td></tr>
-<tr class="cov"><td class="ln">53</td><td class="code">/** Rust path_stat; REJECTS on a missing path (callers rely on that to flag #74). */</td></tr>
-<tr class="nil"><td class="ln">54</td><td class="code">function pathStat(absPath: string): Promise&lt;PathStat&gt; {</td></tr>
-<tr class="cov"><td class="ln">55</td><td class="code">  return invoke&lt;PathStat&gt;(&#x27;path_stat&#x27;, { path: absPath });</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">/** Rust path_stat; REJECTS on a missing path (callers rely on that to flag #74). */</td></tr>
+<tr class="cov"><td class="ln">54</td><td class="code">function pathStat(absPath: string): Promise&lt;PathStat&gt; {</td></tr>
+<tr class="unc"><td class="ln">55</td><td class="code">  return invoke&lt;PathStat&gt;(&#x27;path_stat&#x27;, { path: absPath });</td></tr>
 <tr class="nil"><td class="ln">56</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">57</td><td class="code">/** ISO mtime string from a stat (matches the old plugin-fs `mtime.toISOString()`</td></tr>
-<tr class="cov"><td class="ln">58</td><td class="code"> *  millisecond precision), or null. */</td></tr>
-<tr class="nil"><td class="ln">59</td><td class="code">function statMtimeIso(st: PathStat | null): string | null {</td></tr>
-<tr class="cov"><td class="ln">60</td><td class="code">  return st &amp;&amp; st.mtimeMs != null ? new Date(st.mtimeMs).toISOString() : null;</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code"> *  millisecond precision), or null. */</td></tr>
+<tr class="cov"><td class="ln">59</td><td class="code">function statMtimeIso(st: PathStat | null): string | null {</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code">  return st &amp;&amp; st.mtimeMs != null ? new Date(st.mtimeMs).toISOString() : null;</td></tr>
 <tr class="nil"><td class="ln">61</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">62</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">63</td><td class="code">// Verbose logging surfaces in the in-app Debug Console (View menu)</td></tr>
 <tr class="nil"><td class="ln">64</td><td class="code">// because console.log is intercepted there. Prefix `[watcher]` so the</td></tr>
-<tr class="cov"><td class="ln">65</td><td class="code">// user can filter or scroll for them. Off by default — flip true to</td></tr>
+<tr class="nil"><td class="ln">65</td><td class="code">// user can filter or scroll for them. Off by default — flip true to</td></tr>
 <tr class="nil"><td class="ln">66</td><td class="code">// debug watcher subscribe/unsubscribe/event-dispatch decisions.</td></tr>
 <tr class="cov"><td class="ln">67</td><td class="code">const WATCHER_LOG = false;</td></tr>
 <tr class="cov"><td class="ln">68</td><td class="code">const wlog = (...a: unknown[]): void =&gt; {</td></tr>
-<tr class="cov"><td class="ln">69</td><td class="code">  if (WATCHER_LOG) console.log(`[watcher ${new Date().toISOString().slice(11, 23)}]`, ...a);</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code">  if (WATCHER_LOG) console.log(`[watcher ${new Date().toISOString().slice(11, 23)}]`, ...a);</td></tr>
 <tr class="nil"><td class="ln">70</td><td class="code">};</td></tr>
 <tr class="nil"><td class="ln">71</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">72</td><td class="code">/** Result of the asset-security read gate. `gated` = deliberately blocked (skip</td></tr>
@@ -92,22 +93,22 @@
 <tr class="nil"><td class="ln">75</td><td class="code">export type GatedRead =</td></tr>
 <tr class="nil"><td class="ln">76</td><td class="code">  | { status: &#x27;ok&#x27;; bytes: Uint8Array }</td></tr>
 <tr class="nil"><td class="ln">77</td><td class="code">  | { status: &#x27;gated&#x27; }</td></tr>
-<tr class="nil"><td class="ln">78</td><td class="code">  | { status: &#x27;unreadable&#x27; };</td></tr>
+<tr class="cov"><td class="ln">78</td><td class="code">  | { status: &#x27;unreadable&#x27; };</td></tr>
 <tr class="nil"><td class="ln">79</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">80</td><td class="code">/**</td></tr>
-<tr class="cov"><td class="ln">81</td><td class="code"> * The asset-security read gate for external files (docs/ASSETS-SECURITY.md).</td></tr>
-<tr class="cov"><td class="ln">82</td><td class="code"> * Every disk read of a watched/linked asset goes through this. It:</td></tr>
-<tr class="cov"><td class="ln">83</td><td class="code"> *  - reads the CURRENTLY-OPEN deck&#x27;s token from the store; no token → &#x27;gated&#x27;;</td></tr>
-<tr class="cov"><td class="ln">84</td><td class="code"> *  - requires the deck to be TRUSTED (a received/untrusted deck performs ZERO disk</td></tr>
-<tr class="cov"><td class="ln">85</td><td class="code"> *    reads → &#x27;gated&#x27;, the embedded snapshot stays);</td></tr>
-<tr class="cov"><td class="ln">86</td><td class="code"> *  - resolves via resolveAndGate so realpath + the asset-type allowlist apply even</td></tr>
-<tr class="cov"><td class="ln">87</td><td class="code"> *    to trusted decks (a symlink to a non-asset / wrong-type file → &#x27;gated&#x27;), and a</td></tr>
+<tr class="nil"><td class="ln">81</td><td class="code"> * The asset-security read gate for external files (docs/ASSETS-SECURITY.md).</td></tr>
+<tr class="nil"><td class="ln">82</td><td class="code"> * Every disk read of a watched/linked asset goes through this. It:</td></tr>
+<tr class="nil"><td class="ln">83</td><td class="code"> *  - reads the CURRENTLY-OPEN deck&#x27;s token from the store; no token → &#x27;gated&#x27;;</td></tr>
+<tr class="nil"><td class="ln">84</td><td class="code"> *  - requires the deck to be TRUSTED (a received/untrusted deck performs ZERO disk</td></tr>
+<tr class="nil"><td class="ln">85</td><td class="code"> *    reads → &#x27;gated&#x27;, the embedded snapshot stays);</td></tr>
+<tr class="nil"><td class="ln">86</td><td class="code"> *  - resolves via resolveAndGate so realpath + the asset-type allowlist apply even</td></tr>
+<tr class="nil"><td class="ln">87</td><td class="code"> *    to trusted decks (a symlink to a non-asset / wrong-type file → &#x27;gated&#x27;), and a</td></tr>
 <tr class="nil"><td class="ln">88</td><td class="code"> *    genuinely missing/erroring file → &#x27;unreadable&#x27;.</td></tr>
-<tr class="unc"><td class="ln">89</td><td class="code"> * Never throws. Dynamic imports avoid a static cycle with the store.</td></tr>
-<tr class="unc"><td class="ln">90</td><td class="code"> */</td></tr>
-<tr class="nil"><td class="ln">91</td><td class="code">export async function gatedExternalRead(absPath: string): Promise&lt;GatedRead&gt; {</td></tr>
+<tr class="nil"><td class="ln">89</td><td class="code"> * Never throws. Dynamic imports avoid a static cycle with the store.</td></tr>
+<tr class="nil"><td class="ln">90</td><td class="code"> */</td></tr>
+<tr class="part"><td class="ln">91</td><td class="code">export async function gatedExternalRead(absPath: string): Promise&lt;GatedRead&gt; {</td></tr>
 <tr class="cov"><td class="ln">92</td><td class="code">  try {</td></tr>
-<tr class="cov"><td class="ln">93</td><td class="code">    const { getDeckToken } = await import(&#x27;../store/presentation&#x27;);<a class="jump" href="src__store__presentation_ts.html" title="src/store/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="nil"><td class="ln">93</td><td class="code">    const { getDeckToken } = await import(&#x27;../store/presentation&#x27;);<a class="jump" href="src__store__presentation_ts.html" title="src/store/presentation.ts">→ presentation.ts</a></td></tr>
 <tr class="cov"><td class="ln">94</td><td class="code">    const token = getDeckToken();</td></tr>
 <tr class="cov"><td class="ln">95</td><td class="code">    if (!token) return { status: &#x27;gated&#x27; };</td></tr>
 <tr class="cov"><td class="ln">96</td><td class="code">    const { isTrusted, isPathApproved } = await import(&#x27;./trustStore&#x27;);<a class="jump" href="src__lib__trustStore_ts.html" title="src/lib/trustStore.ts">→ trustStore.ts</a></td></tr>
@@ -116,38 +117,38 @@
 <tr class="cov"><td class="ln">99</td><td class="code">    const gate = await resolveAndGate(absPath);</td></tr>
 <tr class="cov"><td class="ln">100</td><td class="code">    if (!(gate.ok &amp;&amp; gate.bytes &amp;&amp; gate.canonicalPath)) {</td></tr>
 <tr class="cov"><td class="ln">101</td><td class="code">      return { status: gate.reason === &#x27;unreadable&#x27; ? &#x27;unreadable&#x27; : &#x27;gated&#x27; };</td></tr>
-<tr class="cov"><td class="ln">102</td><td class="code">    }</td></tr>
-<tr class="cov"><td class="ln">103</td><td class="code">    // Per-path approval: a trusted deck reads only paths approved in the ledger</td></tr>
-<tr class="cov"><td class="ln">104</td><td class="code">    // (keyed by the RESOLVED target). Unapproved → gated (snapshot stays) until the</td></tr>
-<tr class="cov"><td class="ln">105</td><td class="code">    // user approves it in the Security panel. See docs/ASSETS-SECURITY.md.</td></tr>
+<tr class="nil"><td class="ln">102</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">103</td><td class="code">    // Per-path approval: a trusted deck reads only paths approved in the ledger</td></tr>
+<tr class="nil"><td class="ln">104</td><td class="code">    // (keyed by the RESOLVED target). Unapproved → gated (snapshot stays) until the</td></tr>
+<tr class="nil"><td class="ln">105</td><td class="code">    // user approves it in the Security panel. See docs/ASSETS-SECURITY.md.</td></tr>
 <tr class="cov"><td class="ln">106</td><td class="code">    if (!(await isPathApproved(token, gate.canonicalPath))) return { status: &#x27;gated&#x27; };</td></tr>
-<tr class="cov"><td class="ln">107</td><td class="code">    return { status: &#x27;ok&#x27;, bytes: gate.bytes };</td></tr>
+<tr class="nil"><td class="ln">107</td><td class="code">    return { status: &#x27;ok&#x27;, bytes: gate.bytes };</td></tr>
 <tr class="cov"><td class="ln">108</td><td class="code">  } catch {</td></tr>
-<tr class="unc"><td class="ln">109</td><td class="code">    return { status: &#x27;unreadable&#x27; };</td></tr>
-<tr class="cov"><td class="ln">110</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">109</td><td class="code">    return { status: &#x27;unreadable&#x27; };</td></tr>
+<tr class="nil"><td class="ln">110</td><td class="code">  }</td></tr>
 <tr class="nil"><td class="ln">111</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">112</td><td class="code">&nbsp;</td></tr>
-<tr class="nil"><td class="ln">113</td><td class="code">interface SubscribedAsset {</td></tr>
-<tr class="cov"><td class="ln">114</td><td class="code">  /** Real stable asset_id from the assets table — what db_store_asset</td></tr>
-<tr class="cov"><td class="ln">115</td><td class="code">   *  needs to version the right row (NOT a path-derived placeholder). */</td></tr>
+<tr class="cov"><td class="ln">113</td><td class="code">interface SubscribedAsset {</td></tr>
+<tr class="nil"><td class="ln">114</td><td class="code">  /** Real stable asset_id from the assets table — what db_store_asset</td></tr>
+<tr class="nil"><td class="ln">115</td><td class="code">   *  needs to version the right row (NOT a path-derived placeholder). */</td></tr>
 <tr class="cov"><td class="ln">116</td><td class="code">  assetId: string;</td></tr>
-<tr class="cov"><td class="ln">117</td><td class="code">  /** Original path label stored on the asset row (e.g. &quot;images/foo.svg&quot;) —</td></tr>
-<tr class="cov"><td class="ln">118</td><td class="code">   *  preserved so re-stores keep the same path metadata. */</td></tr>
-<tr class="cov"><td class="ln">119</td><td class="code">  path: string;</td></tr>
-<tr class="cov"><td class="ln">120</td><td class="code">  /** Element ids currently subscribed to this asset. Multiple elements</td></tr>
-<tr class="cov"><td class="ln">121</td><td class="code">   *  may be bound to the same asset_id (e.g. user drags the same image</td></tr>
-<tr class="cov"><td class="ln">122</td><td class="code">   *  onto 3 slides). Tracking per-element lets removeRef be ref-counted:</td></tr>
+<tr class="nil"><td class="ln">117</td><td class="code">  /** Original path label stored on the asset row (e.g. &quot;images/foo.svg&quot;) —</td></tr>
+<tr class="nil"><td class="ln">118</td><td class="code">   *  preserved so re-stores keep the same path metadata. */</td></tr>
+<tr class="part"><td class="ln">119</td><td class="code">  path: string;</td></tr>
+<tr class="nil"><td class="ln">120</td><td class="code">  /** Element ids currently subscribed to this asset. Multiple elements</td></tr>
+<tr class="nil"><td class="ln">121</td><td class="code">   *  may be bound to the same asset_id (e.g. user drags the same image</td></tr>
+<tr class="nil"><td class="ln">122</td><td class="code">   *  onto 3 slides). Tracking per-element lets removeRef be ref-counted:</td></tr>
 <tr class="nil"><td class="ln">123</td><td class="code">   *  the asset entry is dropped only when the LAST element using it</td></tr>
-<tr class="cov"><td class="ln">124</td><td class="code">   *  unsubscribes. Without this, slide 2&#x27;s removeRef would wipe the</td></tr>
-<tr class="cov"><td class="ln">125</td><td class="code">   *  whole entry and silently kill the watcher for slides 1+3. */</td></tr>
+<tr class="nil"><td class="ln">124</td><td class="code">   *  unsubscribes. Without this, slide 2&#x27;s removeRef would wipe the</td></tr>
+<tr class="nil"><td class="ln">125</td><td class="code">   *  whole entry and silently kill the watcher for slides 1+3. */</td></tr>
 <tr class="cov"><td class="ln">126</td><td class="code">  subscribers: Set&lt;string&gt;;</td></tr>
-<tr class="cov"><td class="ln">127</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">127</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">128</td><td class="code">&nbsp;</td></tr>
-<tr class="nil"><td class="ln">129</td><td class="code">interface WatchEntry {</td></tr>
+<tr class="cov"><td class="ln">129</td><td class="code">interface WatchEntry {</td></tr>
 <tr class="cov"><td class="ln">130</td><td class="code">  unwatch: () =&gt; void;</td></tr>
-<tr class="cov"><td class="ln">131</td><td class="code">  /** Subscribed assets at this external_path, keyed by asset_id. Each</td></tr>
+<tr class="nil"><td class="ln">131</td><td class="code">  /** Subscribed assets at this external_path, keyed by asset_id. Each</td></tr>
 <tr class="nil"><td class="ln">132</td><td class="code">   *  asset entry tracks its own element subscribers (see SubscribedAsset). */</td></tr>
-<tr class="unc"><td class="ln">133</td><td class="code">  assets: Map&lt;string, SubscribedAsset&gt;;</td></tr>
+<tr class="part"><td class="ln">133</td><td class="code">  assets: Map&lt;string, SubscribedAsset&gt;;</td></tr>
 <tr class="nil"><td class="ln">134</td><td class="code">  /** MIME type to use when re-storing the asset (cached per first subscriber) */</td></tr>
 <tr class="nil"><td class="ln">135</td><td class="code">  mimeType: string;</td></tr>
 <tr class="nil"><td class="ln">136</td><td class="code">  /** Timestamp of the last handleChange for this path. macOS emits 3–7</td></tr>
@@ -157,216 +158,216 @@
 <tr class="nil"><td class="ln">140</td><td class="code">   *  than COALESCE_MS ago. Real edits that come in quick succession are</td></tr>
 <tr class="nil"><td class="ln">141</td><td class="code">   *  picked up on the next event after the window expires. */</td></tr>
 <tr class="cov"><td class="ln">142</td><td class="code">  lastHandledAt: number;</td></tr>
-<tr class="cov"><td class="ln">143</td><td class="code">}</td></tr>
-<tr class="unc"><td class="ln">144</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">145</td><td class="code">/** Min ms between handleChange calls per path. macOS atomic-save bursts</td></tr>
+<tr class="nil"><td class="ln">143</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">144</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">145</td><td class="code">/** Min ms between handleChange calls per path. macOS atomic-save bursts</td></tr>
 <tr class="nil"><td class="ln">146</td><td class="code"> *  fit comfortably inside this window. */</td></tr>
-<tr class="cov"><td class="ln">147</td><td class="code">const COALESCE_MS = 250;</td></tr>
-<tr class="cov"><td class="ln">148</td><td class="code">&nbsp;</td></tr>
+<tr class="part"><td class="ln">147</td><td class="code">const COALESCE_MS = 250;</td></tr>
+<tr class="nil"><td class="ln">148</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">149</td><td class="code">class WatcherRegistry {</td></tr>
-<tr class="cov"><td class="ln">150</td><td class="code">  /** Project dir used to resolve relative external_paths to absolute. Mutable</td></tr>
+<tr class="nil"><td class="ln">150</td><td class="code">  /** Project dir used to resolve relative external_paths to absolute. Mutable</td></tr>
 <tr class="nil"><td class="ln">151</td><td class="code">   *  so a Finder rename can update it without rebuilding the registry. */</td></tr>
 <tr class="cov"><td class="ln">152</td><td class="code">  public projectDir: string;</td></tr>
-<tr class="cov"><td class="ln">153</td><td class="code">  /** Stable id this registry is bound to. Doesn&#x27;t change. */</td></tr>
+<tr class="nil"><td class="ln">153</td><td class="code">  /** Stable id this registry is bound to. Doesn&#x27;t change. */</td></tr>
 <tr class="cov"><td class="ln">154</td><td class="code">  public readonly projectId: string;</td></tr>
-<tr class="cov"><td class="ln">155</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">155</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">156</td><td class="code">  private watchers = new Map&lt;string, WatchEntry&gt;();</td></tr>
 <tr class="nil"><td class="ln">157</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">158</td><td class="code">  constructor(projectId: string, projectDir: string) {</td></tr>
-<tr class="cov"><td class="ln">159</td><td class="code">    this.projectId = projectId;</td></tr>
-<tr class="cov"><td class="ln">160</td><td class="code">    this.projectDir = projectDir;</td></tr>
-<tr class="unc"><td class="ln">161</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">158</td><td class="code">  constructor(projectId: string, projectDir: string) {</td></tr>
+<tr class="unc"><td class="ln">159</td><td class="code">    this.projectId = projectId;</td></tr>
+<tr class="unc"><td class="ln">160</td><td class="code">    this.projectDir = projectDir;</td></tr>
+<tr class="nil"><td class="ln">161</td><td class="code">  }</td></tr>
 <tr class="nil"><td class="ln">162</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">163</td><td class="code">  /**</td></tr>
-<tr class="cov"><td class="ln">164</td><td class="code">   * Subscribe an asset to changes of `externalRelPath` (relative to the</td></tr>
-<tr class="cov"><td class="ln">165</td><td class="code">   * project dir). The (real, stable) `assetId` and the asset row&#x27;s</td></tr>
-<tr class="cov"><td class="ln">166</td><td class="code">   * `path` are stored so the disk-event handler can call db_store_asset</td></tr>
-<tr class="cov"><td class="ln">167</td><td class="code">   * with the correct identity — passing a placeholder asset_id would</td></tr>
-<tr class="cov"><td class="ln">168</td><td class="code">   * create orphan rows.</td></tr>
-<tr class="cov"><td class="ln">169</td><td class="code">   *</td></tr>
-<tr class="cov"><td class="ln">170</td><td class="code">   * First subscriber for a path lazily registers fs.watch; subsequent</td></tr>
-<tr class="cov"><td class="ln">171</td><td class="code">   * subscribers just join the Map.</td></tr>
+<tr class="nil"><td class="ln">163</td><td class="code">  /**</td></tr>
+<tr class="nil"><td class="ln">164</td><td class="code">   * Subscribe an asset to changes of `externalRelPath` (relative to the</td></tr>
+<tr class="nil"><td class="ln">165</td><td class="code">   * project dir). The (real, stable) `assetId` and the asset row&#x27;s</td></tr>
+<tr class="nil"><td class="ln">166</td><td class="code">   * `path` are stored so the disk-event handler can call db_store_asset</td></tr>
+<tr class="nil"><td class="ln">167</td><td class="code">   * with the correct identity — passing a placeholder asset_id would</td></tr>
+<tr class="nil"><td class="ln">168</td><td class="code">   * create orphan rows.</td></tr>
+<tr class="nil"><td class="ln">169</td><td class="code">   *</td></tr>
+<tr class="nil"><td class="ln">170</td><td class="code">   * First subscriber for a path lazily registers fs.watch; subsequent</td></tr>
+<tr class="nil"><td class="ln">171</td><td class="code">   * subscribers just join the Map.</td></tr>
 <tr class="nil"><td class="ln">172</td><td class="code">   */</td></tr>
-<tr class="nil"><td class="ln">173</td><td class="code">  async addRef(externalRelPath: string, assetId: string, elementId: string, path: string, mimeType: string): Promise&lt;void&gt; {</td></tr>
-<tr class="cov"><td class="ln">174</td><td class="code">    const absPath = resolvePosixPath(this.projectDir, externalRelPath);</td></tr>
-<tr class="cov"><td class="ln">175</td><td class="code">    const existing = this.watchers.get(absPath);</td></tr>
-<tr class="cov"><td class="ln">176</td><td class="code">    if (existing) {</td></tr>
-<tr class="cov"><td class="ln">177</td><td class="code">      const assetEntry = existing.assets.get(assetId);</td></tr>
-<tr class="cov"><td class="ln">178</td><td class="code">      if (assetEntry) {</td></tr>
+<tr class="cov"><td class="ln">173</td><td class="code">  async addRef(externalRelPath: string, assetId: string, elementId: string, path: string, mimeType: string): Promise&lt;void&gt; {</td></tr>
+<tr class="nil"><td class="ln">174</td><td class="code">    const absPath = resolvePosixPath(this.projectDir, externalRelPath);</td></tr>
+<tr class="nil"><td class="ln">175</td><td class="code">    const existing = this.watchers.get(absPath);</td></tr>
+<tr class="nil"><td class="ln">176</td><td class="code">    if (existing) {</td></tr>
+<tr class="nil"><td class="ln">177</td><td class="code">      const assetEntry = existing.assets.get(assetId);</td></tr>
+<tr class="nil"><td class="ln">178</td><td class="code">      if (assetEntry) {</td></tr>
 <tr class="nil"><td class="ln">179</td><td class="code">        // Asset already in registry — just add this element as another</td></tr>
-<tr class="cov"><td class="ln">180</td><td class="code">        // subscriber. Set semantics keep idempotent re-mounts safe.</td></tr>
+<tr class="nil"><td class="ln">180</td><td class="code">        // subscriber. Set semantics keep idempotent re-mounts safe.</td></tr>
 <tr class="cov"><td class="ln">181</td><td class="code">        assetEntry.subscribers.add(elementId);</td></tr>
 <tr class="cov"><td class="ln">182</td><td class="code">        wlog(`addRef join  asset=${assetId.slice(0, 8)} element=${elementId.slice(0, 8)} path=&quot;${path}&quot; (now ${assetEntry.subscribers.size} elements on this asset, ${existing.assets.size} assets on this path)`);</td></tr>
 <tr class="nil"><td class="ln">183</td><td class="code">      } else {</td></tr>
-<tr class="unc"><td class="ln">184</td><td class="code">        // First subscriber for this asset on this already-watched path.</td></tr>
-<tr class="cov"><td class="ln">185</td><td class="code">        existing.assets.set(assetId, { assetId, path, subscribers: new Set([elementId]) });</td></tr>
-<tr class="cov"><td class="ln">186</td><td class="code">        wlog(`addRef join+ asset=${assetId.slice(0, 8)} element=${elementId.slice(0, 8)} path=&quot;${path}&quot; (first element on this asset, ${existing.assets.size} assets on this path)`);</td></tr>
+<tr class="nil"><td class="ln">184</td><td class="code">        // First subscriber for this asset on this already-watched path.</td></tr>
+<tr class="unc"><td class="ln">185</td><td class="code">        existing.assets.set(assetId, { assetId, path, subscribers: new Set([elementId]) });</td></tr>
+<tr class="nil"><td class="ln">186</td><td class="code">        wlog(`addRef join+ asset=${assetId.slice(0, 8)} element=${elementId.slice(0, 8)} path=&quot;${path}&quot; (first element on this asset, ${existing.assets.size} assets on this path)`);</td></tr>
 <tr class="nil"><td class="ln">187</td><td class="code">      }</td></tr>
-<tr class="cov"><td class="ln">188</td><td class="code">      return;</td></tr>
-<tr class="unc"><td class="ln">189</td><td class="code">    }</td></tr>
-<tr class="unc"><td class="ln">190</td><td class="code">    // First reference for the path — start watching.</td></tr>
-<tr class="cov"><td class="ln">191</td><td class="code">    wlog(`addRef new   asset=${assetId.slice(0, 8)} element=${elementId.slice(0, 8)} path=&quot;${path}&quot; abs=&quot;${absPath}&quot; — registering fs.watch...`);</td></tr>
-<tr class="cov"><td class="ln">192</td><td class="code">    const placeholder: WatchEntry = {</td></tr>
+<tr class="unc"><td class="ln">188</td><td class="code">      return;</td></tr>
+<tr class="nil"><td class="ln">189</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">190</td><td class="code">    // First reference for the path — start watching.</td></tr>
+<tr class="unc"><td class="ln">191</td><td class="code">    wlog(`addRef new   asset=${assetId.slice(0, 8)} element=${elementId.slice(0, 8)} path=&quot;${path}&quot; abs=&quot;${absPath}&quot; — registering fs.watch...`);</td></tr>
+<tr class="nil"><td class="ln">192</td><td class="code">    const placeholder: WatchEntry = {</td></tr>
 <tr class="nil"><td class="ln">193</td><td class="code">      unwatch: () =&gt; {},</td></tr>
 <tr class="nil"><td class="ln">194</td><td class="code">      assets: new Map([[assetId, { assetId, path, subscribers: new Set([elementId]) }]]),</td></tr>
 <tr class="nil"><td class="ln">195</td><td class="code">      mimeType,</td></tr>
-<tr class="cov"><td class="ln">196</td><td class="code">      lastHandledAt: 0,</td></tr>
-<tr class="cov"><td class="ln">197</td><td class="code">    };</td></tr>
+<tr class="nil"><td class="ln">196</td><td class="code">      lastHandledAt: 0,</td></tr>
+<tr class="nil"><td class="ln">197</td><td class="code">    };</td></tr>
 <tr class="cov"><td class="ln">198</td><td class="code">    this.watchers.set(absPath, placeholder);</td></tr>
-<tr class="cov"><td class="ln">199</td><td class="code">    try {</td></tr>
-<tr class="cov"><td class="ln">200</td><td class="code">      placeholder.unwatch = await startWatch(absPath, () =&gt; {</td></tr>
-<tr class="cov"><td class="ln">201</td><td class="code">        wlog(`fs.watch FIRED for &quot;${absPath}&quot;`);</td></tr>
+<tr class="nil"><td class="ln">199</td><td class="code">    try {</td></tr>
+<tr class="nil"><td class="ln">200</td><td class="code">      placeholder.unwatch = await startWatch(absPath, () =&gt; {</td></tr>
+<tr class="nil"><td class="ln">201</td><td class="code">        wlog(`fs.watch FIRED for &quot;${absPath}&quot;`);</td></tr>
 <tr class="cov"><td class="ln">202</td><td class="code">        void this.handleChange(absPath, externalRelPath);</td></tr>
 <tr class="nil"><td class="ln">203</td><td class="code">      });</td></tr>
-<tr class="cov"><td class="ln">204</td><td class="code">      wlog(`fs.watch REGISTERED for &quot;${absPath}&quot;`);</td></tr>
+<tr class="nil"><td class="ln">204</td><td class="code">      wlog(`fs.watch REGISTERED for &quot;${absPath}&quot;`);</td></tr>
 <tr class="cov"><td class="ln">205</td><td class="code">    } catch (e) {</td></tr>
-<tr class="unc"><td class="ln">206</td><td class="code">      console.warn(`[watcher] watch &quot;${absPath}&quot; FAILED:`, e);</td></tr>
-<tr class="cov"><td class="ln">207</td><td class="code">    }</td></tr>
-<tr class="cov"><td class="ln">208</td><td class="code">  }</td></tr>
-<tr class="cov"><td class="ln">209</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">206</td><td class="code">      console.warn(`[watcher] watch &quot;${absPath}&quot; FAILED:`, e);</td></tr>
+<tr class="nil"><td class="ln">207</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">208</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">209</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">210</td><td class="code">  removeRef(externalRelPath: string, assetId: string, elementId: string): void {</td></tr>
-<tr class="cov"><td class="ln">211</td><td class="code">    const absPath = resolvePosixPath(this.projectDir, externalRelPath);</td></tr>
+<tr class="nil"><td class="ln">211</td><td class="code">    const absPath = resolvePosixPath(this.projectDir, externalRelPath);</td></tr>
 <tr class="cov"><td class="ln">212</td><td class="code">    const entry = this.watchers.get(absPath);</td></tr>
 <tr class="cov"><td class="ln">213</td><td class="code">    if (!entry) return;</td></tr>
-<tr class="cov"><td class="ln">214</td><td class="code">    const assetEntry = entry.assets.get(assetId);</td></tr>
+<tr class="nil"><td class="ln">214</td><td class="code">    const assetEntry = entry.assets.get(assetId);</td></tr>
 <tr class="cov"><td class="ln">215</td><td class="code">    if (!assetEntry) return;</td></tr>
-<tr class="cov"><td class="ln">216</td><td class="code">    assetEntry.subscribers.delete(elementId);</td></tr>
-<tr class="cov"><td class="ln">217</td><td class="code">    if (assetEntry.subscribers.size &gt; 0) {</td></tr>
+<tr class="nil"><td class="ln">216</td><td class="code">    assetEntry.subscribers.delete(elementId);</td></tr>
+<tr class="nil"><td class="ln">217</td><td class="code">    if (assetEntry.subscribers.size &gt; 0) {</td></tr>
 <tr class="cov"><td class="ln">218</td><td class="code">      wlog(`removeRef     asset=${assetId.slice(0, 8)} element=${elementId.slice(0, 8)} (${assetEntry.subscribers.size} elements left on this asset)`);</td></tr>
 <tr class="cov"><td class="ln">219</td><td class="code">      return;</td></tr>
-<tr class="cov"><td class="ln">220</td><td class="code">    }</td></tr>
-<tr class="cov"><td class="ln">221</td><td class="code">    // Last element for this asset on this path — drop the asset entry.</td></tr>
+<tr class="nil"><td class="ln">220</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">221</td><td class="code">    // Last element for this asset on this path — drop the asset entry.</td></tr>
 <tr class="cov"><td class="ln">222</td><td class="code">    entry.assets.delete(assetId);</td></tr>
-<tr class="cov"><td class="ln">223</td><td class="code">    if (entry.assets.size === 0) {</td></tr>
+<tr class="nil"><td class="ln">223</td><td class="code">    if (entry.assets.size === 0) {</td></tr>
 <tr class="cov"><td class="ln">224</td><td class="code">      try { entry.unwatch(); } catch { /* ignore */ }</td></tr>
 <tr class="cov"><td class="ln">225</td><td class="code">      this.watchers.delete(absPath);</td></tr>
 <tr class="cov"><td class="ln">226</td><td class="code">      wlog(`removeRef last asset=${assetId.slice(0, 8)} element=${elementId.slice(0, 8)} — unwatched &quot;${absPath}&quot;`);</td></tr>
-<tr class="cov"><td class="ln">227</td><td class="code">    } else {</td></tr>
+<tr class="nil"><td class="ln">227</td><td class="code">    } else {</td></tr>
 <tr class="cov"><td class="ln">228</td><td class="code">      wlog(`removeRef drop asset=${assetId.slice(0, 8)} element=${elementId.slice(0, 8)} (${entry.assets.size} assets left on this path)`);</td></tr>
-<tr class="cov"><td class="ln">229</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">229</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">230</td><td class="code">  }</td></tr>
-<tr class="cov"><td class="ln">231</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">231</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">232</td><td class="code">  /**</td></tr>
 <tr class="nil"><td class="ln">233</td><td class="code">   * Disk event for `absPath`: re-read once, fan out to every subscribed</td></tr>
-<tr class="cov"><td class="ln">234</td><td class="code">   * asset. db_store_asset hashes and dedup-skips if bytes haven&#x27;t</td></tr>
-<tr class="cov"><td class="ln">235</td><td class="code">   * actually changed.</td></tr>
+<tr class="nil"><td class="ln">234</td><td class="code">   * asset. db_store_asset hashes and dedup-skips if bytes haven&#x27;t</td></tr>
+<tr class="nil"><td class="ln">235</td><td class="code">   * actually changed.</td></tr>
 <tr class="nil"><td class="ln">236</td><td class="code">   */</td></tr>
-<tr class="nil"><td class="ln">237</td><td class="code">  private async handleChange(absPath: string, externalRelPath: string): Promise&lt;void&gt; {</td></tr>
+<tr class="cov"><td class="ln">237</td><td class="code">  private async handleChange(absPath: string, externalRelPath: string): Promise&lt;void&gt; {</td></tr>
 <tr class="cov"><td class="ln">238</td><td class="code">    const entry = this.watchers.get(absPath);</td></tr>
-<tr class="cov"><td class="ln">239</td><td class="code">    if (!entry || entry.assets.size === 0) { wlog(`handleChange no subscribers for &quot;${absPath}&quot;`); return; }</td></tr>
-<tr class="cov"><td class="ln">240</td><td class="code">    // Coalesce: macOS emits a burst of events for one save (write +</td></tr>
-<tr class="cov"><td class="ln">241</td><td class="code">    // truncate + close + rename). Skip if we just handled this path.</td></tr>
+<tr class="part"><td class="ln">239</td><td class="code">    if (!entry || entry.assets.size === 0) { wlog(`handleChange no subscribers for &quot;${absPath}&quot;`); return; }</td></tr>
+<tr class="nil"><td class="ln">240</td><td class="code">    // Coalesce: macOS emits a burst of events for one save (write +</td></tr>
+<tr class="nil"><td class="ln">241</td><td class="code">    // truncate + close + rename). Skip if we just handled this path.</td></tr>
 <tr class="cov"><td class="ln">242</td><td class="code">    const sinceLast = Date.now() - entry.lastHandledAt;</td></tr>
-<tr class="cov"><td class="ln">243</td><td class="code">    if (sinceLast &lt; COALESCE_MS) { wlog(`handleChange coalesced (${sinceLast}ms since last) for &quot;${absPath}&quot;`); return; }</td></tr>
+<tr class="nil"><td class="ln">243</td><td class="code">    if (sinceLast &lt; COALESCE_MS) { wlog(`handleChange coalesced (${sinceLast}ms since last) for &quot;${absPath}&quot;`); return; }</td></tr>
 <tr class="cov"><td class="ln">244</td><td class="code">    entry.lastHandledAt = Date.now();</td></tr>
-<tr class="cov"><td class="ln">245</td><td class="code">    // Asset-security gate: untrusted deck or a blocked target → skip silently</td></tr>
-<tr class="cov"><td class="ln">246</td><td class="code">    // (snapshot stays). Only a genuinely unreadable/missing source flags #74.</td></tr>
+<tr class="nil"><td class="ln">245</td><td class="code">    // Asset-security gate: untrusted deck or a blocked target → skip silently</td></tr>
+<tr class="nil"><td class="ln">246</td><td class="code">    // (snapshot stays). Only a genuinely unreadable/missing source flags #74.</td></tr>
 <tr class="cov"><td class="ln">247</td><td class="code">    const read = await gatedExternalRead(absPath);</td></tr>
-<tr class="cov"><td class="ln">248</td><td class="code">    if (read.status === &#x27;gated&#x27;) { wlog(`handleChange gated (untrusted/blocked) for &quot;${absPath}&quot;`); return; }</td></tr>
+<tr class="nil"><td class="ln">248</td><td class="code">    if (read.status === &#x27;gated&#x27;) { wlog(`handleChange gated (untrusted/blocked) for &quot;${absPath}&quot;`); return; }</td></tr>
 <tr class="cov"><td class="ln">249</td><td class="code">    if (read.status === &#x27;unreadable&#x27;) {</td></tr>
 <tr class="cov"><td class="ln">250</td><td class="code">      wlog(`handleChange unreadable &quot;${absPath}&quot; → mark ${entry.assets.size} missing (#74)`);</td></tr>
-<tr class="cov"><td class="ln">251</td><td class="code">      for (const { assetId, path } of entry.assets.values()) markAssetMissing(assetId, path);</td></tr>
-<tr class="cov"><td class="ln">252</td><td class="code">      return;</td></tr>
-<tr class="cov"><td class="ln">253</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">251</td><td class="code">      for (const { assetId, path } of entry.assets.values()) markAssetMissing(assetId, path);</td></tr>
+<tr class="nil"><td class="ln">252</td><td class="code">      return;</td></tr>
+<tr class="nil"><td class="ln">253</td><td class="code">    }</td></tr>
 <tr class="cov"><td class="ln">254</td><td class="code">    const bytes = read.bytes;</td></tr>
-<tr class="cov"><td class="ln">255</td><td class="code">    try {</td></tr>
-<tr class="cov"><td class="ln">256</td><td class="code">      const st = await pathStat(absPath).catch(() =&gt; null);</td></tr>
+<tr class="nil"><td class="ln">255</td><td class="code">    try {</td></tr>
+<tr class="nil"><td class="ln">256</td><td class="code">      const st = await pathStat(absPath).catch(() =&gt; null);</td></tr>
 <tr class="cov"><td class="ln">257</td><td class="code">      const mtime = statMtimeIso(st);</td></tr>
-<tr class="cov"><td class="ln">258</td><td class="code">      wlog(`handleChange read ${bytes.length} bytes from &quot;${absPath}&quot; mtime=${mtime} → fanout to ${entry.assets.size} asset(s)`);</td></tr>
+<tr class="nil"><td class="ln">258</td><td class="code">      wlog(`handleChange read ${bytes.length} bytes from &quot;${absPath}&quot; mtime=${mtime} → fanout to ${entry.assets.size} asset(s)`);</td></tr>
 <tr class="cov"><td class="ln">259</td><td class="code">      for (const { assetId, path } of entry.assets.values()) {</td></tr>
 <tr class="cov"><td class="ln">260</td><td class="code">        markAssetFound(assetId);  // a successful read means the source is back</td></tr>
 <tr class="cov"><td class="ln">261</td><td class="code">        try {</td></tr>
-<tr class="cov"><td class="ln">262</td><td class="code">          const writtenId = await invoke&lt;string&gt;(&#x27;db_store_asset&#x27;, {</td></tr>
+<tr class="nil"><td class="ln">262</td><td class="code">          const writtenId = await invoke&lt;string&gt;(&#x27;db_store_asset&#x27;, {</td></tr>
 <tr class="cov"><td class="ln">263</td><td class="code">            path,</td></tr>
-<tr class="cov"><td class="ln">264</td><td class="code">            data: Array.from(bytes),</td></tr>
+<tr class="nil"><td class="ln">264</td><td class="code">            data: Array.from(bytes),</td></tr>
 <tr class="cov"><td class="ln">265</td><td class="code">            mimeType: entry.mimeType,</td></tr>
 <tr class="cov"><td class="ln">266</td><td class="code">            externalPath: externalRelPath,</td></tr>
 <tr class="nil"><td class="ln">267</td><td class="code">            externalMtime: mtime,</td></tr>
-<tr class="cov"><td class="ln">268</td><td class="code">            assetId,</td></tr>
+<tr class="nil"><td class="ln">268</td><td class="code">            assetId,</td></tr>
 <tr class="cov"><td class="ln">269</td><td class="code">            autoReload: null,</td></tr>
-<tr class="cov"><td class="ln">270</td><td class="code">          });</td></tr>
+<tr class="nil"><td class="ln">270</td><td class="code">          });</td></tr>
 <tr class="cov"><td class="ln">271</td><td class="code">          wlog(`  db_store_asset ok → assetId=${writtenId.slice(0, 8)} (expected ${assetId.slice(0, 8)})`);</td></tr>
-<tr class="cov"><td class="ln">272</td><td class="code">          await invalidateRenderedAsset(assetId);</td></tr>
+<tr class="nil"><td class="ln">272</td><td class="code">          await invalidateRenderedAsset(assetId);</td></tr>
 <tr class="cov"><td class="ln">273</td><td class="code">          wlog(`  invalidateRenderedAsset(${assetId.slice(0, 8)}) fired`);</td></tr>
 <tr class="cov"><td class="ln">274</td><td class="code">        } catch (e) {</td></tr>
-<tr class="unc"><td class="ln">275</td><td class="code">          console.warn(`[watcher] db_store_asset for ${assetId.slice(0, 8)} FAILED:`, e);</td></tr>
-<tr class="cov"><td class="ln">276</td><td class="code">        }</td></tr>
-<tr class="unc"><td class="ln">277</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">275</td><td class="code">          console.warn(`[watcher] db_store_asset for ${assetId.slice(0, 8)} FAILED:`, e);</td></tr>
+<tr class="nil"><td class="ln">276</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">277</td><td class="code">      }</td></tr>
 <tr class="unc"><td class="ln">278</td><td class="code">    } catch (e) {</td></tr>
-<tr class="unc"><td class="ln">279</td><td class="code">      console.warn(`[watcher] store &quot;${absPath}&quot; FAILED:`, e);</td></tr>
+<tr class="nil"><td class="ln">279</td><td class="code">      console.warn(`[watcher] store &quot;${absPath}&quot; FAILED:`, e);</td></tr>
 <tr class="cov"><td class="ln">280</td><td class="code">      for (const { assetId, path } of entry.assets.values()) {</td></tr>
 <tr class="cov"><td class="ln">281</td><td class="code">        markAssetMissing(assetId, path);</td></tr>
-<tr class="cov"><td class="ln">282</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">282</td><td class="code">      }</td></tr>
 <tr class="nil"><td class="ln">283</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">284</td><td class="code">  }</td></tr>
 <tr class="nil"><td class="ln">285</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">286</td><td class="code">  /** Tear down every watcher. Called on project switch or window close. */</td></tr>
-<tr class="nil"><td class="ln">287</td><td class="code">  closeAll(): void {</td></tr>
+<tr class="cov"><td class="ln">287</td><td class="code">  closeAll(): void {</td></tr>
 <tr class="cov"><td class="ln">288</td><td class="code">    for (const entry of this.watchers.values()) {</td></tr>
 <tr class="cov"><td class="ln">289</td><td class="code">      try { entry.unwatch(); } catch { /* ignore */ }</td></tr>
 <tr class="nil"><td class="ln">290</td><td class="code">    }</td></tr>
 <tr class="cov"><td class="ln">291</td><td class="code">    this.watchers.clear();</td></tr>
-<tr class="cov"><td class="ln">292</td><td class="code">  }</td></tr>
-<tr class="cov"><td class="ln">293</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">294</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">292</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">293</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">294</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">295</td><td class="code">// ============================================================================</td></tr>
-<tr class="cov"><td class="ln">296</td><td class="code">// Module-level registry index. For multi-window future this maps each open</td></tr>
+<tr class="nil"><td class="ln">296</td><td class="code">// Module-level registry index. For multi-window future this maps each open</td></tr>
 <tr class="nil"><td class="ln">297</td><td class="code">// project&#x27;s id to its own registry; same id from two windows -&gt; shared</td></tr>
 <tr class="nil"><td class="ln">298</td><td class="code">// registry (correct: same disk files, one watcher set).</td></tr>
-<tr class="cov"><td class="ln">299</td><td class="code">// ============================================================================</td></tr>
+<tr class="nil"><td class="ln">299</td><td class="code">// ============================================================================</td></tr>
 <tr class="nil"><td class="ln">300</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">301</td><td class="code">const registries = new Map&lt;string, WatcherRegistry&gt;();</td></tr>
-<tr class="unc"><td class="ln">302</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">302</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">303</td><td class="code">export function getWatcherRegistry(projectId: string, projectDir: string): WatcherRegistry {</td></tr>
-<tr class="cov"><td class="ln">304</td><td class="code">  let r = registries.get(projectId);</td></tr>
-<tr class="cov"><td class="ln">305</td><td class="code">  if (!r) {</td></tr>
+<tr class="nil"><td class="ln">304</td><td class="code">  let r = registries.get(projectId);</td></tr>
+<tr class="nil"><td class="ln">305</td><td class="code">  if (!r) {</td></tr>
 <tr class="cov"><td class="ln">306</td><td class="code">    r = new WatcherRegistry(projectId, projectDir);</td></tr>
-<tr class="cov"><td class="ln">307</td><td class="code">    registries.set(projectId, r);</td></tr>
-<tr class="unc"><td class="ln">308</td><td class="code">  } else if (r.projectDir !== projectDir) {</td></tr>
-<tr class="cov"><td class="ln">309</td><td class="code">    // Project file was renamed / moved -&gt; update the dir used for</td></tr>
-<tr class="cov"><td class="ln">310</td><td class="code">    // resolution. Existing watchers were bound to absolute paths</td></tr>
-<tr class="cov"><td class="ln">311</td><td class="code">    // resolved against the OLD dir; tear them down so subsequent</td></tr>
-<tr class="cov"><td class="ln">312</td><td class="code">    // mounts re-register against the new dir.</td></tr>
-<tr class="cov"><td class="ln">313</td><td class="code">    r.closeAll();</td></tr>
+<tr class="nil"><td class="ln">307</td><td class="code">    registries.set(projectId, r);</td></tr>
+<tr class="nil"><td class="ln">308</td><td class="code">  } else if (r.projectDir !== projectDir) {</td></tr>
+<tr class="nil"><td class="ln">309</td><td class="code">    // Project file was renamed / moved -&gt; update the dir used for</td></tr>
+<tr class="nil"><td class="ln">310</td><td class="code">    // resolution. Existing watchers were bound to absolute paths</td></tr>
+<tr class="nil"><td class="ln">311</td><td class="code">    // resolved against the OLD dir; tear them down so subsequent</td></tr>
+<tr class="nil"><td class="ln">312</td><td class="code">    // mounts re-register against the new dir.</td></tr>
+<tr class="part"><td class="ln">313</td><td class="code">    r.closeAll();</td></tr>
 <tr class="cov"><td class="ln">314</td><td class="code">    r.projectDir = projectDir;</td></tr>
-<tr class="cov"><td class="ln">315</td><td class="code">  }</td></tr>
-<tr class="cov"><td class="ln">316</td><td class="code">  return r;</td></tr>
-<tr class="cov"><td class="ln">317</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">315</td><td class="code">  }</td></tr>
+<tr class="part"><td class="ln">316</td><td class="code">  return r;</td></tr>
+<tr class="nil"><td class="ln">317</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">318</td><td class="code">&nbsp;</td></tr>
-<tr class="nil"><td class="ln">319</td><td class="code">export function closeWatcherRegistry(projectId: string): void {</td></tr>
+<tr class="cov"><td class="ln">319</td><td class="code">export function closeWatcherRegistry(projectId: string): void {</td></tr>
 <tr class="cov"><td class="ln">320</td><td class="code">  const r = registries.get(projectId);</td></tr>
-<tr class="cov"><td class="ln">321</td><td class="code">  if (!r) return;</td></tr>
+<tr class="part"><td class="ln">321</td><td class="code">  if (!r) return;</td></tr>
 <tr class="cov"><td class="ln">322</td><td class="code">  r.closeAll();</td></tr>
-<tr class="cov"><td class="ln">323</td><td class="code">  registries.delete(projectId);</td></tr>
-<tr class="cov"><td class="ln">324</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">325</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">326</td><td class="code">// ============================================================================</td></tr>
-<tr class="cov"><td class="ln">327</td><td class="code">// Path utilities</td></tr>
-<tr class="cov"><td class="ln">328</td><td class="code">// ============================================================================</td></tr>
-<tr class="cov"><td class="ln">329</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">330</td><td class="code">/** POSIX-style: join an absolute dir with a possibly-../-prefixed relative</td></tr>
-<tr class="cov"><td class="ln">331</td><td class="code"> *  path. Mac is POSIX; not used on Windows. */</td></tr>
-<tr class="cov"><td class="ln">332</td><td class="code">export function resolvePosixPath(absDir: string, rel: string): string {</td></tr>
+<tr class="part"><td class="ln">323</td><td class="code">  registries.delete(projectId);</td></tr>
+<tr class="nil"><td class="ln">324</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">325</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">326</td><td class="code">// ============================================================================</td></tr>
+<tr class="nil"><td class="ln">327</td><td class="code">// Path utilities</td></tr>
+<tr class="nil"><td class="ln">328</td><td class="code">// ============================================================================</td></tr>
+<tr class="nil"><td class="ln">329</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">330</td><td class="code">/** POSIX-style: join an absolute dir with a possibly-../-prefixed relative</td></tr>
+<tr class="nil"><td class="ln">331</td><td class="code"> *  path. Mac is POSIX; not used on Windows. */</td></tr>
+<tr class="part"><td class="ln">332</td><td class="code">export function resolvePosixPath(absDir: string, rel: string): string {</td></tr>
 <tr class="cov"><td class="ln">333</td><td class="code">  if (rel.startsWith(&#x27;/&#x27;)) return rel;</td></tr>
 <tr class="cov"><td class="ln">334</td><td class="code">  const parts = (absDir + &#x27;/&#x27; + rel).split(&#x27;/&#x27;);</td></tr>
-<tr class="cov"><td class="ln">335</td><td class="code">  const out: string[] = [];</td></tr>
+<tr class="part"><td class="ln">335</td><td class="code">  const out: string[] = [];</td></tr>
 <tr class="cov"><td class="ln">336</td><td class="code">  for (const p of parts) {</td></tr>
-<tr class="cov"><td class="ln">337</td><td class="code">    if (p === &#x27;..&#x27;) out.pop();</td></tr>
+<tr class="part"><td class="ln">337</td><td class="code">    if (p === &#x27;..&#x27;) out.pop();</td></tr>
 <tr class="cov"><td class="ln">338</td><td class="code">    else if (p !== &#x27;.&#x27; &amp;&amp; p !== &#x27;&#x27;) out.push(p);</td></tr>
 <tr class="nil"><td class="ln">339</td><td class="code">  }</td></tr>
 <tr class="cov"><td class="ln">340</td><td class="code">  return &#x27;/&#x27; + out.join(&#x27;/&#x27;);</td></tr>
 <tr class="nil"><td class="ln">341</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">342</td><td class="code">&nbsp;</td></tr>
-<tr class="nil"><td class="ln">343</td><td class="code">export function dirname(absPath: string): string {</td></tr>
+<tr class="cov"><td class="ln">343</td><td class="code">export function dirname(absPath: string): string {</td></tr>
 <tr class="cov"><td class="ln">344</td><td class="code">  const i = absPath.lastIndexOf(&#x27;/&#x27;);</td></tr>
 <tr class="cov"><td class="ln">345</td><td class="code">  return i &lt;= 0 ? &#x27;/&#x27; : absPath.substring(0, i);</td></tr>
 <tr class="nil"><td class="ln">346</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">347</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">348</td><td class="code">// ============================================================================</td></tr>
-<tr class="cov"><td class="ln">349</td><td class="code">// Scan-on-load: catch disk edits that happened while the file was closed.</td></tr>
+<tr class="nil"><td class="ln">347</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">348</td><td class="code">// ============================================================================</td></tr>
+<tr class="nil"><td class="ln">349</td><td class="code">// Scan-on-load: catch disk edits that happened while the file was closed.</td></tr>
 <tr class="nil"><td class="ln">350</td><td class="code">// ============================================================================</td></tr>
 <tr class="nil"><td class="ln">351</td><td class="code">&nbsp;</td></tr>
-<tr class="nil"><td class="ln">352</td><td class="code">interface LinkedAssetRow {</td></tr>
+<tr class="cov"><td class="ln">352</td><td class="code">interface LinkedAssetRow {</td></tr>
 <tr class="cov"><td class="ln">353</td><td class="code">  asset_id: string;</td></tr>
 <tr class="nil"><td class="ln">354</td><td class="code">  path: string | null;</td></tr>
 <tr class="nil"><td class="ln">355</td><td class="code">  external_path: string;</td></tr>
@@ -388,43 +389,43 @@
 <tr class="nil"><td class="ln">371</td><td class="code">  projectDir: string,</td></tr>
 <tr class="nil"><td class="ln">372</td><td class="code">  presOverride: string | null,</td></tr>
 <tr class="nil"><td class="ln">373</td><td class="code">): Promise&lt;{ checked: number; reloaded: number }&gt; {</td></tr>
-<tr class="cov"><td class="ln">374</td><td class="code">  let reloaded = 0;</td></tr>
-<tr class="cov"><td class="ln">375</td><td class="code">  const linked = await invoke&lt;LinkedAssetRow[]&gt;(&#x27;db_list_linked_assets&#x27;).catch(() =&gt; [] as LinkedAssetRow[]);</td></tr>
-<tr class="cov"><td class="ln">376</td><td class="code">  const globalDefault = getPreference(&#x27;autoReloadAssets&#x27;);</td></tr>
-<tr class="cov"><td class="ln">377</td><td class="code">  wlog(`scanForChangedAssets: ${linked.length} linked asset(s), presOverride=${presOverride ?? &#x27;default&#x27;}, globalAutoReload=${globalDefault}`);</td></tr>
-<tr class="cov"><td class="ln">378</td><td class="code">  if (linked.length === 0) return { checked: 0, reloaded: 0 };</td></tr>
+<tr class="nil"><td class="ln">374</td><td class="code">  let reloaded = 0;</td></tr>
+<tr class="nil"><td class="ln">375</td><td class="code">  const linked = await invoke&lt;LinkedAssetRow[]&gt;(&#x27;db_list_linked_assets&#x27;).catch(() =&gt; [] as LinkedAssetRow[]);</td></tr>
+<tr class="nil"><td class="ln">376</td><td class="code">  const globalDefault = getPreference(&#x27;autoReloadAssets&#x27;);</td></tr>
+<tr class="nil"><td class="ln">377</td><td class="code">  wlog(`scanForChangedAssets: ${linked.length} linked asset(s), presOverride=${presOverride ?? &#x27;default&#x27;}, globalAutoReload=${globalDefault}`);</td></tr>
+<tr class="nil"><td class="ln">378</td><td class="code">  if (linked.length === 0) return { checked: 0, reloaded: 0 };</td></tr>
 <tr class="nil"><td class="ln">379</td><td class="code">  // Asset-security: an untrusted / received deck performs ZERO disk access on open</td></tr>
 <tr class="nil"><td class="ln">380</td><td class="code">  // — not even the #74 existence stat. Skip the whole scan; the embedded snapshots</td></tr>
 <tr class="nil"><td class="ln">381</td><td class="code">  // render. (docs/ASSETS-SECURITY.md.) Trusted decks scan as before, with each</td></tr>
 <tr class="nil"><td class="ln">382</td><td class="code">  // byte-read routed through the gate for realpath + type safety.</td></tr>
 <tr class="nil"><td class="ln">383</td><td class="code">  {</td></tr>
-<tr class="cov"><td class="ln">384</td><td class="code">    const { getDeckToken } = await import(&#x27;../store/presentation&#x27;);<a class="jump" href="src__store__presentation_ts.html" title="src/store/presentation.ts">→ presentation.ts</a></td></tr>
-<tr class="cov"><td class="ln">385</td><td class="code">    const token = getDeckToken();</td></tr>
-<tr class="cov"><td class="ln">386</td><td class="code">    if (!token) return { checked: 0, reloaded: 0 };</td></tr>
-<tr class="cov"><td class="ln">387</td><td class="code">    const { isTrusted } = await import(&#x27;./trustStore&#x27;);<a class="jump" href="src__lib__trustStore_ts.html" title="src/lib/trustStore.ts">→ trustStore.ts</a></td></tr>
-<tr class="cov"><td class="ln">388</td><td class="code">    if (!(await isTrusted(token))) { wlog(&#x27;scanForChangedAssets skipped — deck untrusted&#x27;); return { checked: 0, reloaded: 0 }; }</td></tr>
+<tr class="nil"><td class="ln">384</td><td class="code">    const { getDeckToken } = await import(&#x27;../store/presentation&#x27;);<a class="jump" href="src__store__presentation_ts.html" title="src/store/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="nil"><td class="ln">385</td><td class="code">    const token = getDeckToken();</td></tr>
+<tr class="nil"><td class="ln">386</td><td class="code">    if (!token) return { checked: 0, reloaded: 0 };</td></tr>
+<tr class="nil"><td class="ln">387</td><td class="code">    const { isTrusted } = await import(&#x27;./trustStore&#x27;);<a class="jump" href="src__lib__trustStore_ts.html" title="src/lib/trustStore.ts">→ trustStore.ts</a></td></tr>
+<tr class="nil"><td class="ln">388</td><td class="code">    if (!(await isTrusted(token))) { wlog(&#x27;scanForChangedAssets skipped — deck untrusted&#x27;); return { checked: 0, reloaded: 0 }; }</td></tr>
 <tr class="nil"><td class="ln">389</td><td class="code">  }</td></tr>
-<tr class="cov"><td class="ln">390</td><td class="code">  for (const a of linked) {</td></tr>
-<tr class="cov"><td class="ln">391</td><td class="code">    const absPath = resolvePosixPath(projectDir, a.external_path);</td></tr>
+<tr class="nil"><td class="ln">390</td><td class="code">  for (const a of linked) {</td></tr>
+<tr class="nil"><td class="ln">391</td><td class="code">    const absPath = resolvePosixPath(projectDir, a.external_path);</td></tr>
 <tr class="nil"><td class="ln">392</td><td class="code">    // Existence check is UNGATED by the auto-reload toggle: a missing source</td></tr>
 <tr class="nil"><td class="ln">393</td><td class="code">    // is worth flagging even when you&#x27;ve opted out of live reloads (#74).</td></tr>
 <tr class="nil"><td class="ln">394</td><td class="code">    let st: PathStat;</td></tr>
-<tr class="cov"><td class="ln">395</td><td class="code">    try {</td></tr>
-<tr class="cov"><td class="ln">396</td><td class="code">      st = await pathStat(absPath);</td></tr>
+<tr class="nil"><td class="ln">395</td><td class="code">    try {</td></tr>
+<tr class="nil"><td class="ln">396</td><td class="code">      st = await pathStat(absPath);</td></tr>
 <tr class="nil"><td class="ln">397</td><td class="code">    } catch (e) {</td></tr>
-<tr class="cov"><td class="ln">398</td><td class="code">      markAssetMissing(a.asset_id, a.path ?? a.external_path);</td></tr>
-<tr class="cov"><td class="ln">399</td><td class="code">      wlog(`  source-missing ${a.asset_id.slice(0, 8)} path=&quot;${a.path}&quot; abs=&quot;${absPath}&quot;: ${e}`);</td></tr>
-<tr class="cov"><td class="ln">400</td><td class="code">      continue;</td></tr>
+<tr class="nil"><td class="ln">398</td><td class="code">      markAssetMissing(a.asset_id, a.path ?? a.external_path);</td></tr>
+<tr class="nil"><td class="ln">399</td><td class="code">      wlog(`  source-missing ${a.asset_id.slice(0, 8)} path=&quot;${a.path}&quot; abs=&quot;${absPath}&quot;: ${e}`);</td></tr>
+<tr class="nil"><td class="ln">400</td><td class="code">      continue;</td></tr>
 <tr class="nil"><td class="ln">401</td><td class="code">    }</td></tr>
-<tr class="cov"><td class="ln">402</td><td class="code">    markAssetFound(a.asset_id);  // present on disk — clear any stale flag</td></tr>
+<tr class="nil"><td class="ln">402</td><td class="code">    markAssetFound(a.asset_id);  // present on disk — clear any stale flag</td></tr>
 <tr class="nil"><td class="ln">403</td><td class="code">    // The RELOAD is gated: don&#x27;t pull new bytes for assets you&#x27;ve opted out of.</td></tr>
-<tr class="cov"><td class="ln">404</td><td class="code">    if (!effectiveAutoReload(a.auto_reload, presOverride, globalDefault)) {</td></tr>
-<tr class="unc"><td class="ln">405</td><td class="code">      wlog(`  skip ${a.asset_id.slice(0, 8)} — auto_reload resolves to OFF (per-asset=&#x27;${a.auto_reload ?? &#x27;default&#x27;}&#x27;, per-pres=&#x27;${presOverride ?? &#x27;default&#x27;}&#x27;)`);</td></tr>
-<tr class="unc"><td class="ln">406</td><td class="code">      continue;</td></tr>
+<tr class="nil"><td class="ln">404</td><td class="code">    if (!effectiveAutoReload(a.auto_reload, presOverride, globalDefault)) {</td></tr>
+<tr class="nil"><td class="ln">405</td><td class="code">      wlog(`  skip ${a.asset_id.slice(0, 8)} — auto_reload resolves to OFF (per-asset=&#x27;${a.auto_reload ?? &#x27;default&#x27;}&#x27;, per-pres=&#x27;${presOverride ?? &#x27;default&#x27;}&#x27;)`);</td></tr>
+<tr class="nil"><td class="ln">406</td><td class="code">      continue;</td></tr>
 <tr class="nil"><td class="ln">407</td><td class="code">    }</td></tr>
-<tr class="cov"><td class="ln">408</td><td class="code">    try {</td></tr>
-<tr class="cov"><td class="ln">409</td><td class="code">      const diskMtime = statMtimeIso(st);</td></tr>
-<tr class="cov"><td class="ln">410</td><td class="code">      if (diskMtime &amp;&amp; diskMtime !== a.external_mtime) {</td></tr>
+<tr class="nil"><td class="ln">408</td><td class="code">    try {</td></tr>
+<tr class="nil"><td class="ln">409</td><td class="code">      const diskMtime = statMtimeIso(st);</td></tr>
+<tr class="nil"><td class="ln">410</td><td class="code">      if (diskMtime &amp;&amp; diskMtime !== a.external_mtime) {</td></tr>
 <tr class="nil"><td class="ln">411</td><td class="code">        // mtime moved — read bytes and compare hash before deciding</td></tr>
 <tr class="nil"><td class="ln">412</td><td class="code">        // whether to invalidate the rendered cache. Common case after</td></tr>
 <tr class="nil"><td class="ln">413</td><td class="code">        // a fresh insertion (stored mtime is null) or a touch / save</td></tr>
@@ -434,12 +435,12 @@
 <tr class="nil"><td class="ln">417</td><td class="code">        // Gated read (deck already established trusted above): resolveAndGate</td></tr>
 <tr class="nil"><td class="ln">418</td><td class="code">        // applies realpath + the asset-type check. A blocked target → skip; a</td></tr>
 <tr class="nil"><td class="ln">419</td><td class="code">        // vanished/erroring file → flag missing (#74).</td></tr>
-<tr class="cov"><td class="ln">420</td><td class="code">        const read = await gatedExternalRead(absPath);</td></tr>
-<tr class="cov"><td class="ln">421</td><td class="code">        if (read.status === &#x27;gated&#x27;) { wlog(`  gated ${a.asset_id.slice(0, 8)} path=&quot;${a.path}&quot;`); continue; }</td></tr>
-<tr class="cov"><td class="ln">422</td><td class="code">        if (read.status === &#x27;unreadable&#x27;) { markAssetMissing(a.asset_id, a.path ?? a.external_path); continue; }</td></tr>
-<tr class="cov"><td class="ln">423</td><td class="code">        const bytes = read.bytes;</td></tr>
-<tr class="cov"><td class="ln">424</td><td class="code">        const diskHash = await sha256Hex(bytes);</td></tr>
-<tr class="cov"><td class="ln">425</td><td class="code">        await invoke(&#x27;db_store_asset&#x27;, {</td></tr>
+<tr class="nil"><td class="ln">420</td><td class="code">        const read = await gatedExternalRead(absPath);</td></tr>
+<tr class="nil"><td class="ln">421</td><td class="code">        if (read.status === &#x27;gated&#x27;) { wlog(`  gated ${a.asset_id.slice(0, 8)} path=&quot;${a.path}&quot;`); continue; }</td></tr>
+<tr class="nil"><td class="ln">422</td><td class="code">        if (read.status === &#x27;unreadable&#x27;) { markAssetMissing(a.asset_id, a.path ?? a.external_path); continue; }</td></tr>
+<tr class="nil"><td class="ln">423</td><td class="code">        const bytes = read.bytes;</td></tr>
+<tr class="nil"><td class="ln">424</td><td class="code">        const diskHash = await sha256Hex(bytes);</td></tr>
+<tr class="nil"><td class="ln">425</td><td class="code">        await invoke(&#x27;db_store_asset&#x27;, {</td></tr>
 <tr class="nil"><td class="ln">426</td><td class="code">          path: a.path ?? absPath.split(&#x27;/&#x27;).pop() ?? a.asset_id,</td></tr>
 <tr class="nil"><td class="ln">427</td><td class="code">          data: Array.from(bytes),</td></tr>
 <tr class="nil"><td class="ln">428</td><td class="code">          mimeType: a.mime_type ?? &#x27;application/octet-stream&#x27;,</td></tr>
@@ -448,27 +449,27 @@
 <tr class="nil"><td class="ln">431</td><td class="code">          assetId: a.asset_id,</td></tr>
 <tr class="nil"><td class="ln">432</td><td class="code">          autoReload: null,</td></tr>
 <tr class="nil"><td class="ln">433</td><td class="code">        });</td></tr>
-<tr class="cov"><td class="ln">434</td><td class="code">        if (diskHash !== a.hash) {</td></tr>
+<tr class="nil"><td class="ln">434</td><td class="code">        if (diskHash !== a.hash) {</td></tr>
 <tr class="nil"><td class="ln">435</td><td class="code">          // Bytes actually changed — invalidate rendered cache so the</td></tr>
 <tr class="nil"><td class="ln">436</td><td class="code">          // sidebar + canvas re-render from the new bytes.</td></tr>
-<tr class="cov"><td class="ln">437</td><td class="code">          wlog(`  reload ${a.asset_id.slice(0, 8)} path=&quot;${a.path}&quot; disk=${diskMtime} stored=${a.external_mtime} (bytes changed)`);</td></tr>
-<tr class="cov"><td class="ln">438</td><td class="code">          await invalidateRenderedAsset(a.asset_id);</td></tr>
-<tr class="cov"><td class="ln">439</td><td class="code">          reloaded++;</td></tr>
+<tr class="nil"><td class="ln">437</td><td class="code">          wlog(`  reload ${a.asset_id.slice(0, 8)} path=&quot;${a.path}&quot; disk=${diskMtime} stored=${a.external_mtime} (bytes changed)`);</td></tr>
+<tr class="nil"><td class="ln">438</td><td class="code">          await invalidateRenderedAsset(a.asset_id);</td></tr>
+<tr class="nil"><td class="ln">439</td><td class="code">          reloaded++;</td></tr>
 <tr class="nil"><td class="ln">440</td><td class="code">        } else {</td></tr>
 <tr class="nil"><td class="ln">441</td><td class="code">          // Just an mtime drift — bytes are identical. db_store_asset&#x27;s</td></tr>
 <tr class="nil"><td class="ln">442</td><td class="code">          // short-circuit recorded the new mtime; nothing else to do.</td></tr>
-<tr class="cov"><td class="ln">443</td><td class="code">          wlog(`  mtime-only ${a.asset_id.slice(0, 8)} path=&quot;${a.path}&quot; disk=${diskMtime} stored=${a.external_mtime} (bytes unchanged)`);</td></tr>
+<tr class="nil"><td class="ln">443</td><td class="code">          wlog(`  mtime-only ${a.asset_id.slice(0, 8)} path=&quot;${a.path}&quot; disk=${diskMtime} stored=${a.external_mtime} (bytes unchanged)`);</td></tr>
 <tr class="nil"><td class="ln">444</td><td class="code">        }</td></tr>
 <tr class="nil"><td class="ln">445</td><td class="code">      } else {</td></tr>
-<tr class="unc"><td class="ln">446</td><td class="code">        wlog(`  unchanged ${a.asset_id.slice(0, 8)} path=&quot;${a.path}&quot; mtime=${diskMtime}`);</td></tr>
+<tr class="nil"><td class="ln">446</td><td class="code">        wlog(`  unchanged ${a.asset_id.slice(0, 8)} path=&quot;${a.path}&quot; mtime=${diskMtime}`);</td></tr>
 <tr class="nil"><td class="ln">447</td><td class="code">      }</td></tr>
 <tr class="nil"><td class="ln">448</td><td class="code">    } catch (e) {</td></tr>
 <tr class="nil"><td class="ln">449</td><td class="code">      // The file passed stat() but vanished/erred during read — treat as missing.</td></tr>
-<tr class="unc"><td class="ln">450</td><td class="code">      markAssetMissing(a.asset_id, a.path ?? a.external_path);</td></tr>
-<tr class="unc"><td class="ln">451</td><td class="code">      wlog(`  source-missing ${a.asset_id.slice(0, 8)} path=&quot;${a.path}&quot; abs=&quot;${absPath}&quot;: ${e}`);</td></tr>
+<tr class="nil"><td class="ln">450</td><td class="code">      markAssetMissing(a.asset_id, a.path ?? a.external_path);</td></tr>
+<tr class="nil"><td class="ln">451</td><td class="code">      wlog(`  source-missing ${a.asset_id.slice(0, 8)} path=&quot;${a.path}&quot; abs=&quot;${absPath}&quot;: ${e}`);</td></tr>
 <tr class="nil"><td class="ln">452</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">453</td><td class="code">  }</td></tr>
-<tr class="cov"><td class="ln">454</td><td class="code">  return { checked: linked.length, reloaded };</td></tr>
+<tr class="nil"><td class="ln">454</td><td class="code">  return { checked: linked.length, reloaded };</td></tr>
 <tr class="nil"><td class="ln">455</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">456</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">457</td><td class="code">/**</td></tr>
@@ -480,15 +481,15 @@
 <tr class="nil"><td class="ln">463</td><td class="code"> * Exported for unit testing.</td></tr>
 <tr class="nil"><td class="ln">464</td><td class="code"> */</td></tr>
 <tr class="nil"><td class="ln">465</td><td class="code">export function deriveRelocateOffset(oldAbs: string, newAbs: string): { oldPrefix: string; newPrefix: string } | null {</td></tr>
-<tr class="cov"><td class="ln">466</td><td class="code">  const o = oldAbs.split(&#x27;/&#x27;);</td></tr>
-<tr class="cov"><td class="ln">467</td><td class="code">  const n = newAbs.split(&#x27;/&#x27;);</td></tr>
-<tr class="cov"><td class="ln">468</td><td class="code">  let k = 0;</td></tr>
-<tr class="cov"><td class="ln">469</td><td class="code">  while (k &lt; o.length &amp;&amp; k &lt; n.length &amp;&amp; o[o.length - 1 - k] === n[n.length - 1 - k]) k++;</td></tr>
-<tr class="cov"><td class="ln">470</td><td class="code">  if (k === 0) return null;</td></tr>
-<tr class="cov"><td class="ln">471</td><td class="code">  const oldPrefix = o.slice(0, o.length - k).join(&#x27;/&#x27;);</td></tr>
-<tr class="cov"><td class="ln">472</td><td class="code">  const newPrefix = n.slice(0, n.length - k).join(&#x27;/&#x27;);</td></tr>
-<tr class="cov"><td class="ln">473</td><td class="code">  if (oldPrefix === newPrefix) return null;</td></tr>
-<tr class="cov"><td class="ln">474</td><td class="code">  return { oldPrefix, newPrefix };</td></tr>
+<tr class="nil"><td class="ln">466</td><td class="code">  const o = oldAbs.split(&#x27;/&#x27;);</td></tr>
+<tr class="nil"><td class="ln">467</td><td class="code">  const n = newAbs.split(&#x27;/&#x27;);</td></tr>
+<tr class="nil"><td class="ln">468</td><td class="code">  let k = 0;</td></tr>
+<tr class="nil"><td class="ln">469</td><td class="code">  while (k &lt; o.length &amp;&amp; k &lt; n.length &amp;&amp; o[o.length - 1 - k] === n[n.length - 1 - k]) k++;</td></tr>
+<tr class="nil"><td class="ln">470</td><td class="code">  if (k === 0) return null;</td></tr>
+<tr class="nil"><td class="ln">471</td><td class="code">  const oldPrefix = o.slice(0, o.length - k).join(&#x27;/&#x27;);</td></tr>
+<tr class="nil"><td class="ln">472</td><td class="code">  const newPrefix = n.slice(0, n.length - k).join(&#x27;/&#x27;);</td></tr>
+<tr class="nil"><td class="ln">473</td><td class="code">  if (oldPrefix === newPrefix) return null;</td></tr>
+<tr class="nil"><td class="ln">474</td><td class="code">  return { oldPrefix, newPrefix };</td></tr>
 <tr class="nil"><td class="ln">475</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">476</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">477</td><td class="code">/**</td></tr>
@@ -504,30 +505,30 @@
 <tr class="nil"><td class="ln">487</td><td class="code">  oldAbs: string,</td></tr>
 <tr class="nil"><td class="ln">488</td><td class="code">  newAbs: string,</td></tr>
 <tr class="nil"><td class="ln">489</td><td class="code">): Promise&lt;{ relocated: number; checked: number }&gt; {</td></tr>
-<tr class="unc"><td class="ln">490</td><td class="code">  const offset = deriveRelocateOffset(oldAbs, newAbs);</td></tr>
-<tr class="unc"><td class="ln">491</td><td class="code">  if (!offset) return { relocated: 0, checked: 0 };</td></tr>
-<tr class="unc"><td class="ln">492</td><td class="code">  const { oldPrefix, newPrefix } = offset;</td></tr>
-<tr class="unc"><td class="ln">493</td><td class="code">  const linked = await invoke&lt;LinkedAssetRow[]&gt;(&#x27;db_list_linked_assets&#x27;).catch(() =&gt; [] as LinkedAssetRow[]);</td></tr>
-<tr class="unc"><td class="ln">494</td><td class="code">  let relocated = 0, checked = 0;</td></tr>
-<tr class="unc"><td class="ln">495</td><td class="code">  for (const a of linked) {</td></tr>
-<tr class="unc"><td class="ln">496</td><td class="code">    if (a.asset_id === skipAssetId || !isAssetMissing(a.asset_id)) continue;</td></tr>
-<tr class="unc"><td class="ln">497</td><td class="code">    const absOld = resolvePosixPath(projectDir, a.external_path);</td></tr>
-<tr class="unc"><td class="ln">498</td><td class="code">    if (absOld !== oldPrefix &amp;&amp; !absOld.startsWith(oldPrefix + &#x27;/&#x27;)) continue;  // outside the moved tree</td></tr>
-<tr class="unc"><td class="ln">499</td><td class="code">    const candidate = newPrefix + absOld.slice(oldPrefix.length);</td></tr>
-<tr class="unc"><td class="ln">500</td><td class="code">    checked++;</td></tr>
-<tr class="unc"><td class="ln">501</td><td class="code">    try {</td></tr>
+<tr class="nil"><td class="ln">490</td><td class="code">  const offset = deriveRelocateOffset(oldAbs, newAbs);</td></tr>
+<tr class="nil"><td class="ln">491</td><td class="code">  if (!offset) return { relocated: 0, checked: 0 };</td></tr>
+<tr class="nil"><td class="ln">492</td><td class="code">  const { oldPrefix, newPrefix } = offset;</td></tr>
+<tr class="nil"><td class="ln">493</td><td class="code">  const linked = await invoke&lt;LinkedAssetRow[]&gt;(&#x27;db_list_linked_assets&#x27;).catch(() =&gt; [] as LinkedAssetRow[]);</td></tr>
+<tr class="nil"><td class="ln">494</td><td class="code">  let relocated = 0, checked = 0;</td></tr>
+<tr class="nil"><td class="ln">495</td><td class="code">  for (const a of linked) {</td></tr>
+<tr class="nil"><td class="ln">496</td><td class="code">    if (a.asset_id === skipAssetId || !isAssetMissing(a.asset_id)) continue;</td></tr>
+<tr class="nil"><td class="ln">497</td><td class="code">    const absOld = resolvePosixPath(projectDir, a.external_path);</td></tr>
+<tr class="nil"><td class="ln">498</td><td class="code">    if (absOld !== oldPrefix &amp;&amp; !absOld.startsWith(oldPrefix + &#x27;/&#x27;)) continue;  // outside the moved tree</td></tr>
+<tr class="nil"><td class="ln">499</td><td class="code">    const candidate = newPrefix + absOld.slice(oldPrefix.length);</td></tr>
+<tr class="nil"><td class="ln">500</td><td class="code">    checked++;</td></tr>
+<tr class="nil"><td class="ln">501</td><td class="code">    try {</td></tr>
 <tr class="nil"><td class="ln">502</td><td class="code">      // The user relocated the anchor file, revealing this whole folder moved; the</td></tr>
 <tr class="nil"><td class="ln">503</td><td class="code">      // siblings within it inherit that consent. Approve each (keyed by its asset id,</td></tr>
 <tr class="nil"><td class="ln">504</td><td class="code">      // so it replaces that asset&#x27;s old approval in place) on the trusted deck — same</td></tr>
 <tr class="nil"><td class="ln">505</td><td class="code">      // single approval path as add/relocate — so the gated read accepts it.</td></tr>
-<tr class="unc"><td class="ln">506</td><td class="code">      const { approveExternalAbsPath } = await import(&#x27;./assetInsert&#x27;);<a class="jump" href="src__lib__assetInsert_ts.html" title="src/lib/assetInsert.ts">→ assetInsert.ts</a></td></tr>
-<tr class="unc"><td class="ln">507</td><td class="code">      await approveExternalAbsPath(a.asset_id, candidate, &#x27;relocate-folder&#x27;);</td></tr>
+<tr class="nil"><td class="ln">506</td><td class="code">      const { approveExternalAbsPath } = await import(&#x27;./assetInsert&#x27;);<a class="jump" href="src__lib__assetInsert_ts.html" title="src/lib/assetInsert.ts">→ assetInsert.ts</a></td></tr>
+<tr class="nil"><td class="ln">507</td><td class="code">      await approveExternalAbsPath(a.asset_id, candidate, &#x27;relocate-folder&#x27;);</td></tr>
 <tr class="nil"><td class="ln">508</td><td class="code">      // Gated read: untrusted deck or a blocked/wrong-type relocation target → skip.</td></tr>
-<tr class="unc"><td class="ln">509</td><td class="code">      const read = await gatedExternalRead(candidate);</td></tr>
-<tr class="unc"><td class="ln">510</td><td class="code">      if (read.status !== &#x27;ok&#x27;) continue;</td></tr>
-<tr class="unc"><td class="ln">511</td><td class="code">      const bytes = read.bytes;</td></tr>
-<tr class="unc"><td class="ln">512</td><td class="code">      const st = await pathStat(candidate).catch(() =&gt; null);</td></tr>
-<tr class="unc"><td class="ln">513</td><td class="code">      await invoke(&#x27;db_store_asset&#x27;, {</td></tr>
+<tr class="nil"><td class="ln">509</td><td class="code">      const read = await gatedExternalRead(candidate);</td></tr>
+<tr class="nil"><td class="ln">510</td><td class="code">      if (read.status !== &#x27;ok&#x27;) continue;</td></tr>
+<tr class="nil"><td class="ln">511</td><td class="code">      const bytes = read.bytes;</td></tr>
+<tr class="nil"><td class="ln">512</td><td class="code">      const st = await pathStat(candidate).catch(() =&gt; null);</td></tr>
+<tr class="nil"><td class="ln">513</td><td class="code">      await invoke(&#x27;db_store_asset&#x27;, {</td></tr>
 <tr class="nil"><td class="ln">514</td><td class="code">        path: a.path ?? candidate.split(&#x27;/&#x27;).pop() ?? a.asset_id,</td></tr>
 <tr class="nil"><td class="ln">515</td><td class="code">        data: Array.from(bytes),</td></tr>
 <tr class="nil"><td class="ln">516</td><td class="code">        mimeType: a.mime_type ?? &#x27;application/octet-stream&#x27;,</td></tr>
@@ -536,11 +537,11 @@
 <tr class="nil"><td class="ln">519</td><td class="code">        assetId: a.asset_id,</td></tr>
 <tr class="nil"><td class="ln">520</td><td class="code">        autoReload: null,</td></tr>
 <tr class="nil"><td class="ln">521</td><td class="code">      });</td></tr>
-<tr class="unc"><td class="ln">522</td><td class="code">      await invalidateRenderedAsset(a.asset_id);</td></tr>
-<tr class="unc"><td class="ln">523</td><td class="code">      markAssetFound(a.asset_id);</td></tr>
-<tr class="unc"><td class="ln">524</td><td class="code">      relocated++;</td></tr>
+<tr class="nil"><td class="ln">522</td><td class="code">      await invalidateRenderedAsset(a.asset_id);</td></tr>
+<tr class="nil"><td class="ln">523</td><td class="code">      markAssetFound(a.asset_id);</td></tr>
+<tr class="nil"><td class="ln">524</td><td class="code">      relocated++;</td></tr>
 <tr class="nil"><td class="ln">525</td><td class="code">    } catch { /* not at the remapped location either — leave it flagged missing */ }</td></tr>
 <tr class="nil"><td class="ln">526</td><td class="code">  }</td></tr>
-<tr class="unc"><td class="ln">527</td><td class="code">  return { relocated, checked };</td></tr>
+<tr class="nil"><td class="ln">527</td><td class="code">  return { relocated, checked };</td></tr>
 <tr class="nil"><td class="ln">528</td><td class="code">}</td></tr></table>
 </body></html>

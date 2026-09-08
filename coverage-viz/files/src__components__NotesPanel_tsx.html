@@ -5,13 +5,14 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/components/NotesPanel.tsx </h1>
   <div class="stats">
-    <span class="stat"><b>45%</b> covered</span>
-    <span class="stat">5/11 executable</span>
-    <span class="stat unc-txt">6 uncovered</span>
+    <span class="stat"><b>62%</b> covered</span>
+    <span class="stat">5/8 statements</span>
+    <span class="stat unc-txt">3 uncovered</span>
     <span class="stat">31 raw lines</span>
     <span class="stat">0.07% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:16.129%"></span><span class="seg unc" style="width:19.355%"></span><span class="seg nil" style="width:64.516%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:62.500%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:37.500%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__store__presentation_ts.html">presentation.ts</a></div>
   <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a></div>
 </header>
@@ -22,15 +23,15 @@
 <tr class="cov"><td class="ln">5</td><td class="code">  const { presentation, currentSlideIndex, updateSlide } =</td></tr>
 <tr class="cov"><td class="ln">6</td><td class="code">    usePresentationStore();</td></tr>
 <tr class="cov"><td class="ln">7</td><td class="code">  const [collapsed, setCollapsed] = useState(false);</td></tr>
-<tr class="cov"><td class="ln">8</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">9</td><td class="code">  const slide = presentation.slides[currentSlideIndex];</td></tr>
-<tr class="unc"><td class="ln">10</td><td class="code">  if (!slide) return null;</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">&nbsp;</td></tr>
+<tr class="part"><td class="ln">9</td><td class="code">  const slide = presentation.slides[currentSlideIndex];</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">  if (!slide) return null;</td></tr>
 <tr class="nil"><td class="ln">11</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">12</td><td class="code">  return (</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">  return (</td></tr>
 <tr class="nil"><td class="ln">13</td><td class="code">    &lt;div className={`notes-panel ${collapsed ? &#x27;collapsed&#x27; : &#x27;&#x27;}`}&gt;</td></tr>
 <tr class="unc"><td class="ln">14</td><td class="code">      &lt;div</td></tr>
 <tr class="nil"><td class="ln">15</td><td class="code">        className=&quot;notes-header&quot;</td></tr>
-<tr class="unc"><td class="ln">16</td><td class="code">        onClick={() =&gt; setCollapsed(!collapsed)}</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">        onClick={() =&gt; setCollapsed(!collapsed)}</td></tr>
 <tr class="nil"><td class="ln">17</td><td class="code">      &gt;</td></tr>
 <tr class="nil"><td class="ln">18</td><td class="code">        &lt;span className=&quot;notes-toggle&quot;&gt;{collapsed ? &#x27;▸&#x27; : &#x27;▾&#x27;}&lt;/span&gt;</td></tr>
 <tr class="nil"><td class="ln">19</td><td class="code">        &lt;span&gt;Speaker Notes&lt;/span&gt;</td></tr>
@@ -39,7 +40,7 @@
 <tr class="nil"><td class="ln">22</td><td class="code">        &lt;textarea</td></tr>
 <tr class="nil"><td class="ln">23</td><td class="code">          className=&quot;notes-textarea&quot;</td></tr>
 <tr class="nil"><td class="ln">24</td><td class="code">          value={slide.notes}</td></tr>
-<tr class="unc"><td class="ln">25</td><td class="code">          onChange={(e) =&gt; updateSlide(currentSlideIndex, { notes: e.target.value })}</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">          onChange={(e) =&gt; updateSlide(currentSlideIndex, { notes: e.target.value })}</td></tr>
 <tr class="unc"><td class="ln">26</td><td class="code">          placeholder=&quot;Add speaker notes for this slide...&quot;</td></tr>
 <tr class="nil"><td class="ln">27</td><td class="code">        /&gt;</td></tr>
 <tr class="nil"><td class="ln">28</td><td class="code">      )}</td></tr>

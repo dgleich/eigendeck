@@ -5,36 +5,37 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/elementLifecycle.ts </h1>
   <div class="stats">
-    <span class="stat"><b>94%</b> covered</span>
-    <span class="stat">17/18 executable</span>
-    <span class="stat unc-txt">1 uncovered</span>
+    <span class="stat"><b>100%</b> covered</span>
+    <span class="stat">9/9 statements</span>
+    <span class="stat unc-txt">0 uncovered</span>
     <span class="stat">71 raw lines</span>
     <span class="stat">0.17% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:23.944%"></span><span class="seg unc" style="width:1.408%"></span><span class="seg nil" style="width:74.648%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:100.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:0.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
   <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__components__notebook__notebookLifecycle_ts.html">notebookLifecycle.ts</a> <a href="src__lib__pasteClip_ts.html">pasteClip.ts</a> <a href="src__store__presentation_ts.html">presentation.ts</a></div>
 </header>
-<table class="src"><tr class="cov"><td class="ln">1</td><td class="code">// Per-element-type lifecycle hooks for the sync/link transitions. Lets a</td></tr>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Per-element-type lifecycle hooks for the sync/link transitions. Lets a</td></tr>
 <tr class="nil"><td class="ln">2</td><td class="code">// specific element type (notably `notebook`) customize what happens when it is</td></tr>
-<tr class="cov"><td class="ln">3</td><td class="code">// freed, re-synced, or merged with another element — without the store needing</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// freed, re-synced, or merged with another element — without the store needing</td></tr>
 <tr class="nil"><td class="ln">4</td><td class="code">// to import that type&#x27;s code. Types register at app boot</td></tr>
 <tr class="nil"><td class="ln">5</td><td class="code">// (registerNotebookLifecycle in components/notebook/notebookLifecycle.ts); the</td></tr>
-<tr class="unc"><td class="ln">6</td><td class="code">// store calls the type-agnostic run* dispatchers.</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">// store calls the type-agnostic run* dispatchers.</td></tr>
 <tr class="nil"><td class="ln">7</td><td class="code">//</td></tr>
 <tr class="nil"><td class="ln">8</td><td class="code">// Hooks may be async and are fired BEFORE the store flips the relevant fields,</td></tr>
-<tr class="cov"><td class="ln">9</td><td class="code">// so they can seed in-memory caches synchronously (the clone-on-unsync</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">// so they can seed in-memory caches synchronously (the clone-on-unsync</td></tr>
 <tr class="nil"><td class="ln">10</td><td class="code">// contract: cloneOverlay seeds its cache before its first await, so a</td></tr>
 <tr class="nil"><td class="ln">11</td><td class="code">// void-fired hook shows no empty flash on the next render).</td></tr>
-<tr class="cov"><td class="ln">12</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">13</td><td class="code">import type { SlideElement } from &#x27;../types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
 <tr class="nil"><td class="ln">14</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">15</td><td class="code">export interface MergeContext {</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">export interface MergeContext {</td></tr>
 <tr class="nil"><td class="ln">16</td><td class="code">  /** Element on the current slide being linked. */</td></tr>
 <tr class="nil"><td class="ln">17</td><td class="code">  source: SlideElement;</td></tr>
-<tr class="cov"><td class="ln">18</td><td class="code">  /** Element on another slide it links to. */</td></tr>
-<tr class="cov"><td class="ln">19</td><td class="code">  target: SlideElement;</td></tr>
-<tr class="cov"><td class="ln">20</td><td class="code">  /** The shared syncId the merged element will live under. */</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">  /** Element on another slide it links to. */</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">  target: SlideElement;</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">  /** The shared syncId the merged element will live under. */</td></tr>
 <tr class="nil"><td class="ln">21</td><td class="code">  sharedSyncId: string;</td></tr>
 <tr class="nil"><td class="ln">22</td><td class="code">  /** Which side&#x27;s type-specific state to keep: &#x27;auto&#x27; decides by content,</td></tr>
 <tr class="nil"><td class="ln">23</td><td class="code">   *  &#x27;source&#x27;/&#x27;target&#x27; is an explicit (e.g. user-chosen) winner. */</td></tr>
@@ -82,7 +83,7 @@
 <tr class="nil"><td class="ln">65</td><td class="code"> *  that reconciles both sides — e.g. notebook overlays — runs exactly once). */</td></tr>
 <tr class="nil"><td class="ln">66</td><td class="code">export async function runMergeHook(ctx: MergeContext): Promise&lt;void&gt; {</td></tr>
 <tr class="cov"><td class="ln">67</td><td class="code">  const types = new Set([ctx.source.type, ctx.target.type]);</td></tr>
-<tr class="cov"><td class="ln">68</td><td class="code">  for (const t of types) {</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code">  for (const t of types) {</td></tr>
 <tr class="cov"><td class="ln">69</td><td class="code">    await registry.get(t)?.onMerge?.(ctx);</td></tr>
 <tr class="nil"><td class="ln">70</td><td class="code">  }</td></tr>
 <tr class="nil"><td class="ln">71</td><td class="code">}</td></tr></table>

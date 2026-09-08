@@ -5,106 +5,107 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/demoAssets.ts </h1>
   <div class="stats">
-    <span class="stat"><b>88%</b> covered</span>
-    <span class="stat">69/78 executable</span>
-    <span class="stat unc-txt">9 uncovered</span>
+    <span class="stat"><b>95%</b> covered</span>
+    <span class="stat">52/55 statements</span>
+    <span class="stat unc-txt">3 uncovered</span>
     <span class="stat">116 raw lines</span>
     <span class="stat">0.27% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:59.483%"></span><span class="seg unc" style="width:7.759%"></span><span class="seg nil" style="width:32.759%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:94.545%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:5.455%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src__components__PresentSlide_tsx.html">PresentSlide.tsx</a> <a href="src__components__SlideElementRenderer_tsx.html">SlideElementRenderer.tsx</a> <a href="src__lib__assetRenderer_ts.html">assetRenderer.ts</a> <a href="src__lib__imageSrc_ts.html">imageSrc.ts</a> <a href="src__store__presentation_ts.html">presentation.ts</a></div>
 </header>
 <table class="src"><tr class="nil"><td class="ln">1</td><td class="code">/**</td></tr>
 <tr class="nil"><td class="ln">2</td><td class="code"> * Manages blob URLs for assets stored in SQLite. Everything is keyed by</td></tr>
-<tr class="cov"><td class="ln">3</td><td class="code"> * `assetId` — the element type carries the binding, the renderer hooks</td></tr>
-<tr class="cov"><td class="ln">4</td><td class="code"> * resolve bytes via `db_get_asset_by_id`. No path-fallback lookup.</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code"> * `assetId` — the element type carries the binding, the renderer hooks</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code"> * resolve bytes via `db_get_asset_by_id`. No path-fallback lookup.</td></tr>
 <tr class="nil"><td class="ln">5</td><td class="code"> */</td></tr>
-<tr class="cov"><td class="ln">6</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">7</td><td class="code">import { useState, useEffect } from &#x27;react&#x27;;</td></tr>
-<tr class="cov"><td class="ln">8</td><td class="code">import { invoke } from &#x27;@tauri-apps/api/core&#x27;;</td></tr>
-<tr class="cov"><td class="ln">9</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">&nbsp;</td></tr>
+<tr class="part"><td class="ln">7</td><td class="code">import { useState, useEffect } from &#x27;react&#x27;;</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">import { invoke } from &#x27;@tauri-apps/api/core&#x27;;</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">10</td><td class="code">// Cache: assetId -&gt; blob URL (without hash).</td></tr>
 <tr class="cov"><td class="ln">11</td><td class="code">const blobCache = new Map&lt;string, string&gt;();</td></tr>
 <tr class="nil"><td class="ln">12</td><td class="code">// Cache: assetId -&gt; MIME type, learned from db_get_asset_meta_by_id on</td></tr>
-<tr class="cov"><td class="ln">13</td><td class="code">// first fetch. Used so blob URLs have the right `type` and the browser</td></tr>
-<tr class="cov"><td class="ln">14</td><td class="code">// dispatches the right rendering pipeline.</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">// first fetch. Used so blob URLs have the right `type` and the browser</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">// dispatches the right rendering pipeline.</td></tr>
 <tr class="cov"><td class="ln">15</td><td class="code">const mimeCache = new Map&lt;string, string&gt;();</td></tr>
 <tr class="nil"><td class="ln">16</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">17</td><td class="code">async function fetchMime(assetId: string): Promise&lt;string&gt; {</td></tr>
-<tr class="cov"><td class="ln">18</td><td class="code">  const cached = mimeCache.get(assetId);</td></tr>
-<tr class="cov"><td class="ln">19</td><td class="code">  if (cached) return cached;</td></tr>
-<tr class="cov"><td class="ln">20</td><td class="code">  try {</td></tr>
-<tr class="cov"><td class="ln">21</td><td class="code">    const meta = await invoke&lt;{ mime_type: string | null } | null&gt;(</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">  const cached = mimeCache.get(assetId);</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">  if (cached) return cached;</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">  try {</td></tr>
+<tr class="part"><td class="ln">21</td><td class="code">    const meta = await invoke&lt;{ mime_type: string | null } | null&gt;(</td></tr>
 <tr class="cov"><td class="ln">22</td><td class="code">      &#x27;db_get_asset_meta_by_id&#x27;, { assetId },</td></tr>
-<tr class="cov"><td class="ln">23</td><td class="code">    );</td></tr>
-<tr class="cov"><td class="ln">24</td><td class="code">    const mime = meta?.mime_type || &#x27;application/octet-stream&#x27;;</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">    );</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">    const mime = meta?.mime_type || &#x27;application/octet-stream&#x27;;</td></tr>
 <tr class="cov"><td class="ln">25</td><td class="code">    mimeCache.set(assetId, mime);</td></tr>
 <tr class="cov"><td class="ln">26</td><td class="code">    return mime;</td></tr>
-<tr class="nil"><td class="ln">27</td><td class="code">  } catch {</td></tr>
-<tr class="unc"><td class="ln">28</td><td class="code">    return &#x27;application/octet-stream&#x27;;</td></tr>
-<tr class="cov"><td class="ln">29</td><td class="code">  }</td></tr>
-<tr class="cov"><td class="ln">30</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">31</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">27</td><td class="code">  } catch {</td></tr>
+<tr class="cov"><td class="ln">28</td><td class="code">    return &#x27;application/octet-stream&#x27;;</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">32</td><td class="code">/** Load an asset from SQLite and return a blob URL. Uses a cache. */</td></tr>
 <tr class="cov"><td class="ln">33</td><td class="code">export async function getAssetUrl(</td></tr>
 <tr class="nil"><td class="ln">34</td><td class="code">  assetId: string | undefined,</td></tr>
 <tr class="nil"><td class="ln">35</td><td class="code">  hash?: string,</td></tr>
 <tr class="cov"><td class="ln">36</td><td class="code">): Promise&lt;string | undefined&gt; {</td></tr>
-<tr class="cov"><td class="ln">37</td><td class="code">  if (!assetId) return undefined;</td></tr>
-<tr class="cov"><td class="ln">38</td><td class="code">  let blobUrl = blobCache.get(assetId);</td></tr>
-<tr class="cov"><td class="ln">39</td><td class="code">  if (!blobUrl) {</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">  if (!assetId) return undefined;</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">  let blobUrl = blobCache.get(assetId);</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">  if (!blobUrl) {</td></tr>
 <tr class="cov"><td class="ln">40</td><td class="code">    try {</td></tr>
 <tr class="cov"><td class="ln">41</td><td class="code">      const [data, mime] = await Promise.all([</td></tr>
 <tr class="cov"><td class="ln">42</td><td class="code">        invoke&lt;ArrayBuffer&gt;(&#x27;db_get_asset_by_id&#x27;, { assetId }),</td></tr>
 <tr class="nil"><td class="ln">43</td><td class="code">        fetchMime(assetId),</td></tr>
-<tr class="cov"><td class="ln">44</td><td class="code">      ]);</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">      ]);</td></tr>
 <tr class="cov"><td class="ln">45</td><td class="code">      const blob = new Blob([new Uint8Array(data)], { type: mime });</td></tr>
 <tr class="cov"><td class="ln">46</td><td class="code">      blobUrl = URL.createObjectURL(blob);</td></tr>
-<tr class="cov"><td class="ln">47</td><td class="code">      blobCache.set(assetId, blobUrl);</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">      blobCache.set(assetId, blobUrl);</td></tr>
 <tr class="cov"><td class="ln">48</td><td class="code">    } catch {</td></tr>
-<tr class="cov"><td class="ln">49</td><td class="code">      return undefined;</td></tr>
-<tr class="cov"><td class="ln">50</td><td class="code">    }</td></tr>
-<tr class="cov"><td class="ln">51</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">      return undefined;</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">  }</td></tr>
 <tr class="cov"><td class="ln">52</td><td class="code">  return hash ? `${blobUrl}#${hash}` : blobUrl;</td></tr>
 <tr class="nil"><td class="ln">53</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">54</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">55</td><td class="code">/** React hook: load an asset from SQLite as a blob URL.</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">55</td><td class="code">/** React hook: load an asset from SQLite as a blob URL.</td></tr>
 <tr class="nil"><td class="ln">56</td><td class="code"> *</td></tr>
-<tr class="cov"><td class="ln">57</td><td class="code"> * Listens for `eigendeck:asset-changed` (fired by invalidateRenderedAsset</td></tr>
-<tr class="cov"><td class="ln">58</td><td class="code"> * after the file watcher reloads an asset). Drops the cached blob URL</td></tr>
-<tr class="cov"><td class="ln">59</td><td class="code"> * on assetId match and re-fetches so the live `&lt;img&gt;` picks up new bytes.</td></tr>
-<tr class="cov"><td class="ln">60</td><td class="code"> */</td></tr>
-<tr class="nil"><td class="ln">61</td><td class="code">export function useAssetUrl(</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code"> * Listens for `eigendeck:asset-changed` (fired by invalidateRenderedAsset</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code"> * after the file watcher reloads an asset). Drops the cached blob URL</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code"> * on assetId match and re-fetches so the live `&lt;img&gt;` picks up new bytes.</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code"> */</td></tr>
+<tr class="cov"><td class="ln">61</td><td class="code">export function useAssetUrl(</td></tr>
 <tr class="cov"><td class="ln">62</td><td class="code">  assetId: string | undefined,</td></tr>
 <tr class="nil"><td class="ln">63</td><td class="code">  hash?: string,</td></tr>
 <tr class="cov"><td class="ln">64</td><td class="code">): string | undefined {</td></tr>
-<tr class="cov"><td class="ln">65</td><td class="code">  const [url, setUrl] = useState&lt;string | undefined&gt;(() =&gt; {</td></tr>
-<tr class="cov"><td class="ln">66</td><td class="code">    if (!assetId) return undefined;</td></tr>
+<tr class="nil"><td class="ln">65</td><td class="code">  const [url, setUrl] = useState&lt;string | undefined&gt;(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code">    if (!assetId) return undefined;</td></tr>
 <tr class="cov"><td class="ln">67</td><td class="code">    const cached = blobCache.get(assetId);</td></tr>
-<tr class="cov"><td class="ln">68</td><td class="code">    return cached ? (hash ? `${cached}#${hash}` : cached) : undefined;</td></tr>
-<tr class="cov"><td class="ln">69</td><td class="code">  });</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code">    return cached ? (hash ? `${cached}#${hash}` : cached) : undefined;</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code">  });</td></tr>
 <tr class="cov"><td class="ln">70</td><td class="code">  const [refreshKey, setRefreshKey] = useState(0);</td></tr>
 <tr class="nil"><td class="ln">71</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">72</td><td class="code">  useEffect(() =&gt; {</td></tr>
-<tr class="cov"><td class="ln">73</td><td class="code">    if (!assetId) return;</td></tr>
-<tr class="cov"><td class="ln">74</td><td class="code">    const handler = (e: Event) =&gt; {</td></tr>
-<tr class="cov"><td class="ln">75</td><td class="code">      const detail = (e as CustomEvent).detail as { assetId?: string } | undefined;</td></tr>
+<tr class="nil"><td class="ln">73</td><td class="code">    if (!assetId) return;</td></tr>
+<tr class="nil"><td class="ln">74</td><td class="code">    const handler = (e: Event) =&gt; {</td></tr>
+<tr class="nil"><td class="ln">75</td><td class="code">      const detail = (e as CustomEvent).detail as { assetId?: string } | undefined;</td></tr>
 <tr class="cov"><td class="ln">76</td><td class="code">      if (detail?.assetId === assetId) {</td></tr>
-<tr class="unc"><td class="ln">77</td><td class="code">        invalidateAsset(assetId);</td></tr>
+<tr class="nil"><td class="ln">77</td><td class="code">        invalidateAsset(assetId);</td></tr>
 <tr class="cov"><td class="ln">78</td><td class="code">        setRefreshKey((k) =&gt; k + 1);</td></tr>
-<tr class="cov"><td class="ln">79</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">79</td><td class="code">      }</td></tr>
 <tr class="nil"><td class="ln">80</td><td class="code">    };</td></tr>
 <tr class="cov"><td class="ln">81</td><td class="code">    window.addEventListener(&#x27;eigendeck:asset-changed&#x27;, handler);</td></tr>
-<tr class="cov"><td class="ln">82</td><td class="code">    return () =&gt; window.removeEventListener(&#x27;eigendeck:asset-changed&#x27;, handler);</td></tr>
+<tr class="nil"><td class="ln">82</td><td class="code">    return () =&gt; window.removeEventListener(&#x27;eigendeck:asset-changed&#x27;, handler);</td></tr>
 <tr class="nil"><td class="ln">83</td><td class="code">  }, [assetId]);</td></tr>
 <tr class="nil"><td class="ln">84</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">85</td><td class="code">  useEffect(() =&gt; {</td></tr>
-<tr class="cov"><td class="ln">86</td><td class="code">    if (!assetId) { setUrl(undefined); return; }</td></tr>
-<tr class="cov"><td class="ln">87</td><td class="code">    getAssetUrl(assetId, hash).then(setUrl);</td></tr>
+<tr class="nil"><td class="ln">85</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">86</td><td class="code">    if (!assetId) { setUrl(undefined); return; }</td></tr>
+<tr class="nil"><td class="ln">87</td><td class="code">    getAssetUrl(assetId, hash).then(setUrl);</td></tr>
 <tr class="nil"><td class="ln">88</td><td class="code">  }, [assetId, hash, refreshKey]);</td></tr>
 <tr class="nil"><td class="ln">89</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">90</td><td class="code">  return url;</td></tr>
+<tr class="nil"><td class="ln">90</td><td class="code">  return url;</td></tr>
 <tr class="nil"><td class="ln">91</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">92</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">93</td><td class="code">// NOTE: opaque-origin demos mount via demoMount.ts (its own marker gate +</td></tr>
@@ -114,21 +115,21 @@
 <tr class="nil"><td class="ln">97</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">98</td><td class="code">/** Invalidate a specific cached asset (e.g. after re-import). */</td></tr>
 <tr class="nil"><td class="ln">99</td><td class="code">export function invalidateAsset(assetId: string) {</td></tr>
-<tr class="unc"><td class="ln">100</td><td class="code">  const old = blobCache.get(assetId);</td></tr>
-<tr class="unc"><td class="ln">101</td><td class="code">  if (old) {</td></tr>
-<tr class="unc"><td class="ln">102</td><td class="code">    URL.revokeObjectURL(old);</td></tr>
-<tr class="unc"><td class="ln">103</td><td class="code">    blobCache.delete(assetId);</td></tr>
+<tr class="nil"><td class="ln">100</td><td class="code">  const old = blobCache.get(assetId);</td></tr>
+<tr class="nil"><td class="ln">101</td><td class="code">  if (old) {</td></tr>
+<tr class="nil"><td class="ln">102</td><td class="code">    URL.revokeObjectURL(old);</td></tr>
+<tr class="nil"><td class="ln">103</td><td class="code">    blobCache.delete(assetId);</td></tr>
 <tr class="nil"><td class="ln">104</td><td class="code">  }</td></tr>
-<tr class="unc"><td class="ln">105</td><td class="code">  mimeCache.delete(assetId);</td></tr>
+<tr class="nil"><td class="ln">105</td><td class="code">  mimeCache.delete(assetId);</td></tr>
 <tr class="nil"><td class="ln">106</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">107</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">108</td><td class="code">/** Clean up all cached blob URLs (call on project close) */</td></tr>
 <tr class="nil"><td class="ln">109</td><td class="code">export function clearAssetCache() {</td></tr>
-<tr class="cov"><td class="ln">110</td><td class="code">  for (const url of blobCache.values()) {</td></tr>
-<tr class="unc"><td class="ln">111</td><td class="code">    URL.revokeObjectURL(url);</td></tr>
+<tr class="nil"><td class="ln">110</td><td class="code">  for (const url of blobCache.values()) {</td></tr>
+<tr class="nil"><td class="ln">111</td><td class="code">    URL.revokeObjectURL(url);</td></tr>
 <tr class="nil"><td class="ln">112</td><td class="code">  }</td></tr>
-<tr class="cov"><td class="ln">113</td><td class="code">  blobCache.clear();</td></tr>
-<tr class="cov"><td class="ln">114</td><td class="code">  mimeCache.clear();</td></tr>
+<tr class="nil"><td class="ln">113</td><td class="code">  blobCache.clear();</td></tr>
+<tr class="nil"><td class="ln">114</td><td class="code">  mimeCache.clear();</td></tr>
 <tr class="nil"><td class="ln">115</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">116</td><td class="code">&nbsp;</td></tr></table>
 </body></html>

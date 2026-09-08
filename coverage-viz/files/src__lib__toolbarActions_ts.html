@@ -5,32 +5,33 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/toolbarActions.ts </h1>
   <div class="stats">
-    <span class="stat"><b>62%</b> covered</span>
-    <span class="stat">10/16 executable</span>
-    <span class="stat unc-txt">6 uncovered</span>
+    <span class="stat"><b>100%</b> covered</span>
+    <span class="stat">12/12 statements</span>
+    <span class="stat unc-txt">0 uncovered</span>
     <span class="stat">24 raw lines</span>
     <span class="stat">0.06% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:41.667%"></span><span class="seg unc" style="width:25.000%"></span><span class="seg nil" style="width:33.333%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:100.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:0.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a></div>
 </header>
 <table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Route a native-toolbar action id (from the macOS NSToolbar, delivered as a</td></tr>
-<tr class="cov"><td class="ln">2</td><td class="code">// Rust→JS `toolbar:action` event) to the matching app action — the SAME action</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// Rust→JS `toolbar:action` event) to the matching app action — the SAME action</td></tr>
 <tr class="nil"><td class="ln">3</td><td class="code">// the HTML toolbar button runs, so the two toolbars never drift. Pure (takes its</td></tr>
-<tr class="cov"><td class="ln">4</td><td class="code">// handlers), so the mapping is unit-testable without Tauri.</td></tr>
-<tr class="cov"><td class="ln">5</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// handlers), so the mapping is unit-testable without Tauri.</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">6</td><td class="code">export interface ToolbarHandlers {</td></tr>
-<tr class="unc"><td class="ln">7</td><td class="code">  addSlide: () =&gt; void;</td></tr>
-<tr class="unc"><td class="ln">8</td><td class="code">  addBuild: () =&gt; void;</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">  addSlide: () =&gt; void;</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">  addBuild: () =&gt; void;</td></tr>
 <tr class="nil"><td class="ln">9</td><td class="code">  present: () =&gt; void;</td></tr>
-<tr class="unc"><td class="ln">10</td><td class="code">  save: () =&gt; void;</td></tr>
-<tr class="unc"><td class="ln">11</td><td class="code">  export: () =&gt; void;</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">  save: () =&gt; void;</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">  export: () =&gt; void;</td></tr>
 <tr class="nil"><td class="ln">12</td><td class="code">}</td></tr>
-<tr class="unc"><td class="ln">13</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">14</td><td class="code">/** Returns true if the id was handled. */</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">/** Returns true if the id was handled. */</td></tr>
 <tr class="nil"><td class="ln">15</td><td class="code">export function dispatchToolbarAction(id: string, h: ToolbarHandlers): boolean {</td></tr>
-<tr class="cov"><td class="ln">16</td><td class="code">  switch (id) {</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">  switch (id) {</td></tr>
 <tr class="cov"><td class="ln">17</td><td class="code">    case &#x27;add-slide&#x27;: h.addSlide(); return true;</td></tr>
 <tr class="cov"><td class="ln">18</td><td class="code">    case &#x27;add-build&#x27;: h.addBuild(); return true;</td></tr>
 <tr class="cov"><td class="ln">19</td><td class="code">    case &#x27;present&#x27;: h.present(); return true;</td></tr>

@@ -5,36 +5,37 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/filePicker.ts </h1>
   <div class="stats">
-    <span class="stat"><b>38%</b> covered</span>
-    <span class="stat">6/16 executable</span>
-    <span class="stat unc-txt">10 uncovered</span>
+    <span class="stat"><b>67%</b> covered</span>
+    <span class="stat">6/9 statements</span>
+    <span class="stat unc-txt">3 uncovered</span>
     <span class="stat">22 raw lines</span>
     <span class="stat">0.05% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:27.273%"></span><span class="seg unc" style="width:45.455%"></span><span class="seg nil" style="width:27.273%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:66.667%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:33.333%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src__components__AssetSection_tsx.html">AssetSection.tsx</a></div>
 </header>
 <table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Native file-open picker, with a dev/test stand-in for the ONE thing WebDriver</td></tr>
-<tr class="cov"><td class="ln">2</td><td class="code">// genuinely cannot drive: the OS file dialog (see the e2e seam-discipline note —</td></tr>
-<tr class="cov"><td class="ln">3</td><td class="code">// system Open/Save/picker dialogs are the only sanctioned bypass). In dev or seam</td></tr>
-<tr class="cov"><td class="ln">4</td><td class="code">// builds ONLY, a probe may preset the next pick via `window.__eigendeckPickFile`,</td></tr>
-<tr class="cov"><td class="ln">5</td><td class="code">// letting it exercise the REAL flow behind a control (e.g. AssetSection&#x27;s</td></tr>
-<tr class="cov"><td class="ln">6</td><td class="code">// &quot;Relocate…&quot;) — the actual app logic still runs; only the dialog is stubbed.</td></tr>
-<tr class="cov"><td class="ln">7</td><td class="code">// In production this is a thin wrapper over the native dialog.</td></tr>
-<tr class="nil"><td class="ln">8</td><td class="code">import type { OpenDialogOptions } from &#x27;@tauri-apps/plugin-dialog&#x27;;</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// genuinely cannot drive: the OS file dialog (see the e2e seam-discipline note —</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// system Open/Save/picker dialogs are the only sanctioned bypass). In dev or seam</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// builds ONLY, a probe may preset the next pick via `window.__eigendeckPickFile`,</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// letting it exercise the REAL flow behind a control (e.g. AssetSection&#x27;s</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">// &quot;Relocate…&quot;) — the actual app logic still runs; only the dialog is stubbed.</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">// In production this is a thin wrapper over the native dialog.</td></tr>
+<tr class="cov"><td class="ln">8</td><td class="code">import type { OpenDialogOptions } from &#x27;@tauri-apps/plugin-dialog&#x27;;</td></tr>
 <tr class="nil"><td class="ln">9</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">10</td><td class="code">export async function pickFile(opts: OpenDialogOptions): Promise&lt;string | null&gt; {</td></tr>
 <tr class="unc"><td class="ln">11</td><td class="code">  if (import.meta.env.DEV || import.meta.env.VITE_EIGENDECK_SEAM === &#x27;1&#x27;) {</td></tr>
 <tr class="unc"><td class="ln">12</td><td class="code">    const w = window as unknown as { __eigendeckPickFile?: string };</td></tr>
-<tr class="unc"><td class="ln">13</td><td class="code">    if (w.__eigendeckPickFile) {</td></tr>
-<tr class="unc"><td class="ln">14</td><td class="code">      const picked = w.__eigendeckPickFile;</td></tr>
-<tr class="unc"><td class="ln">15</td><td class="code">      delete w.__eigendeckPickFile;   // one-shot, mirrors a single dialog interaction</td></tr>
-<tr class="unc"><td class="ln">16</td><td class="code">      return picked;</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">    if (w.__eigendeckPickFile) {</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">      const picked = w.__eigendeckPickFile;</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">      delete w.__eigendeckPickFile;   // one-shot, mirrors a single dialog interaction</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">      return picked;</td></tr>
 <tr class="nil"><td class="ln">17</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">18</td><td class="code">  }</td></tr>
-<tr class="unc"><td class="ln">19</td><td class="code">  const { open } = await import(&#x27;@tauri-apps/plugin-dialog&#x27;);</td></tr>
-<tr class="unc"><td class="ln">20</td><td class="code">  const picked = await open(opts);</td></tr>
-<tr class="unc"><td class="ln">21</td><td class="code">  return typeof picked === &#x27;string&#x27; ? picked : null;</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">  const { open } = await import(&#x27;@tauri-apps/plugin-dialog&#x27;);</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">  const picked = await open(opts);</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">  return typeof picked === &#x27;string&#x27; ? picked : null;</td></tr>
 <tr class="nil"><td class="ln">22</td><td class="code">}</td></tr></table>
 </body></html>

@@ -5,13 +5,14 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/components/SlideEditor.tsx </h1>
   <div class="stats">
-    <span class="stat"><b>41%</b> covered</span>
-    <span class="stat">316/772 executable</span>
-    <span class="stat unc-txt">456 uncovered</span>
+    <span class="stat"><b>55%</b> covered</span>
+    <span class="stat">327/596 statements</span>
+    <span class="stat unc-txt">269 uncovered</span>
     <span class="stat">1097 raw lines</span>
     <span class="stat">2.57% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:28.806%"></span><span class="seg unc" style="width:41.568%"></span><span class="seg nil" style="width:29.626%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:54.866%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:45.134%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__components__ContextMenu_tsx.html">ContextMenu.tsx</a> <a href="src__components__SlideElementRenderer_tsx.html">SlideElementRenderer.tsx</a> <a href="src__lib__assetCache_ts.html">assetCache.ts</a> <a href="src__lib__assetInsert_ts.html">assetInsert.ts</a> <a href="src__lib__assetRenderer_ts.html">assetRenderer.ts</a> <a href="src__lib__clipboard_ts.html">clipboard.ts</a> <a href="src__lib__clipboardModel_ts.html">clipboardModel.ts</a> <a href="src__lib__contextTarget_ts.html">contextTarget.ts</a> <a href="src__lib__demoMount_ts.html">demoMount.ts</a> <a href="src__lib__demoThemeInject_ts.html">demoThemeInject.ts</a> <a href="src__lib__editableTarget_ts.html">editableTarget.ts</a> <a href="src__lib__elementClipboard_ts.html">elementClipboard.ts</a> <a href="src__lib__fonts_ts.html">fonts.ts</a> <a href="src__lib__footer_mjs.html">footer.mjs</a> <a href="src__lib__grid_ts.html">grid.ts</a> <a href="src__lib__htmlDropRoute_ts.html">htmlDropRoute.ts</a> <a href="src__lib__htmlPasteCapture_ts.html">htmlPasteCapture.ts</a> <a href="src__lib__imageTranscode_ts.html">imageTranscode.ts</a> <a href="src__lib__nativeFs_ts.html">nativeFs.ts</a> <a href="src__lib__pasteAs_ts.html">pasteAs.ts</a> <a href="src__lib__pasteClip_ts.html">pasteClip.ts</a> <a href="src__lib__pasteFile_ts.html">pasteFile.ts</a> <a href="src__lib__pasteText_ts.html">pasteText.ts</a> <a href="src__lib__preferences_ts.html">preferences.ts</a> <a href="src__lib__themes_ts.html">themes.ts</a> <a href="src__lib__toasts_ts.html">toasts.ts</a> <a href="src__store__presentation_ts.html">presentation.ts</a> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
   <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a></div>
 </header>
@@ -38,63 +39,63 @@
 <tr class="nil"><td class="ln">21</td><td class="code">import type { MenuEntry } from &#x27;./ContextMenu&#x27;;<a class="jump" href="src__components__ContextMenu_tsx.html" title="src/components/ContextMenu.tsx">→ ContextMenu.tsx</a></td></tr>
 <tr class="nil"><td class="ln">22</td><td class="code">import { setContextTarget } from &#x27;../lib/contextTarget&#x27;;<a class="jump" href="src__lib__contextTarget_ts.html" title="src/lib/contextTarget.ts">→ contextTarget.ts</a></td></tr>
 <tr class="cov"><td class="ln">23</td><td class="code">import { readTextFileNative } from &#x27;../lib/nativeFs&#x27;;<a class="jump" href="src__lib__nativeFs_ts.html" title="src/lib/nativeFs.ts">→ nativeFs.ts</a></td></tr>
-<tr class="cov"><td class="ln">24</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">25</td><td class="code">export const SLIDE_WIDTH = 1920;</td></tr>
-<tr class="unc"><td class="ln">26</td><td class="code">export const SLIDE_HEIGHT = 1080;</td></tr>
-<tr class="cov"><td class="ln">27</td><td class="code">/** Extra room (px) reserved below the slide, ON TOP OF the canvas container&#x27;s</td></tr>
-<tr class="cov"><td class="ln">28</td><td class="code"> *  bottom padding, when fitting. 0 = the bottom gap equals the left/right padding</td></tr>
-<tr class="cov"><td class="ln">29</td><td class="code"> *  (symmetric margins around the slide). */</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">export const SLIDE_HEIGHT = 1080;</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">/** Extra room (px) reserved below the slide, ON TOP OF the canvas container&#x27;s</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code"> *  bottom padding, when fitting. 0 = the bottom gap equals the left/right padding</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code"> *  (symmetric margins around the slide). */</td></tr>
 <tr class="cov"><td class="ln">30</td><td class="code">const CANVAS_GAP = 0;</td></tr>
-<tr class="cov"><td class="ln">31</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">32</td><td class="code">// Layout constants moved to PropertiesPanel</td></tr>
-<tr class="cov"><td class="ln">33</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">34</td><td class="code">/**</td></tr>
-<tr class="cov"><td class="ln">35</td><td class="code"> * Insert ONE file (by absolute path) as the appropriate element — the SINGLE</td></tr>
-<tr class="cov"><td class="ln">36</td><td class="code"> * shared path for BOTH drag-drop and copy-from-Finder paste, so the two are</td></tr>
-<tr class="cov"><td class="ln">37</td><td class="code"> * equivalent by construction. Handles image/svg/pdf, .html (demo / demo-pieces /</td></tr>
-<tr class="cov"><td class="ln">38</td><td class="code"> * raw html element), .ipynb (notebook), and video. Stores each as a WATCHED</td></tr>
-<tr class="cov"><td class="ln">39</td><td class="code"> * external reference (externalPath = deck-relative), exactly like a drag.</td></tr>
-<tr class="cov"><td class="ln">40</td><td class="code"> * Returns true if it inserted an element (paste uses this to decide whether to</td></tr>
-<tr class="cov"><td class="ln">41</td><td class="code"> * consume the event or fall through to the text path). Adds to the live store.</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code">// Layout constants moved to PropertiesPanel</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code"> * Insert ONE file (by absolute path) as the appropriate element — the SINGLE</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code"> * shared path for BOTH drag-drop and copy-from-Finder paste, so the two are</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code"> * equivalent by construction. Handles image/svg/pdf, .html (demo / demo-pieces /</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code"> * raw html element), .ipynb (notebook), and video. Stores each as a WATCHED</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code"> * external reference (externalPath = deck-relative), exactly like a drag.</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code"> * Returns true if it inserted an element (paste uses this to decide whether to</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code"> * consume the event or fall through to the text path). Adds to the live store.</td></tr>
 <tr class="nil"><td class="ln">42</td><td class="code"> */</td></tr>
-<tr class="nil"><td class="ln">43</td><td class="code">export async function insertFileFromPath(fullPath: string): Promise&lt;boolean&gt; {</td></tr>
-<tr class="unc"><td class="ln">44</td><td class="code">  const store = usePresentationStore.getState();</td></tr>
-<tr class="unc"><td class="ln">45</td><td class="code">  const name = fullPath.split(&#x27;/&#x27;).pop() || &#x27;&#x27;;</td></tr>
-<tr class="unc"><td class="ln">46</td><td class="code">  const relativePath = relPath(store.projectPath, fullPath);</td></tr>
-<tr class="unc"><td class="ln">47</td><td class="code">  const isImage = /\.(png|jpg|jpeg|gif|svg|webp|pdf)$/i.test(name);</td></tr>
-<tr class="cov"><td class="ln">48</td><td class="code">  const isHtml = /\.html?$/i.test(name);</td></tr>
+<tr class="part"><td class="ln">43</td><td class="code">export async function insertFileFromPath(fullPath: string): Promise&lt;boolean&gt; {</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">  const store = usePresentationStore.getState();</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">  const name = fullPath.split(&#x27;/&#x27;).pop() || &#x27;&#x27;;</td></tr>
+<tr class="nil"><td class="ln">46</td><td class="code">  const relativePath = relPath(store.projectPath, fullPath);</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">  const isImage = /\.(png|jpg|jpeg|gif|svg|webp|pdf)$/i.test(name);</td></tr>
+<tr class="part"><td class="ln">48</td><td class="code">  const isHtml = /\.html?$/i.test(name);</td></tr>
 <tr class="cov"><td class="ln">49</td><td class="code">  const isIpynb = /\.ipynb$/i.test(name);</td></tr>
 <tr class="cov"><td class="ln">50</td><td class="code">  const isVideo = /\.(mp4|webm|mov|m4v|ogv|ogg)$/i.test(name);</td></tr>
 <tr class="cov"><td class="ln">51</td><td class="code">  const { readAddFileCapped, storeAssetWithCollisionCheck } = await import(&#x27;../lib/assetInsert&#x27;);<a class="jump" href="src__lib__assetInsert_ts.html" title="src/lib/assetInsert.ts">→ assetInsert.ts</a></td></tr>
 <tr class="nil"><td class="ln">52</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">53</td><td class="code">  if (isImage) {</td></tr>
-<tr class="unc"><td class="ln">54</td><td class="code">    try {</td></tr>
-<tr class="unc"><td class="ln">55</td><td class="code">      const bytes = await readAddFileCapped(fullPath);</td></tr>
-<tr class="unc"><td class="ln">56</td><td class="code">      if (!bytes) return false;  // over the size cap → toast shown, skip</td></tr>
-<tr class="unc"><td class="ln">57</td><td class="code">      const ext = name.split(&#x27;.&#x27;).pop()?.toLowerCase() || &#x27;png&#x27;;</td></tr>
-<tr class="cov"><td class="ln">58</td><td class="code">      const mime = ext === &#x27;svg&#x27; ? &#x27;image/svg+xml&#x27; : ext === &#x27;pdf&#x27; ? &#x27;application/pdf&#x27;</td></tr>
+<tr class="cov"><td class="ln">53</td><td class="code">  if (isImage) {</td></tr>
+<tr class="cov"><td class="ln">54</td><td class="code">    try {</td></tr>
+<tr class="cov"><td class="ln">55</td><td class="code">      const bytes = await readAddFileCapped(fullPath);</td></tr>
+<tr class="cov"><td class="ln">56</td><td class="code">      if (!bytes) return false;  // over the size cap → toast shown, skip</td></tr>
+<tr class="cov"><td class="ln">57</td><td class="code">      const ext = name.split(&#x27;.&#x27;).pop()?.toLowerCase() || &#x27;png&#x27;;</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code">      const mime = ext === &#x27;svg&#x27; ? &#x27;image/svg+xml&#x27; : ext === &#x27;pdf&#x27; ? &#x27;application/pdf&#x27;</td></tr>
 <tr class="unc"><td class="ln">59</td><td class="code">        : `image/${ext === &#x27;jpg&#x27; ? &#x27;jpeg&#x27; : ext}`;</td></tr>
-<tr class="unc"><td class="ln">60</td><td class="code">      const r = await storeAssetWithCollisionCheck({</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code">      const r = await storeAssetWithCollisionCheck({</td></tr>
 <tr class="unc"><td class="ln">61</td><td class="code">        path: relativePath, data: bytes, mimeType: mime,</td></tr>
 <tr class="unc"><td class="ln">62</td><td class="code">        externalPath: relativePath, externalMtime: null,</td></tr>
-<tr class="unc"><td class="ln">63</td><td class="code">      });</td></tr>
+<tr class="nil"><td class="ln">63</td><td class="code">      });</td></tr>
 <tr class="unc"><td class="ln">64</td><td class="code">      if (r.cancelled) return false;</td></tr>
-<tr class="unc"><td class="ln">65</td><td class="code">      const assetId = r.assetId;</td></tr>
+<tr class="nil"><td class="ln">65</td><td class="code">      const assetId = r.assetId;</td></tr>
 <tr class="cov"><td class="ln">66</td><td class="code">      const kind = detectAssetKind(name, mime);</td></tr>
-<tr class="unc"><td class="ln">67</td><td class="code">      store.addElement({</td></tr>
+<tr class="nil"><td class="ln">67</td><td class="code">      store.addElement({</td></tr>
 <tr class="unc"><td class="ln">68</td><td class="code">        id: crypto.randomUUID(), type: &#x27;image&#x27;, assetId, kind,</td></tr>
 <tr class="unc"><td class="ln">69</td><td class="code">        position: { x: 360, y: 200, width: 1200, height: 680 },</td></tr>
 <tr class="nil"><td class="ln">70</td><td class="code">      });</td></tr>
-<tr class="unc"><td class="ln">71</td><td class="code">      if (kind === &#x27;svg&#x27;) {</td></tr>
-<tr class="unc"><td class="ln">72</td><td class="code">        // We have the source path → offer to embed external image refs, then</td></tr>
-<tr class="unc"><td class="ln">73</td><td class="code">        // re-store the embedded bytes under the same assetId (severs the link).</td></tr>
+<tr class="nil"><td class="ln">71</td><td class="code">      if (kind === &#x27;svg&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">72</td><td class="code">        // We have the source path → offer to embed external image refs, then</td></tr>
+<tr class="nil"><td class="ln">73</td><td class="code">        // re-store the embedded bytes under the same assetId (severs the link).</td></tr>
 <tr class="unc"><td class="ln">74</td><td class="code">        const updated = await handleSvgExternalRefs(bytes, name, fullPath);</td></tr>
 <tr class="unc"><td class="ln">75</td><td class="code">        if (updated) {</td></tr>
 <tr class="unc"><td class="ln">76</td><td class="code">          const { invoke } = await import(&#x27;@tauri-apps/api/core&#x27;);</td></tr>
 <tr class="unc"><td class="ln">77</td><td class="code">          await invoke(&#x27;db_store_asset&#x27;, { path: relativePath, data: Array.from(updated), mimeType: mime, externalPath: null, externalMtime: null, assetId });</td></tr>
 <tr class="unc"><td class="ln">78</td><td class="code">          await invalidateRenderedAsset(assetId);</td></tr>
-<tr class="unc"><td class="ln">79</td><td class="code">        }</td></tr>
-<tr class="unc"><td class="ln">80</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">79</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">80</td><td class="code">      }</td></tr>
 <tr class="unc"><td class="ln">81</td><td class="code">      return true;</td></tr>
 <tr class="unc"><td class="ln">82</td><td class="code">    } catch (err) { console.error(&#x27;Failed to insert image file:&#x27;, err); return false; }</td></tr>
 <tr class="nil"><td class="ln">83</td><td class="code">  }</td></tr>
@@ -103,41 +104,41 @@
 <tr class="unc"><td class="ln">86</td><td class="code">    try {</td></tr>
 <tr class="unc"><td class="ln">87</td><td class="code">      const bytes = await readAddFileCapped(fullPath);</td></tr>
 <tr class="unc"><td class="ln">88</td><td class="code">      if (!bytes) return false;</td></tr>
-<tr class="unc"><td class="ln">89</td><td class="code">      const html = await readTextFileNative(fullPath);</td></tr>
+<tr class="nil"><td class="ln">89</td><td class="code">      const html = await readTextFileNative(fullPath);</td></tr>
 <tr class="unc"><td class="ln">90</td><td class="code">      const { classifyDroppedHtml } = await import(&#x27;../lib/htmlDropRoute&#x27;);<a class="jump" href="src__lib__htmlDropRoute_ts.html" title="src/lib/htmlDropRoute.ts">→ htmlDropRoute.ts</a></td></tr>
-<tr class="unc"><td class="ln">91</td><td class="code">      const route = classifyDroppedHtml(html);</td></tr>
+<tr class="nil"><td class="ln">91</td><td class="code">      const route = classifyDroppedHtml(html);</td></tr>
 <tr class="unc"><td class="ln">92</td><td class="code">      if (route.kind === &#x27;demo&#x27; || route.kind === &#x27;demo-pieces&#x27;) {</td></tr>
 <tr class="unc"><td class="ln">93</td><td class="code">        const r = await storeAssetWithCollisionCheck({</td></tr>
 <tr class="unc"><td class="ln">94</td><td class="code">          path: relativePath, data: bytes, mimeType: &#x27;text/html&#x27;,</td></tr>
 <tr class="nil"><td class="ln">95</td><td class="code">          externalPath: relativePath, externalMtime: null,</td></tr>
 <tr class="nil"><td class="ln">96</td><td class="code">        });</td></tr>
 <tr class="unc"><td class="ln">97</td><td class="code">        if (r.cancelled) return false;</td></tr>
-<tr class="unc"><td class="ln">98</td><td class="code">        const assetId = r.assetId;</td></tr>
+<tr class="nil"><td class="ln">98</td><td class="code">        const assetId = r.assetId;</td></tr>
 <tr class="unc"><td class="ln">99</td><td class="code">        if (route.kind === &#x27;demo-pieces&#x27;) {</td></tr>
-<tr class="unc"><td class="ln">100</td><td class="code">          let x = 80;</td></tr>
+<tr class="nil"><td class="ln">100</td><td class="code">          let x = 80;</td></tr>
 <tr class="unc"><td class="ln">101</td><td class="code">          for (const piece of route.pieces) {</td></tr>
 <tr class="unc"><td class="ln">102</td><td class="code">            const width = Math.floor((1760 - (route.pieces.length - 1) * 40) / route.pieces.length);</td></tr>
 <tr class="unc"><td class="ln">103</td><td class="code">            store.addElement({ id: crypto.randomUUID(), type: &#x27;demo-piece&#x27; as any, piece, assetId, position: { x, y: 200, width, height: 700 } });</td></tr>
 <tr class="unc"><td class="ln">104</td><td class="code">            x += width + 40;</td></tr>
 <tr class="nil"><td class="ln">105</td><td class="code">          }</td></tr>
-<tr class="nil"><td class="ln">106</td><td class="code">        } else {</td></tr>
+<tr class="unc"><td class="ln">106</td><td class="code">        } else {</td></tr>
 <tr class="unc"><td class="ln">107</td><td class="code">          store.addElement({ id: crypto.randomUUID(), type: &#x27;demo&#x27;, assetId, position: { x: 80, y: 200, width: 1760, height: 700 } });</td></tr>
-<tr class="unc"><td class="ln">108</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">108</td><td class="code">        }</td></tr>
 <tr class="unc"><td class="ln">109</td><td class="code">        return true;</td></tr>
 <tr class="unc"><td class="ln">110</td><td class="code">      } else if (route.kind === &#x27;html-element&#x27;) {</td></tr>
 <tr class="unc"><td class="ln">111</td><td class="code">        store.addElement({</td></tr>
 <tr class="unc"><td class="ln">112</td><td class="code">          id: crypto.randomUUID(), type: &#x27;html&#x27;,</td></tr>
 <tr class="nil"><td class="ln">113</td><td class="code">          position: { x: 560, y: 300, width: 800, height: 500 },</td></tr>
 <tr class="nil"><td class="ln">114</td><td class="code">          html: route.html, ...(route.interactive ? { interactive: true } : {}),</td></tr>
-<tr class="unc"><td class="ln">115</td><td class="code">        });</td></tr>
+<tr class="nil"><td class="ln">115</td><td class="code">        });</td></tr>
 <tr class="unc"><td class="ln">116</td><td class="code">        return true;</td></tr>
 <tr class="nil"><td class="ln">117</td><td class="code">      } else {</td></tr>
-<tr class="unc"><td class="ln">118</td><td class="code">        const { showToast } = await import(&#x27;../lib/toasts&#x27;);<a class="jump" href="src__lib__toasts_ts.html" title="src/lib/toasts.ts">→ toasts.ts</a></td></tr>
-<tr class="unc"><td class="ln">119</td><td class="code">        showToast({ kind: &#x27;error&#x27;, ttl: 9000, message: `That .html isn&#x27;t a usable HTML element: ${route.problems.join(&#x27;; &#x27;)}` });</td></tr>
-<tr class="unc"><td class="ln">120</td><td class="code">        return false;</td></tr>
-<tr class="unc"><td class="ln">121</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">118</td><td class="code">        const { showToast } = await import(&#x27;../lib/toasts&#x27;);<a class="jump" href="src__lib__toasts_ts.html" title="src/lib/toasts.ts">→ toasts.ts</a></td></tr>
+<tr class="nil"><td class="ln">119</td><td class="code">        showToast({ kind: &#x27;error&#x27;, ttl: 9000, message: `That .html isn&#x27;t a usable HTML element: ${route.problems.join(&#x27;; &#x27;)}` });</td></tr>
+<tr class="nil"><td class="ln">120</td><td class="code">        return false;</td></tr>
+<tr class="nil"><td class="ln">121</td><td class="code">      }</td></tr>
 <tr class="unc"><td class="ln">122</td><td class="code">    } catch (err) { console.error(&#x27;Failed to insert HTML file:&#x27;, err); return false; }</td></tr>
-<tr class="unc"><td class="ln">123</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">123</td><td class="code">  }</td></tr>
 <tr class="nil"><td class="ln">124</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">125</td><td class="code">  if (isIpynb) {</td></tr>
 <tr class="unc"><td class="ln">126</td><td class="code">    try {</td></tr>
@@ -146,36 +147,36 @@
 <tr class="unc"><td class="ln">129</td><td class="code">      const r = await storeAssetWithCollisionCheck({</td></tr>
 <tr class="unc"><td class="ln">130</td><td class="code">        path: relativePath, data: bytes, mimeType: &#x27;application/x-ipynb+json&#x27;,</td></tr>
 <tr class="unc"><td class="ln">131</td><td class="code">        externalPath: relativePath, externalMtime: null,</td></tr>
-<tr class="unc"><td class="ln">132</td><td class="code">      });</td></tr>
+<tr class="nil"><td class="ln">132</td><td class="code">      });</td></tr>
 <tr class="unc"><td class="ln">133</td><td class="code">      if (r.cancelled) return false;</td></tr>
 <tr class="unc"><td class="ln">134</td><td class="code">      store.addElement({ id: crypto.randomUUID(), type: &#x27;notebook&#x27;, assetId: r.assetId, position: { x: 80, y: 200, width: 1760, height: 700 } });</td></tr>
 <tr class="unc"><td class="ln">135</td><td class="code">      return true;</td></tr>
-<tr class="unc"><td class="ln">136</td><td class="code">    } catch (err) { console.error(&#x27;Failed to insert notebook file:&#x27;, err); return false; }</td></tr>
+<tr class="nil"><td class="ln">136</td><td class="code">    } catch (err) { console.error(&#x27;Failed to insert notebook file:&#x27;, err); return false; }</td></tr>
 <tr class="nil"><td class="ln">137</td><td class="code">  }</td></tr>
-<tr class="unc"><td class="ln">138</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">139</td><td class="code">  if (isVideo) {</td></tr>
+<tr class="nil"><td class="ln">138</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">139</td><td class="code">  if (isVideo) {</td></tr>
 <tr class="unc"><td class="ln">140</td><td class="code">    try {</td></tr>
 <tr class="unc"><td class="ln">141</td><td class="code">      const bytes = await readAddFileCapped(fullPath);</td></tr>
 <tr class="unc"><td class="ln">142</td><td class="code">      if (!bytes) return false;</td></tr>
 <tr class="unc"><td class="ln">143</td><td class="code">      const ext = name.split(&#x27;.&#x27;).pop()?.toLowerCase() || &#x27;mp4&#x27;;</td></tr>
 <tr class="unc"><td class="ln">144</td><td class="code">      const mime = ext === &#x27;webm&#x27; ? &#x27;video/webm&#x27; : ext === &#x27;mov&#x27; ? &#x27;video/quicktime&#x27;</td></tr>
-<tr class="unc"><td class="ln">145</td><td class="code">        : ext === &#x27;m4v&#x27; ? &#x27;video/x-m4v&#x27; : (ext === &#x27;ogv&#x27; || ext === &#x27;ogg&#x27;) ? &#x27;video/ogg&#x27; : &#x27;video/mp4&#x27;;</td></tr>
+<tr class="nil"><td class="ln">145</td><td class="code">        : ext === &#x27;m4v&#x27; ? &#x27;video/x-m4v&#x27; : (ext === &#x27;ogv&#x27; || ext === &#x27;ogg&#x27;) ? &#x27;video/ogg&#x27; : &#x27;video/mp4&#x27;;</td></tr>
 <tr class="unc"><td class="ln">146</td><td class="code">      const mb = bytes.length / (1024 * 1024);</td></tr>
 <tr class="unc"><td class="ln">147</td><td class="code">      if (mb &gt; 250) {</td></tr>
 <tr class="unc"><td class="ln">148</td><td class="code">        const { confirm } = await import(&#x27;@tauri-apps/plugin-dialog&#x27;);</td></tr>
-<tr class="unc"><td class="ln">149</td><td class="code">        const ok = await confirm(`This video is ${mb.toFixed(0)} MB. It will be embedded in the deck file, making it large. Continue?`, { title: &#x27;Large video&#x27;, kind: &#x27;warning&#x27; });</td></tr>
+<tr class="nil"><td class="ln">149</td><td class="code">        const ok = await confirm(`This video is ${mb.toFixed(0)} MB. It will be embedded in the deck file, making it large. Continue?`, { title: &#x27;Large video&#x27;, kind: &#x27;warning&#x27; });</td></tr>
 <tr class="unc"><td class="ln">150</td><td class="code">        if (!ok) return false;</td></tr>
 <tr class="nil"><td class="ln">151</td><td class="code">      }</td></tr>
 <tr class="unc"><td class="ln">152</td><td class="code">      const r = await storeAssetWithCollisionCheck({</td></tr>
-<tr class="nil"><td class="ln">153</td><td class="code">        path: relativePath, data: bytes, mimeType: mime,</td></tr>
-<tr class="nil"><td class="ln">154</td><td class="code">        externalPath: relativePath, externalMtime: null,</td></tr>
+<tr class="unc"><td class="ln">153</td><td class="code">        path: relativePath, data: bytes, mimeType: mime,</td></tr>
+<tr class="unc"><td class="ln">154</td><td class="code">        externalPath: relativePath, externalMtime: null,</td></tr>
 <tr class="nil"><td class="ln">155</td><td class="code">      });</td></tr>
 <tr class="unc"><td class="ln">156</td><td class="code">      if (r.cancelled) return false;</td></tr>
 <tr class="unc"><td class="ln">157</td><td class="code">      store.addElement({ id: crypto.randomUUID(), type: &#x27;video&#x27;, kind: &#x27;file&#x27;, assetId: r.assetId, controls: true, position: { x: 360, y: 200, width: 1200, height: 680 } });</td></tr>
 <tr class="unc"><td class="ln">158</td><td class="code">      return true;</td></tr>
 <tr class="unc"><td class="ln">159</td><td class="code">    } catch (err) { console.error(&#x27;Failed to insert video file:&#x27;, err); return false; }</td></tr>
 <tr class="nil"><td class="ln">160</td><td class="code">  }</td></tr>
-<tr class="unc"><td class="ln">161</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">161</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">162</td><td class="code">  return false; // not a file type we insert</td></tr>
 <tr class="nil"><td class="ln">163</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">164</td><td class="code">&nbsp;</td></tr>
@@ -185,339 +186,339 @@
 <tr class="nil"><td class="ln">168</td><td class="code">    addElement, updateElement, deleteElement,</td></tr>
 <tr class="nil"><td class="ln">169</td><td class="code">    selectObject, toggleSelectElement, selectedObject, projectPath,</td></tr>
 <tr class="nil"><td class="ln">170</td><td class="code">    showGrid,</td></tr>
-<tr class="unc"><td class="ln">171</td><td class="code">  } = usePresentationStore();</td></tr>
-<tr class="unc"><td class="ln">172</td><td class="code">  useDemoHost(); // relay + rAF pump for the editor&#x27;s live demos</td></tr>
-<tr class="unc"><td class="ln">173</td><td class="code">  const [gridSpacing] = usePreference(&#x27;gridSpacing&#x27;);</td></tr>
+<tr class="nil"><td class="ln">171</td><td class="code">  } = usePresentationStore();</td></tr>
+<tr class="nil"><td class="ln">172</td><td class="code">  useDemoHost(); // relay + rAF pump for the editor&#x27;s live demos</td></tr>
+<tr class="nil"><td class="ln">173</td><td class="code">  const [gridSpacing] = usePreference(&#x27;gridSpacing&#x27;);</td></tr>
 <tr class="nil"><td class="ln">174</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">175</td><td class="code">  const slide = presentation.slides[currentSlideIndex];</td></tr>
+<tr class="nil"><td class="ln">175</td><td class="code">  const slide = presentation.slides[currentSlideIndex];</td></tr>
 <tr class="nil"><td class="ln">176</td><td class="code">  // Whether the canvas (and its containerRef) actually renders — a 0-slide deck</td></tr>
 <tr class="nil"><td class="ln">177</td><td class="code">  // returns null below, so the container is absent. Effects that attach to the</td></tr>
 <tr class="nil"><td class="ln">178</td><td class="code">  // container must re-run when this flips (#103: an empty deck left the observer</td></tr>
-<tr class="cov"><td class="ln">179</td><td class="code">  // unattached, so the next deck rendered at the default scale = zoomed in).</td></tr>
+<tr class="nil"><td class="ln">179</td><td class="code">  // unattached, so the next deck rendered at the default scale = zoomed in).</td></tr>
 <tr class="cov"><td class="ln">180</td><td class="code">  const slidePresent = !!slide;</td></tr>
 <tr class="cov"><td class="ln">181</td><td class="code">  const containerRef = useRef&lt;HTMLDivElement&gt;(null);</td></tr>
 <tr class="cov"><td class="ln">182</td><td class="code">  const canvasRef = useRef&lt;HTMLDivElement&gt;(null);</td></tr>
 <tr class="cov"><td class="ln">183</td><td class="code">  const [scale, setScale] = useState(1);</td></tr>
 <tr class="cov"><td class="ln">184</td><td class="code">  const [marquee, setMarquee] = useState&lt;{ x1: number; y1: number; x2: number; y2: number } | null&gt;(null);</td></tr>
-<tr class="cov"><td class="ln">185</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">186</td><td class="code">  // Fit the 1920×1080 canvas into the container. The canvas uses transform:</td></tr>
-<tr class="cov"><td class="ln">187</td><td class="code">  // scale(), which does NOT change its layout box, so nothing about the layout</td></tr>
-<tr class="cov"><td class="ln">188</td><td class="code">  // self-corrects the scale — it&#x27;s whatever this last computed. Guard ≤0</td></tr>
-<tr class="cov"><td class="ln">189</td><td class="code">  // measurements (a not-yet-laid-out container gives (0-padding)/W &lt; 0 → a</td></tr>
-<tr class="cov"><td class="ln">190</td><td class="code">  // broken/tiny scale).</td></tr>
-<tr class="cov"><td class="ln">191</td><td class="code">  const fitScale = useCallback(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">185</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">186</td><td class="code">  // Fit the 1920×1080 canvas into the container. The canvas uses transform:</td></tr>
+<tr class="nil"><td class="ln">187</td><td class="code">  // scale(), which does NOT change its layout box, so nothing about the layout</td></tr>
+<tr class="nil"><td class="ln">188</td><td class="code">  // self-corrects the scale — it&#x27;s whatever this last computed. Guard ≤0</td></tr>
+<tr class="nil"><td class="ln">189</td><td class="code">  // measurements (a not-yet-laid-out container gives (0-padding)/W &lt; 0 → a</td></tr>
+<tr class="nil"><td class="ln">190</td><td class="code">  // broken/tiny scale).</td></tr>
+<tr class="part"><td class="ln">191</td><td class="code">  const fitScale = useCallback(() =&gt; {</td></tr>
 <tr class="cov"><td class="ln">192</td><td class="code">    const el = containerRef.current;</td></tr>
 <tr class="cov"><td class="ln">193</td><td class="code">    if (!el) return;</td></tr>
 <tr class="cov"><td class="ln">194</td><td class="code">    if (el.clientWidth &lt;= 0 || el.clientHeight &lt;= 0) return;</td></tr>
-<tr class="cov"><td class="ln">195</td><td class="code">    // Fit into the actual CONTENT box (clientWidth/Height include padding, which is</td></tr>
-<tr class="cov"><td class="ln">196</td><td class="code">    // now asymmetric + dynamic — the floating HUD sets a variable top padding), and</td></tr>
-<tr class="cov"><td class="ln">197</td><td class="code">    // reserve CANVAS_GAP below so the slide isn&#x27;t scaled flush to the bottom edge.</td></tr>
-<tr class="unc"><td class="ln">198</td><td class="code">    const cs = getComputedStyle(el);</td></tr>
-<tr class="cov"><td class="ln">199</td><td class="code">    const availW = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);</td></tr>
+<tr class="nil"><td class="ln">195</td><td class="code">    // Fit into the actual CONTENT box (clientWidth/Height include padding, which is</td></tr>
+<tr class="nil"><td class="ln">196</td><td class="code">    // now asymmetric + dynamic — the floating HUD sets a variable top padding), and</td></tr>
+<tr class="nil"><td class="ln">197</td><td class="code">    // reserve CANVAS_GAP below so the slide isn&#x27;t scaled flush to the bottom edge.</td></tr>
+<tr class="part"><td class="ln">198</td><td class="code">    const cs = getComputedStyle(el);</td></tr>
+<tr class="nil"><td class="ln">199</td><td class="code">    const availW = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);</td></tr>
 <tr class="cov"><td class="ln">200</td><td class="code">    const availH =</td></tr>
-<tr class="cov"><td class="ln">201</td><td class="code">      el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - CANVAS_GAP;</td></tr>
+<tr class="part"><td class="ln">201</td><td class="code">      el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - CANVAS_GAP;</td></tr>
 <tr class="cov"><td class="ln">202</td><td class="code">    if (availW &lt;= 0 || availH &lt;= 0) return;</td></tr>
 <tr class="cov"><td class="ln">203</td><td class="code">    const next = Math.min(availW / SLIDE_WIDTH, availH / SLIDE_HEIGHT, 1);</td></tr>
 <tr class="cov"><td class="ln">204</td><td class="code">    if (next &gt; 0) setScale(next);</td></tr>
 <tr class="nil"><td class="ln">205</td><td class="code">  }, []);</td></tr>
-<tr class="cov"><td class="ln">206</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">207</td><td class="code">  // Live re-fit on container resize (window/panel changes). Re-runs when</td></tr>
-<tr class="cov"><td class="ln">208</td><td class="code">  // slidePresent flips so the observer (re)attaches once the container actually</td></tr>
-<tr class="cov"><td class="ln">209</td><td class="code">  // mounts — otherwise opening a deck after a 0-slide deck leaves it unattached.</td></tr>
-<tr class="unc"><td class="ln">210</td><td class="code">  useEffect(() =&gt; {</td></tr>
-<tr class="cov"><td class="ln">211</td><td class="code">    const container = containerRef.current;</td></tr>
+<tr class="nil"><td class="ln">206</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">207</td><td class="code">  // Live re-fit on container resize (window/panel changes). Re-runs when</td></tr>
+<tr class="nil"><td class="ln">208</td><td class="code">  // slidePresent flips so the observer (re)attaches once the container actually</td></tr>
+<tr class="nil"><td class="ln">209</td><td class="code">  // mounts — otherwise opening a deck after a 0-slide deck leaves it unattached.</td></tr>
+<tr class="cov"><td class="ln">210</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">211</td><td class="code">    const container = containerRef.current;</td></tr>
 <tr class="cov"><td class="ln">212</td><td class="code">    if (!container) return;</td></tr>
-<tr class="cov"><td class="ln">213</td><td class="code">    const observer = new ResizeObserver(() =&gt; fitScale());</td></tr>
-<tr class="cov"><td class="ln">214</td><td class="code">    observer.observe(container);</td></tr>
-<tr class="unc"><td class="ln">215</td><td class="code">    return () =&gt; observer.disconnect();</td></tr>
+<tr class="nil"><td class="ln">213</td><td class="code">    const observer = new ResizeObserver(() =&gt; fitScale());</td></tr>
+<tr class="part"><td class="ln">214</td><td class="code">    observer.observe(container);</td></tr>
+<tr class="nil"><td class="ln">215</td><td class="code">    return () =&gt; observer.disconnect();</td></tr>
 <tr class="cov"><td class="ln">216</td><td class="code">  }, [fitScale, slidePresent]);</td></tr>
-<tr class="cov"><td class="ln">217</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">218</td><td class="code">  // Re-fit whenever a deck opens. The observer ONLY fires on container SIZE</td></tr>
-<tr class="cov"><td class="ln">219</td><td class="code">  // changes, and SlideEditor persists across deck opens (no remount), so the</td></tr>
-<tr class="cov"><td class="ln">220</td><td class="code">  // scale captured at the first welcome→editor mount would otherwise stick for</td></tr>
-<tr class="cov"><td class="ln">221</td><td class="code">  // EVERY deck this session — wrong in whichever direction that first</td></tr>
-<tr class="cov"><td class="ln">222</td><td class="code">  // measurement was off (#103: &quot;tiny slides&quot;, and its &quot;zoomed-in&quot; twin). Re-fit</td></tr>
-<tr class="cov"><td class="ln">223</td><td class="code">  // now AND after layout settles (scrollbars/panels) so each opened deck gets a</td></tr>
-<tr class="cov"><td class="ln">224</td><td class="code">  // correct fit regardless of prior (e.g. blank-open) state.</td></tr>
-<tr class="unc"><td class="ln">225</td><td class="code">  useLayoutEffect(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">217</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">218</td><td class="code">  // Re-fit whenever a deck opens. The observer ONLY fires on container SIZE</td></tr>
+<tr class="nil"><td class="ln">219</td><td class="code">  // changes, and SlideEditor persists across deck opens (no remount), so the</td></tr>
+<tr class="nil"><td class="ln">220</td><td class="code">  // scale captured at the first welcome→editor mount would otherwise stick for</td></tr>
+<tr class="nil"><td class="ln">221</td><td class="code">  // EVERY deck this session — wrong in whichever direction that first</td></tr>
+<tr class="nil"><td class="ln">222</td><td class="code">  // measurement was off (#103: &quot;tiny slides&quot;, and its &quot;zoomed-in&quot; twin). Re-fit</td></tr>
+<tr class="nil"><td class="ln">223</td><td class="code">  // now AND after layout settles (scrollbars/panels) so each opened deck gets a</td></tr>
+<tr class="nil"><td class="ln">224</td><td class="code">  // correct fit regardless of prior (e.g. blank-open) state.</td></tr>
+<tr class="cov"><td class="ln">225</td><td class="code">  useLayoutEffect(() =&gt; {</td></tr>
 <tr class="cov"><td class="ln">226</td><td class="code">    fitScale();</td></tr>
-<tr class="cov"><td class="ln">227</td><td class="code">    const raf = requestAnimationFrame(fitScale);</td></tr>
-<tr class="cov"><td class="ln">228</td><td class="code">    return () =&gt; cancelAnimationFrame(raf);</td></tr>
+<tr class="nil"><td class="ln">227</td><td class="code">    const raf = requestAnimationFrame(fitScale);</td></tr>
+<tr class="nil"><td class="ln">228</td><td class="code">    return () =&gt; cancelAnimationFrame(raf);</td></tr>
 <tr class="cov"><td class="ln">229</td><td class="code">  }, [projectPath, slidePresent, fitScale]);</td></tr>
-<tr class="cov"><td class="ln">230</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">231</td><td class="code">  // Cmd+V image paste</td></tr>
-<tr class="unc"><td class="ln">232</td><td class="code">  useEffect(() =&gt; {</td></tr>
-<tr class="unc"><td class="ln">233</td><td class="code">    const PASTE_LOG = false;</td></tr>
-<tr class="unc"><td class="ln">234</td><td class="code">    const plog = (...a: unknown[]): void =&gt; {</td></tr>
-<tr class="cov"><td class="ln">235</td><td class="code">      if (PASTE_LOG) console.log(`[paste ${new Date().toISOString().slice(11, 23)}]`, ...a);</td></tr>
-<tr class="cov"><td class="ln">236</td><td class="code">    };</td></tr>
-<tr class="cov"><td class="ln">237</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">230</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">231</td><td class="code">  // Cmd+V image paste</td></tr>
+<tr class="part"><td class="ln">232</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">233</td><td class="code">    const PASTE_LOG = false;</td></tr>
+<tr class="nil"><td class="ln">234</td><td class="code">    const plog = (...a: unknown[]): void =&gt; {</td></tr>
+<tr class="nil"><td class="ln">235</td><td class="code">      if (PASTE_LOG) console.log(`[paste ${new Date().toISOString().slice(11, 23)}]`, ...a);</td></tr>
+<tr class="nil"><td class="ln">236</td><td class="code">    };</td></tr>
+<tr class="nil"><td class="ln">237</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">238</td><td class="code">    const handlePaste = async (e: ClipboardEvent) =&gt; {</td></tr>
-<tr class="cov"><td class="ln">239</td><td class="code">      // Don&#x27;t intercept paste if the caret is in a text editor. Checks</td></tr>
-<tr class="cov"><td class="ln">240</td><td class="code">      // focus/selection, not just e.target — WebKit can dispatch a keyboard</td></tr>
+<tr class="nil"><td class="ln">239</td><td class="code">      // Don&#x27;t intercept paste if the caret is in a text editor. Checks</td></tr>
+<tr class="nil"><td class="ln">240</td><td class="code">      // focus/selection, not just e.target — WebKit can dispatch a keyboard</td></tr>
 <tr class="nil"><td class="ln">241</td><td class="code">      // paste with target=&lt;body&gt; while editing, which an e.target-only guard</td></tr>
 <tr class="nil"><td class="ln">242</td><td class="code">      // misses → double paste (new element + caret text). See editableTarget.ts.</td></tr>
 <tr class="cov"><td class="ln">243</td><td class="code">      if (eventInTextEditor(e)) return;</td></tr>
-<tr class="cov"><td class="ln">244</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">245</td><td class="code">      // If a FRESH eigendeck asset is on the internal clip, the App-level paste</td></tr>
-<tr class="cov"><td class="ln">246</td><td class="code">      // handler restores it (with attributes, into this deck). Defer so we don&#x27;t</td></tr>
-<tr class="cov"><td class="ln">247</td><td class="code">      // ALSO paste the system-clipboard copy of it — that was the double-paste.</td></tr>
-<tr class="cov"><td class="ln">248</td><td class="code">      // (Staleness-checked in Rust, so a foreign image still falls through here.)</td></tr>
+<tr class="nil"><td class="ln">244</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">245</td><td class="code">      // If a FRESH eigendeck asset is on the internal clip, the App-level paste</td></tr>
+<tr class="nil"><td class="ln">246</td><td class="code">      // handler restores it (with attributes, into this deck). Defer so we don&#x27;t</td></tr>
+<tr class="nil"><td class="ln">247</td><td class="code">      // ALSO paste the system-clipboard copy of it — that was the double-paste.</td></tr>
+<tr class="nil"><td class="ln">248</td><td class="code">      // (Staleness-checked in Rust, so a foreign image still falls through here.)</td></tr>
 <tr class="cov"><td class="ln">249</td><td class="code">      if (await hasFreshInternalAsset()) return;</td></tr>
-<tr class="cov"><td class="ln">250</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">251</td><td class="code">      const T_PASTE = performance.now();</td></tr>
-<tr class="unc"><td class="ln">252</td><td class="code">      plog(&#x27;paste-handler started&#x27;);</td></tr>
+<tr class="nil"><td class="ln">250</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">251</td><td class="code">      const T_PASTE = performance.now();</td></tr>
+<tr class="cov"><td class="ln">252</td><td class="code">      plog(&#x27;paste-handler started&#x27;);</td></tr>
 <tr class="nil"><td class="ln">253</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">254</td><td class="code">      // Capture text/html NOW — clipboardData can be neutered after the awaits</td></tr>
 <tr class="nil"><td class="ln">255</td><td class="code">      // below. Used for the Google-Sheets table fallback: Sheets puts only</td></tr>
 <tr class="nil"><td class="ln">256</td><td class="code">      // text/html + text/plain on the clipboard (no image), so the image</td></tr>
 <tr class="nil"><td class="ln">257</td><td class="code">      // paths below all miss and we render the HTML table to SVG instead.</td></tr>
-<tr class="unc"><td class="ln">258</td><td class="code">      const htmlEarly = e.clipboardData?.getData(&#x27;text/html&#x27;) || &#x27;&#x27;;</td></tr>
+<tr class="cov"><td class="ln">258</td><td class="code">      const htmlEarly = e.clipboardData?.getData(&#x27;text/html&#x27;) || &#x27;&#x27;;</td></tr>
 <tr class="nil"><td class="ln">259</td><td class="code">      // Same reason: capture text/plain up front for the text-element fallback</td></tr>
 <tr class="nil"><td class="ln">260</td><td class="code">      // (#161). clipboardData is neutered by the awaits below, so reading it</td></tr>
 <tr class="nil"><td class="ln">261</td><td class="code">      // there would come back empty for a plain-text (Keynote/Pages) paste.</td></tr>
-<tr class="unc"><td class="ln">262</td><td class="code">      const plainEarly = e.clipboardData?.getData(&#x27;text/plain&#x27;) || &#x27;&#x27;;</td></tr>
-<tr class="cov"><td class="ln">263</td><td class="code">      // A copied FILE (Finder/Explorer/Nautilus) exposes its path(s) as a URI</td></tr>
-<tr class="cov"><td class="ln">264</td><td class="code">      // list on Linux/Windows clipboardData (macOS uses the native public.file-url</td></tr>
-<tr class="cov"><td class="ln">265</td><td class="code">      // read above). Captured up front — clipboardData is neutered after awaits. #160.</td></tr>
-<tr class="unc"><td class="ln">266</td><td class="code">      const uriListEarly = e.clipboardData?.getData(&#x27;text/uri-list&#x27;)</td></tr>
+<tr class="cov"><td class="ln">262</td><td class="code">      const plainEarly = e.clipboardData?.getData(&#x27;text/plain&#x27;) || &#x27;&#x27;;</td></tr>
+<tr class="nil"><td class="ln">263</td><td class="code">      // A copied FILE (Finder/Explorer/Nautilus) exposes its path(s) as a URI</td></tr>
+<tr class="nil"><td class="ln">264</td><td class="code">      // list on Linux/Windows clipboardData (macOS uses the native public.file-url</td></tr>
+<tr class="nil"><td class="ln">265</td><td class="code">      // read above). Captured up front — clipboardData is neutered after awaits. #160.</td></tr>
+<tr class="part"><td class="ln">266</td><td class="code">      const uriListEarly = e.clipboardData?.getData(&#x27;text/uri-list&#x27;)</td></tr>
 <tr class="unc"><td class="ln">267</td><td class="code">        || e.clipboardData?.getData(&#x27;text/x-moz-url&#x27;) || &#x27;&#x27;;</td></tr>
-<tr class="unc"><td class="ln">268</td><td class="code">      const gnomeFilesEarly = e.clipboardData?.getData(&#x27;x-special/gnome-copied-files&#x27;) || &#x27;&#x27;;</td></tr>
-<tr class="cov"><td class="ln">269</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">270</td><td class="code">      // PRIVATE Eigendeck flavor FIRST (read private-first, per</td></tr>
-<tr class="cov"><td class="ln">271</td><td class="code">      // docs/copy-and-paste.md): an internal element/slide/multi copy round-trips</td></tr>
-<tr class="cov"><td class="ln">272</td><td class="code">      // with full fidelity straight from the OS clipboard — no separate buffer to</td></tr>
-<tr class="cov"><td class="ln">273</td><td class="code">      // desync. Cross-platform: clipboardData carries it on Linux/Windows; on</td></tr>
-<tr class="cov"><td class="ln">274</td><td class="code">      // macOS clipboardData is empty for a canvas paste, so also read the native</td></tr>
-<tr class="cov"><td class="ln">275</td><td class="code">      // pasteboard&#x27;s public.html. Wins over images/text below.</td></tr>
-<tr class="unc"><td class="ln">276</td><td class="code">      {</td></tr>
-<tr class="unc"><td class="ln">277</td><td class="code">        let clip = decodeClipHtml(htmlEarly);</td></tr>
+<tr class="cov"><td class="ln">268</td><td class="code">      const gnomeFilesEarly = e.clipboardData?.getData(&#x27;x-special/gnome-copied-files&#x27;) || &#x27;&#x27;;</td></tr>
+<tr class="nil"><td class="ln">269</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">270</td><td class="code">      // PRIVATE Eigendeck flavor FIRST (read private-first, per</td></tr>
+<tr class="nil"><td class="ln">271</td><td class="code">      // docs/copy-and-paste.md): an internal element/slide/multi copy round-trips</td></tr>
+<tr class="nil"><td class="ln">272</td><td class="code">      // with full fidelity straight from the OS clipboard — no separate buffer to</td></tr>
+<tr class="nil"><td class="ln">273</td><td class="code">      // desync. Cross-platform: clipboardData carries it on Linux/Windows; on</td></tr>
+<tr class="nil"><td class="ln">274</td><td class="code">      // macOS clipboardData is empty for a canvas paste, so also read the native</td></tr>
+<tr class="nil"><td class="ln">275</td><td class="code">      // pasteboard&#x27;s public.html. Wins over images/text below.</td></tr>
+<tr class="nil"><td class="ln">276</td><td class="code">      {</td></tr>
+<tr class="part"><td class="ln">277</td><td class="code">        let clip = decodeClipHtml(htmlEarly);</td></tr>
 <tr class="unc"><td class="ln">278</td><td class="code">        if (!clip) {</td></tr>
 <tr class="unc"><td class="ln">279</td><td class="code">          try {</td></tr>
 <tr class="unc"><td class="ln">280</td><td class="code">            const { invoke } = await import(&#x27;@tauri-apps/api/core&#x27;);</td></tr>
-<tr class="unc"><td class="ln">281</td><td class="code">            const b = await invoke&lt;number[] | null&gt;(&#x27;pasteboard_read_type&#x27;, { uti: &#x27;public.html&#x27; });</td></tr>
+<tr class="nil"><td class="ln">281</td><td class="code">            const b = await invoke&lt;number[] | null&gt;(&#x27;pasteboard_read_type&#x27;, { uti: &#x27;public.html&#x27; });</td></tr>
 <tr class="unc"><td class="ln">282</td><td class="code">            if (b &amp;&amp; b.length) clip = decodeClipHtml(new TextDecoder(&#x27;utf-8&#x27;).decode(new Uint8Array(b)));</td></tr>
 <tr class="unc"><td class="ln">283</td><td class="code">          } catch { /* non-macOS / no native pasteboard */ }</td></tr>
-<tr class="unc"><td class="ln">284</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">284</td><td class="code">        }</td></tr>
 <tr class="unc"><td class="ln">285</td><td class="code">        if (clip) {</td></tr>
 <tr class="unc"><td class="ln">286</td><td class="code">          e.preventDefault();</td></tr>
-<tr class="unc"><td class="ln">287</td><td class="code">          const { pasteInternalClip } = await import(&#x27;../lib/pasteClip&#x27;);<a class="jump" href="src__lib__pasteClip_ts.html" title="src/lib/pasteClip.ts">→ pasteClip.ts</a></td></tr>
+<tr class="nil"><td class="ln">287</td><td class="code">          const { pasteInternalClip } = await import(&#x27;../lib/pasteClip&#x27;);<a class="jump" href="src__lib__pasteClip_ts.html" title="src/lib/pasteClip.ts">→ pasteClip.ts</a></td></tr>
 <tr class="unc"><td class="ln">288</td><td class="code">          pasteInternalClip(clip);</td></tr>
-<tr class="unc"><td class="ln">289</td><td class="code">          plog(&#x27;pasted internal clip → &#x27; + clip.kind);</td></tr>
+<tr class="nil"><td class="ln">289</td><td class="code">          plog(&#x27;pasted internal clip → &#x27; + clip.kind);</td></tr>
 <tr class="unc"><td class="ln">290</td><td class="code">          return;</td></tr>
-<tr class="unc"><td class="ln">291</td><td class="code">        }</td></tr>
-<tr class="unc"><td class="ln">292</td><td class="code">      }</td></tr>
-<tr class="unc"><td class="ln">293</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">294</td><td class="code">      // Native NSPasteboard path FIRST: WebKit&#x27;s clipboardData /</td></tr>
-<tr class="unc"><td class="ln">295</td><td class="code">      // navigator.clipboard.read() filter out non-standard UTIs (notably</td></tr>
-<tr class="unc"><td class="ln">296</td><td class="code">      // com.microsoft.image-svg-xml from Office, com.adobe.pdf from</td></tr>
-<tr class="unc"><td class="ln">297</td><td class="code">      // Adobe apps). Going through the Rust pasteboard_* commands gets</td></tr>
+<tr class="nil"><td class="ln">291</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">292</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">293</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">294</td><td class="code">      // Native NSPasteboard path FIRST: WebKit&#x27;s clipboardData /</td></tr>
+<tr class="nil"><td class="ln">295</td><td class="code">      // navigator.clipboard.read() filter out non-standard UTIs (notably</td></tr>
+<tr class="nil"><td class="ln">296</td><td class="code">      // com.microsoft.image-svg-xml from Office, com.adobe.pdf from</td></tr>
+<tr class="nil"><td class="ln">297</td><td class="code">      // Adobe apps). Going through the Rust pasteboard_* commands gets</td></tr>
 <tr class="nil"><td class="ln">298</td><td class="code">      // us the unfiltered list and can read the real bytes.</td></tr>
 <tr class="unc"><td class="ln">299</td><td class="code">      let nativeUtisForDiag: string[] = [];</td></tr>
-<tr class="unc"><td class="ln">300</td><td class="code">      try {</td></tr>
+<tr class="nil"><td class="ln">300</td><td class="code">      try {</td></tr>
 <tr class="cov"><td class="ln">301</td><td class="code">        const { invoke } = await import(&#x27;@tauri-apps/api/core&#x27;);</td></tr>
 <tr class="cov"><td class="ln">302</td><td class="code">        const t1 = performance.now();</td></tr>
-<tr class="cov"><td class="ln">303</td><td class="code">        const nativeTypes = await invoke&lt;string[]&gt;(&#x27;pasteboard_list_types&#x27;);</td></tr>
+<tr class="nil"><td class="ln">303</td><td class="code">        const nativeTypes = await invoke&lt;string[]&gt;(&#x27;pasteboard_list_types&#x27;);</td></tr>
 <tr class="unc"><td class="ln">304</td><td class="code">        nativeUtisForDiag = nativeTypes;</td></tr>
 <tr class="unc"><td class="ln">305</td><td class="code">        plog(`pasteboard_list_types: ${(performance.now() - t1).toFixed(0)}ms (${nativeTypes.length} UTIs)`);</td></tr>
 <tr class="nil"><td class="ln">306</td><td class="code">        // Preference: SVG &gt; PDF &gt; raster (mirrors the web-API picker).</td></tr>
-<tr class="cov"><td class="ln">307</td><td class="code">        // PDF will move ahead of SVG once pdfium renders.</td></tr>
+<tr class="nil"><td class="ln">307</td><td class="code">        // PDF will move ahead of SVG once pdfium renders.</td></tr>
 <tr class="unc"><td class="ln">308</td><td class="code">        const NATIVE_PREFER: Array&lt;{ utis: string[]; ext: string; mime: string; transcodeFromMime?: string }&gt; = [</td></tr>
-<tr class="unc"><td class="ln">309</td><td class="code">          { utis: [&#x27;public.svg-image&#x27;, &#x27;com.microsoft.image-svg-xml&#x27;, &#x27;image/svg+xml&#x27;], ext: &#x27;svg&#x27;, mime: &#x27;image/svg+xml&#x27; },</td></tr>
+<tr class="nil"><td class="ln">309</td><td class="code">          { utis: [&#x27;public.svg-image&#x27;, &#x27;com.microsoft.image-svg-xml&#x27;, &#x27;image/svg+xml&#x27;], ext: &#x27;svg&#x27;, mime: &#x27;image/svg+xml&#x27; },</td></tr>
 <tr class="unc"><td class="ln">310</td><td class="code">          { utis: [&#x27;com.adobe.pdf&#x27;, &#x27;application/pdf&#x27;], ext: &#x27;pdf&#x27;, mime: &#x27;application/pdf&#x27; },</td></tr>
 <tr class="unc"><td class="ln">311</td><td class="code">          { utis: [&#x27;public.png&#x27;, &#x27;image/png&#x27;], ext: &#x27;png&#x27;, mime: &#x27;image/png&#x27; },</td></tr>
 <tr class="nil"><td class="ln">312</td><td class="code">          { utis: [&#x27;public.jpeg&#x27;, &#x27;image/jpeg&#x27;, &#x27;public.jpg&#x27;], ext: &#x27;jpg&#x27;, mime: &#x27;image/jpeg&#x27; },</td></tr>
 <tr class="nil"><td class="ln">313</td><td class="code">          // An image copied from Preview (and other macOS apps) is offered as HEIC</td></tr>
-<tr class="cov"><td class="ln">314</td><td class="code">          // and/or TIFF — formats a deck can&#x27;t render everywhere. Decode → PNG via</td></tr>
-<tr class="unc"><td class="ln">315</td><td class="code">          // the WebView before storing (#178). ext:&#x27;png&#x27; also makes the</td></tr>
-<tr class="unc"><td class="ln">316</td><td class="code">          // preferOwnRender skip below apply to them (a browser-selection TIFF</td></tr>
+<tr class="nil"><td class="ln">314</td><td class="code">          // and/or TIFF — formats a deck can&#x27;t render everywhere. Decode → PNG via</td></tr>
+<tr class="nil"><td class="ln">315</td><td class="code">          // the WebView before storing (#178). ext:&#x27;png&#x27; also makes the</td></tr>
+<tr class="nil"><td class="ln">316</td><td class="code">          // preferOwnRender skip below apply to them (a browser-selection TIFF</td></tr>
 <tr class="nil"><td class="ln">317</td><td class="code">          // render must not preempt our crisp HTML render).</td></tr>
-<tr class="nil"><td class="ln">318</td><td class="code">          { utis: [&#x27;public.heic&#x27;, &#x27;public.heif&#x27;, &#x27;image/heic&#x27;, &#x27;image/heif&#x27;], ext: &#x27;png&#x27;, mime: &#x27;image/png&#x27;, transcodeFromMime: &#x27;image/heic&#x27; },</td></tr>
+<tr class="part"><td class="ln">318</td><td class="code">          { utis: [&#x27;public.heic&#x27;, &#x27;public.heif&#x27;, &#x27;image/heic&#x27;, &#x27;image/heif&#x27;], ext: &#x27;png&#x27;, mime: &#x27;image/png&#x27;, transcodeFromMime: &#x27;image/heic&#x27; },</td></tr>
 <tr class="cov"><td class="ln">319</td><td class="code">          { utis: [&#x27;public.tiff&#x27;, &#x27;image/tiff&#x27;], ext: &#x27;png&#x27;, mime: &#x27;image/png&#x27;, transcodeFromMime: &#x27;image/tiff&#x27; },</td></tr>
-<tr class="cov"><td class="ln">320</td><td class="code">        ];</td></tr>
-<tr class="unc"><td class="ln">321</td><td class="code">        // A TEXT/document copy (Word, Pages, a browser selection) puts a PDF</td></tr>
-<tr class="unc"><td class="ln">322</td><td class="code">        // *rendering* of the text on the pasteboard alongside the real rich text</td></tr>
-<tr class="unc"><td class="ln">323</td><td class="code">        // — do NOT let that PDF hijack a text paste as an image. When rich text</td></tr>
+<tr class="nil"><td class="ln">320</td><td class="code">        ];</td></tr>
+<tr class="nil"><td class="ln">321</td><td class="code">        // A TEXT/document copy (Word, Pages, a browser selection) puts a PDF</td></tr>
+<tr class="nil"><td class="ln">322</td><td class="code">        // *rendering* of the text on the pasteboard alongside the real rich text</td></tr>
+<tr class="nil"><td class="ln">323</td><td class="code">        // — do NOT let that PDF hijack a text paste as an image. When rich text</td></tr>
 <tr class="nil"><td class="ln">324</td><td class="code">        // (public.html/public.rtf) is present, skip the PDF preference so the</td></tr>
-<tr class="unc"><td class="ln">325</td><td class="code">        // native text read below wins. A genuine graphic/vector copy carries no</td></tr>
-<tr class="unc"><td class="ln">326</td><td class="code">        // rich text, so its PDF is still taken. SVG/PNG (and HEIC/TIFF, transcoded</td></tr>
-<tr class="unc"><td class="ln">327</td><td class="code">        // to PNG below) are still taken — real graphics from Office / Illustrator /</td></tr>
+<tr class="nil"><td class="ln">325</td><td class="code">        // native text read below wins. A genuine graphic/vector copy carries no</td></tr>
+<tr class="nil"><td class="ln">326</td><td class="code">        // rich text, so its PDF is still taken. SVG/PNG (and HEIC/TIFF, transcoded</td></tr>
+<tr class="nil"><td class="ln">327</td><td class="code">        // to PNG below) are still taken — real graphics from Office / Illustrator /</td></tr>
 <tr class="nil"><td class="ln">328</td><td class="code">        // screenshots / Preview. See #161 / pasteboard dump.</td></tr>
 <tr class="unc"><td class="ln">329</td><td class="code">        const hasRichText = nativeTypes.includes(&#x27;public.html&#x27;) || nativeTypes.includes(&#x27;public.rtf&#x27;);</td></tr>
 <tr class="cov"><td class="ln">330</td><td class="code">        const readNativeText = async (uti: string): Promise&lt;string&gt; =&gt; {</td></tr>
-<tr class="unc"><td class="ln">331</td><td class="code">          if (!nativeTypes.includes(uti)) return &#x27;&#x27;;</td></tr>
+<tr class="nil"><td class="ln">331</td><td class="code">          if (!nativeTypes.includes(uti)) return &#x27;&#x27;;</td></tr>
 <tr class="unc"><td class="ln">332</td><td class="code">          const b = await invoke&lt;number[] | null&gt;(&#x27;pasteboard_read_type&#x27;, { uti });</td></tr>
-<tr class="unc"><td class="ln">333</td><td class="code">          return b &amp;&amp; b.length ? new TextDecoder(&#x27;utf-8&#x27;).decode(new Uint8Array(b)) : &#x27;&#x27;;</td></tr>
-<tr class="cov"><td class="ln">334</td><td class="code">        };</td></tr>
-<tr class="cov"><td class="ln">335</td><td class="code">        // Read the HTML up front: if it&#x27;s block content we render better ourselves</td></tr>
-<tr class="cov"><td class="ln">336</td><td class="code">        // (a table etc. — htmlNeedsScreenshot), do NOT let a native RASTER bitmap</td></tr>
-<tr class="cov"><td class="ln">337</td><td class="code">        // preempt it. Browsers (Chrome/Safari) put a LOW-RES public.png/tiff render</td></tr>
-<tr class="cov"><td class="ln">338</td><td class="code">        // of the selection on the pasteboard next to the HTML; taking that gives a</td></tr>
-<tr class="cov"><td class="ln">339</td><td class="code">        // blurry image instead of our crisp HTML→PNG render (Google Sheets paste).</td></tr>
+<tr class="cov"><td class="ln">333</td><td class="code">          return b &amp;&amp; b.length ? new TextDecoder(&#x27;utf-8&#x27;).decode(new Uint8Array(b)) : &#x27;&#x27;;</td></tr>
+<tr class="nil"><td class="ln">334</td><td class="code">        };</td></tr>
+<tr class="nil"><td class="ln">335</td><td class="code">        // Read the HTML up front: if it&#x27;s block content we render better ourselves</td></tr>
+<tr class="nil"><td class="ln">336</td><td class="code">        // (a table etc. — htmlNeedsScreenshot), do NOT let a native RASTER bitmap</td></tr>
+<tr class="nil"><td class="ln">337</td><td class="code">        // preempt it. Browsers (Chrome/Safari) put a LOW-RES public.png/tiff render</td></tr>
+<tr class="nil"><td class="ln">338</td><td class="code">        // of the selection on the pasteboard next to the HTML; taking that gives a</td></tr>
+<tr class="nil"><td class="ln">339</td><td class="code">        // blurry image instead of our crisp HTML→PNG render (Google Sheets paste).</td></tr>
 <tr class="nil"><td class="ln">340</td><td class="code">        // SVG (vector) is still taken — it&#x27;s sharp. PDF is already skipped when rich</td></tr>
 <tr class="nil"><td class="ln">341</td><td class="code">        // text is present.</td></tr>
-<tr class="unc"><td class="ln">342</td><td class="code">        const nativeHtml = await readNativeText(&#x27;public.html&#x27;);</td></tr>
-<tr class="unc"><td class="ln">343</td><td class="code">        const preferOwnRender = htmlNeedsScreenshot(nativeHtml);</td></tr>
-<tr class="unc"><td class="ln">344</td><td class="code">        for (const pref of NATIVE_PREFER) {</td></tr>
-<tr class="unc"><td class="ln">345</td><td class="code">          if (pref.ext === &#x27;pdf&#x27; &amp;&amp; hasRichText) continue;</td></tr>
-<tr class="unc"><td class="ln">346</td><td class="code">          if (preferOwnRender &amp;&amp; (pref.ext === &#x27;png&#x27; || pref.ext === &#x27;jpg&#x27;)) continue;</td></tr>
+<tr class="cov"><td class="ln">342</td><td class="code">        const nativeHtml = await readNativeText(&#x27;public.html&#x27;);</td></tr>
+<tr class="nil"><td class="ln">343</td><td class="code">        const preferOwnRender = htmlNeedsScreenshot(nativeHtml);</td></tr>
+<tr class="nil"><td class="ln">344</td><td class="code">        for (const pref of NATIVE_PREFER) {</td></tr>
+<tr class="nil"><td class="ln">345</td><td class="code">          if (pref.ext === &#x27;pdf&#x27; &amp;&amp; hasRichText) continue;</td></tr>
+<tr class="nil"><td class="ln">346</td><td class="code">          if (preferOwnRender &amp;&amp; (pref.ext === &#x27;png&#x27; || pref.ext === &#x27;jpg&#x27;)) continue;</td></tr>
 <tr class="cov"><td class="ln">347</td><td class="code">          for (const uti of pref.utis) {</td></tr>
 <tr class="cov"><td class="ln">348</td><td class="code">            if (!nativeTypes.includes(uti)) continue;</td></tr>
 <tr class="cov"><td class="ln">349</td><td class="code">            const tRead = performance.now();</td></tr>
 <tr class="cov"><td class="ln">350</td><td class="code">            const bytesAsNumArray = await invoke&lt;number[] | null&gt;(&#x27;pasteboard_read_type&#x27;, { uti });</td></tr>
-<tr class="cov"><td class="ln">351</td><td class="code">            plog(`pasteboard_read_type(${uti}): ${(performance.now() - tRead).toFixed(0)}ms${bytesAsNumArray ? ` → ${bytesAsNumArray.length}B` : &#x27; → null&#x27;}`);</td></tr>
+<tr class="nil"><td class="ln">351</td><td class="code">            plog(`pasteboard_read_type(${uti}): ${(performance.now() - tRead).toFixed(0)}ms${bytesAsNumArray ? ` → ${bytesAsNumArray.length}B` : &#x27; → null&#x27;}`);</td></tr>
 <tr class="cov"><td class="ln">352</td><td class="code">            if (!bytesAsNumArray || bytesAsNumArray.length === 0) continue;</td></tr>
-<tr class="cov"><td class="ln">353</td><td class="code">            let bytes = new Uint8Array(bytesAsNumArray);</td></tr>
+<tr class="nil"><td class="ln">353</td><td class="code">            let bytes = new Uint8Array(bytesAsNumArray);</td></tr>
 <tr class="cov"><td class="ln">354</td><td class="code">            if (pref.transcodeFromMime) {</td></tr>
-<tr class="cov"><td class="ln">355</td><td class="code">              // HEIC/TIFF → PNG so the asset renders everywhere. If the WebView</td></tr>
-<tr class="unc"><td class="ln">356</td><td class="code">              // can&#x27;t decode it (e.g. no HEIC codec), fall through to the next</td></tr>
-<tr class="unc"><td class="ln">357</td><td class="code">              // candidate instead of storing an unrenderable blob.</td></tr>
+<tr class="nil"><td class="ln">355</td><td class="code">              // HEIC/TIFF → PNG so the asset renders everywhere. If the WebView</td></tr>
+<tr class="nil"><td class="ln">356</td><td class="code">              // can&#x27;t decode it (e.g. no HEIC codec), fall through to the next</td></tr>
+<tr class="nil"><td class="ln">357</td><td class="code">              // candidate instead of storing an unrenderable blob.</td></tr>
 <tr class="unc"><td class="ln">358</td><td class="code">              const { transcodeImageToPng } = await import(&#x27;../lib/imageTranscode&#x27;);<a class="jump" href="src__lib__imageTranscode_ts.html" title="src/lib/imageTranscode.ts">→ imageTranscode.ts</a></td></tr>
 <tr class="unc"><td class="ln">359</td><td class="code">              const png = await transcodeImageToPng(bytes, pref.transcodeFromMime);</td></tr>
-<tr class="cov"><td class="ln">360</td><td class="code">              if (!png) { plog(`transcode ${uti} → PNG failed (WebView can&#x27;t decode)`); continue; }</td></tr>
-<tr class="unc"><td class="ln">361</td><td class="code">              bytes = png;</td></tr>
+<tr class="nil"><td class="ln">360</td><td class="code">              if (!png) { plog(`transcode ${uti} → PNG failed (WebView can&#x27;t decode)`); continue; }</td></tr>
+<tr class="nil"><td class="ln">361</td><td class="code">              bytes = png;</td></tr>
 <tr class="nil"><td class="ln">362</td><td class="code">            }</td></tr>
 <tr class="cov"><td class="ln">363</td><td class="code">            const fileName = `pasted-${Date.now()}.${pref.ext}`;</td></tr>
-<tr class="cov"><td class="ln">364</td><td class="code">            const relativePath = `images/${fileName}`;</td></tr>
-<tr class="cov"><td class="ln">365</td><td class="code">            plog(`native picked uti=${uti} → ${pref.mime} (${bytes.length} bytes) → ${fileName}`);</td></tr>
+<tr class="nil"><td class="ln">364</td><td class="code">            const relativePath = `images/${fileName}`;</td></tr>
+<tr class="nil"><td class="ln">365</td><td class="code">            plog(`native picked uti=${uti} → ${pref.mime} (${bytes.length} bytes) → ${fileName}`);</td></tr>
 <tr class="cov"><td class="ln">366</td><td class="code">            e.preventDefault();</td></tr>
 <tr class="unc"><td class="ln">367</td><td class="code">            const tInsert = performance.now();</td></tr>
 <tr class="unc"><td class="ln">368</td><td class="code">            await insertPastedAsset(relativePath, bytes, pref.mime, fileName);</td></tr>
 <tr class="unc"><td class="ln">369</td><td class="code">            plog(`insertPastedAsset: ${(performance.now() - tInsert).toFixed(0)}ms · total handler: ${(performance.now() - T_PASTE).toFixed(0)}ms`);</td></tr>
 <tr class="unc"><td class="ln">370</td><td class="code">            return;</td></tr>
-<tr class="unc"><td class="ln">371</td><td class="code">          }</td></tr>
-<tr class="unc"><td class="ln">372</td><td class="code">        }</td></tr>
-<tr class="unc"><td class="ln">373</td><td class="code">        // A copied FILE from Finder → insert it as an asset. #160. Prefer</td></tr>
-<tr class="unc"><td class="ln">374</td><td class="code">        // NSFilenamesPboardType: it&#x27;s a plist of the REAL POSIX paths (and an</td></tr>
-<tr class="unc"><td class="ln">375</td><td class="code">        // array, so multi-file works). Finder&#x27;s public.file-url is a useless</td></tr>
-<tr class="unc"><td class="ln">376</td><td class="code">        // /.file/id= *reference* URL with no extension, so try it only as a</td></tr>
-<tr class="unc"><td class="ln">377</td><td class="code">        // fallback (for apps that put a real file:// path there).</td></tr>
-<tr class="unc"><td class="ln">378</td><td class="code">        {</td></tr>
+<tr class="nil"><td class="ln">371</td><td class="code">          }</td></tr>
+<tr class="nil"><td class="ln">372</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">373</td><td class="code">        // A copied FILE from Finder → insert it as an asset. #160. Prefer</td></tr>
+<tr class="nil"><td class="ln">374</td><td class="code">        // NSFilenamesPboardType: it&#x27;s a plist of the REAL POSIX paths (and an</td></tr>
+<tr class="nil"><td class="ln">375</td><td class="code">        // array, so multi-file works). Finder&#x27;s public.file-url is a useless</td></tr>
+<tr class="nil"><td class="ln">376</td><td class="code">        // /.file/id= *reference* URL with no extension, so try it only as a</td></tr>
+<tr class="nil"><td class="ln">377</td><td class="code">        // fallback (for apps that put a real file:// path there).</td></tr>
+<tr class="nil"><td class="ln">378</td><td class="code">        {</td></tr>
 <tr class="unc"><td class="ln">379</td><td class="code">          const { parseNSFilenames, fileUrlToPath } = await import(&#x27;../lib/pasteFile&#x27;);<a class="jump" href="src__lib__pasteFile_ts.html" title="src/lib/pasteFile.ts">→ pasteFile.ts</a></td></tr>
 <tr class="unc"><td class="ln">380</td><td class="code">          let filePaths: string[] = [];</td></tr>
-<tr class="unc"><td class="ln">381</td><td class="code">          if (nativeTypes.includes(&#x27;NSFilenamesPboardType&#x27;)) {</td></tr>
-<tr class="unc"><td class="ln">382</td><td class="code">            const b = await invoke&lt;number[] | null&gt;(&#x27;pasteboard_read_type&#x27;, { uti: &#x27;NSFilenamesPboardType&#x27; });</td></tr>
-<tr class="unc"><td class="ln">383</td><td class="code">            if (b &amp;&amp; b.length) filePaths = parseNSFilenames(new TextDecoder(&#x27;utf-8&#x27;).decode(new Uint8Array(b)));</td></tr>
+<tr class="nil"><td class="ln">381</td><td class="code">          if (nativeTypes.includes(&#x27;NSFilenamesPboardType&#x27;)) {</td></tr>
+<tr class="nil"><td class="ln">382</td><td class="code">            const b = await invoke&lt;number[] | null&gt;(&#x27;pasteboard_read_type&#x27;, { uti: &#x27;NSFilenamesPboardType&#x27; });</td></tr>
+<tr class="nil"><td class="ln">383</td><td class="code">            if (b &amp;&amp; b.length) filePaths = parseNSFilenames(new TextDecoder(&#x27;utf-8&#x27;).decode(new Uint8Array(b)));</td></tr>
 <tr class="nil"><td class="ln">384</td><td class="code">          }</td></tr>
-<tr class="unc"><td class="ln">385</td><td class="code">          if (!filePaths.length &amp;&amp; nativeTypes.includes(&#x27;public.file-url&#x27;)) {</td></tr>
+<tr class="nil"><td class="ln">385</td><td class="code">          if (!filePaths.length &amp;&amp; nativeTypes.includes(&#x27;public.file-url&#x27;)) {</td></tr>
 <tr class="cov"><td class="ln">386</td><td class="code">            const urlBytes = await invoke&lt;number[] | null&gt;(&#x27;pasteboard_read_type&#x27;, { uti: &#x27;public.file-url&#x27; });</td></tr>
-<tr class="unc"><td class="ln">387</td><td class="code">            if (urlBytes &amp;&amp; urlBytes.length) {</td></tr>
-<tr class="unc"><td class="ln">388</td><td class="code">              const p = fileUrlToPath(new TextDecoder(&#x27;utf-8&#x27;).decode(new Uint8Array(urlBytes)).trim());</td></tr>
-<tr class="cov"><td class="ln">389</td><td class="code">              if (p) filePaths = [p];</td></tr>
-<tr class="cov"><td class="ln">390</td><td class="code">            }</td></tr>
-<tr class="cov"><td class="ln">391</td><td class="code">          }</td></tr>
+<tr class="nil"><td class="ln">387</td><td class="code">            if (urlBytes &amp;&amp; urlBytes.length) {</td></tr>
+<tr class="nil"><td class="ln">388</td><td class="code">              const p = fileUrlToPath(new TextDecoder(&#x27;utf-8&#x27;).decode(new Uint8Array(urlBytes)).trim());</td></tr>
+<tr class="nil"><td class="ln">389</td><td class="code">              if (p) filePaths = [p];</td></tr>
+<tr class="nil"><td class="ln">390</td><td class="code">            }</td></tr>
+<tr class="nil"><td class="ln">391</td><td class="code">          }</td></tr>
 <tr class="cov"><td class="ln">392</td><td class="code">          if (filePaths.length &amp;&amp; await insertPastedFilePaths(filePaths)) { e.preventDefault(); return; }</td></tr>
-<tr class="cov"><td class="ln">393</td><td class="code">        }</td></tr>
-<tr class="cov"><td class="ln">394</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">395</td><td class="code">        // No native IMAGE UTI taken → native TEXT. On macOS, WebKit does NOT</td></tr>
-<tr class="cov"><td class="ln">396</td><td class="code">        // expose text/plain|text/html on clipboardData for a non-editable paste</td></tr>
-<tr class="cov"><td class="ln">397</td><td class="code">        // target (the slide canvas), so every clipboard-based text path below is</td></tr>
+<tr class="nil"><td class="ln">393</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">394</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">395</td><td class="code">        // No native IMAGE UTI taken → native TEXT. On macOS, WebKit does NOT</td></tr>
+<tr class="nil"><td class="ln">396</td><td class="code">        // expose text/plain|text/html on clipboardData for a non-editable paste</td></tr>
+<tr class="nil"><td class="ln">397</td><td class="code">        // target (the slide canvas), so every clipboard-based text path below is</td></tr>
 <tr class="nil"><td class="ln">398</td><td class="code">        // dead there — the paste silently no-ops. We already read public.html</td></tr>
 <tr class="nil"><td class="ln">399</td><td class="code">        // above; read plain here. #161. (No-op on Linux/Windows — pasteboard_*</td></tr>
-<tr class="cov"><td class="ln">400</td><td class="code">        // return empty there, so those platforms fall through to the web clipboard.)</td></tr>
+<tr class="nil"><td class="ln">400</td><td class="code">        // return empty there, so those platforms fall through to the web clipboard.)</td></tr>
 <tr class="cov"><td class="ln">401</td><td class="code">        const nativePlain = (await readNativeText(&#x27;public.utf8-plain-text&#x27;)) || (await readNativeText(&#x27;public.text&#x27;));</td></tr>
 <tr class="cov"><td class="ln">402</td><td class="code">        if (nativeHtml || nativePlain) {</td></tr>
-<tr class="cov"><td class="ln">403</td><td class="code">          if (await insertRichHtmlScreenshot(nativeHtml)) { e.preventDefault(); return; }</td></tr>
+<tr class="nil"><td class="ln">403</td><td class="code">          if (await insertRichHtmlScreenshot(nativeHtml)) { e.preventDefault(); return; }</td></tr>
 <tr class="cov"><td class="ln">404</td><td class="code">          if (insertPastedText(nativeHtml, nativePlain)) { e.preventDefault(); return; }</td></tr>
-<tr class="cov"><td class="ln">405</td><td class="code">        }</td></tr>
-<tr class="unc"><td class="ln">406</td><td class="code">        plog(&#x27;native pasteboard had no preferred UTI; falling through to web clipboard&#x27;);</td></tr>
+<tr class="nil"><td class="ln">405</td><td class="code">        }</td></tr>
+<tr class="cov"><td class="ln">406</td><td class="code">        plog(&#x27;native pasteboard had no preferred UTI; falling through to web clipboard&#x27;);</td></tr>
 <tr class="nil"><td class="ln">407</td><td class="code">      } catch (err) {</td></tr>
-<tr class="cov"><td class="ln">408</td><td class="code">        plog(&#x27;native pasteboard read failed (non-Mac or perm denied?):&#x27;, err);</td></tr>
-<tr class="cov"><td class="ln">409</td><td class="code">      }</td></tr>
-<tr class="cov"><td class="ln">410</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">411</td><td class="code">      const items = e.clipboardData?.items;</td></tr>
-<tr class="cov"><td class="ln">412</td><td class="code">      if (!items) return;</td></tr>
-<tr class="cov"><td class="ln">413</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">414</td><td class="code">      // Log every MIME the sync DataTransfer API offered so we can diagnose</td></tr>
-<tr class="cov"><td class="ln">415</td><td class="code">      // &quot;I pasted an SVG but it came out PNG&quot; — most apps only put the</td></tr>
-<tr class="cov"><td class="ln">416</td><td class="code">      // rasterized form on the clipboard; the vector source might exist</td></tr>
-<tr class="unc"><td class="ln">417</td><td class="code">      // elsewhere (text/plain XML, system-specific UTI) or not at all.</td></tr>
-<tr class="unc"><td class="ln">418</td><td class="code">      const itemList = Array.from(items);</td></tr>
+<tr class="nil"><td class="ln">408</td><td class="code">        plog(&#x27;native pasteboard read failed (non-Mac or perm denied?):&#x27;, err);</td></tr>
+<tr class="nil"><td class="ln">409</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">410</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">411</td><td class="code">      const items = e.clipboardData?.items;</td></tr>
+<tr class="nil"><td class="ln">412</td><td class="code">      if (!items) return;</td></tr>
+<tr class="nil"><td class="ln">413</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">414</td><td class="code">      // Log every MIME the sync DataTransfer API offered so we can diagnose</td></tr>
+<tr class="nil"><td class="ln">415</td><td class="code">      // &quot;I pasted an SVG but it came out PNG&quot; — most apps only put the</td></tr>
+<tr class="nil"><td class="ln">416</td><td class="code">      // rasterized form on the clipboard; the vector source might exist</td></tr>
+<tr class="nil"><td class="ln">417</td><td class="code">      // elsewhere (text/plain XML, system-specific UTI) or not at all.</td></tr>
+<tr class="part"><td class="ln">418</td><td class="code">      const itemList = Array.from(items);</td></tr>
 <tr class="unc"><td class="ln">419</td><td class="code">      const syncMimes = itemList.map((it) =&gt; `${it.kind}:${it.type}`);</td></tr>
 <tr class="unc"><td class="ln">420</td><td class="code">      plog(&#x27;sync clipboard items:&#x27;, syncMimes);</td></tr>
-<tr class="unc"><td class="ln">421</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">421</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">422</td><td class="code">      // Each format may appear on the clipboard under several aliases:</td></tr>
 <tr class="nil"><td class="ln">423</td><td class="code">      // standard MIME, Apple UTI (public.*), or vendor-specific UTI</td></tr>
-<tr class="unc"><td class="ln">424</td><td class="code">      // (com.microsoft.image-svg-xml, com.adobe.pdf). We try them all</td></tr>
+<tr class="nil"><td class="ln">424</td><td class="code">      // (com.microsoft.image-svg-xml, com.adobe.pdf). We try them all</td></tr>
 <tr class="nil"><td class="ln">425</td><td class="code">      // and normalize to a canonical mime + extension for storage so the</td></tr>
 <tr class="nil"><td class="ln">426</td><td class="code">      // saved asset is identifiable regardless of which UTI the source</td></tr>
-<tr class="cov"><td class="ln">427</td><td class="code">      // app used.</td></tr>
-<tr class="cov"><td class="ln">428</td><td class="code">      //</td></tr>
-<tr class="cov"><td class="ln">429</td><td class="code">      // Priority order: SVG &gt; PDF &gt; raster. PDF would be higher fidelity</td></tr>
+<tr class="nil"><td class="ln">427</td><td class="code">      // app used.</td></tr>
+<tr class="nil"><td class="ln">428</td><td class="code">      //</td></tr>
+<tr class="nil"><td class="ln">429</td><td class="code">      // Priority order: SVG &gt; PDF &gt; raster. PDF would be higher fidelity</td></tr>
 <tr class="nil"><td class="ln">430</td><td class="code">      // in principle but it can&#x27;t render until the pdfium path lands, so</td></tr>
-<tr class="unc"><td class="ln">431</td><td class="code">      // for now SVG wins when both are present (typical Office pastes).</td></tr>
-<tr class="unc"><td class="ln">432</td><td class="code">      // Flip SVG and PDF here once PDF display works.</td></tr>
-<tr class="unc"><td class="ln">433</td><td class="code">      type Format = { aliases: readonly string[]; ext: string; canonicalMime: string };</td></tr>
-<tr class="unc"><td class="ln">434</td><td class="code">      const PREFERRED_FORMATS: readonly Format[] = [</td></tr>
+<tr class="nil"><td class="ln">431</td><td class="code">      // for now SVG wins when both are present (typical Office pastes).</td></tr>
+<tr class="nil"><td class="ln">432</td><td class="code">      // Flip SVG and PDF here once PDF display works.</td></tr>
+<tr class="part"><td class="ln">433</td><td class="code">      type Format = { aliases: readonly string[]; ext: string; canonicalMime: string };</td></tr>
+<tr class="nil"><td class="ln">434</td><td class="code">      const PREFERRED_FORMATS: readonly Format[] = [</td></tr>
 <tr class="unc"><td class="ln">435</td><td class="code">        { aliases: [&#x27;image/svg+xml&#x27;, &#x27;public.svg-image&#x27;, &#x27;com.microsoft.image-svg-xml&#x27;], ext: &#x27;svg&#x27;, canonicalMime: &#x27;image/svg+xml&#x27; },</td></tr>
 <tr class="unc"><td class="ln">436</td><td class="code">        { aliases: [&#x27;application/pdf&#x27;, &#x27;com.adobe.pdf&#x27;], ext: &#x27;pdf&#x27;, canonicalMime: &#x27;application/pdf&#x27; },</td></tr>
-<tr class="unc"><td class="ln">437</td><td class="code">        { aliases: [&#x27;image/png&#x27;, &#x27;public.png&#x27;], ext: &#x27;png&#x27;, canonicalMime: &#x27;image/png&#x27; },</td></tr>
+<tr class="nil"><td class="ln">437</td><td class="code">        { aliases: [&#x27;image/png&#x27;, &#x27;public.png&#x27;], ext: &#x27;png&#x27;, canonicalMime: &#x27;image/png&#x27; },</td></tr>
 <tr class="unc"><td class="ln">438</td><td class="code">        { aliases: [&#x27;image/jpeg&#x27;, &#x27;public.jpeg&#x27;, &#x27;public.jpg&#x27;], ext: &#x27;jpg&#x27;, canonicalMime: &#x27;image/jpeg&#x27; },</td></tr>
 <tr class="unc"><td class="ln">439</td><td class="code">        { aliases: [&#x27;image/gif&#x27;, &#x27;com.compuserve.gif&#x27;], ext: &#x27;gif&#x27;, canonicalMime: &#x27;image/gif&#x27; },</td></tr>
 <tr class="nil"><td class="ln">440</td><td class="code">        { aliases: [&#x27;image/webp&#x27;, &#x27;org.webmproject.webp&#x27;], ext: &#x27;webp&#x27;, canonicalMime: &#x27;image/webp&#x27; },</td></tr>
-<tr class="unc"><td class="ln">441</td><td class="code">      ];</td></tr>
+<tr class="nil"><td class="ln">441</td><td class="code">      ];</td></tr>
 <tr class="unc"><td class="ln">442</td><td class="code">      let picked: DataTransferItem | null = null;</td></tr>
 <tr class="unc"><td class="ln">443</td><td class="code">      let pickedFormat: Format | null = null;</td></tr>
 <tr class="unc"><td class="ln">444</td><td class="code">      let pickedAlias: string | null = null;</td></tr>
-<tr class="unc"><td class="ln">445</td><td class="code">      // Same rule as the native path: when the HTML is block content we render</td></tr>
+<tr class="nil"><td class="ln">445</td><td class="code">      // Same rule as the native path: when the HTML is block content we render</td></tr>
 <tr class="nil"><td class="ln">446</td><td class="code">      // better ourselves (a table etc.), don&#x27;t let a low-res RASTER selection</td></tr>
-<tr class="cov"><td class="ln">447</td><td class="code">      // bitmap the browser also put on the clipboard preempt our HTML→PNG render.</td></tr>
+<tr class="nil"><td class="ln">447</td><td class="code">      // bitmap the browser also put on the clipboard preempt our HTML→PNG render.</td></tr>
 <tr class="nil"><td class="ln">448</td><td class="code">      // Vector (svg) is still taken — it&#x27;s sharp.</td></tr>
-<tr class="cov"><td class="ln">449</td><td class="code">      const preferOwnRenderWeb = htmlNeedsScreenshot(htmlEarly);</td></tr>
+<tr class="unc"><td class="ln">449</td><td class="code">      const preferOwnRenderWeb = htmlNeedsScreenshot(htmlEarly);</td></tr>
 <tr class="cov"><td class="ln">450</td><td class="code">      outer: for (const format of PREFERRED_FORMATS) {</td></tr>
 <tr class="cov"><td class="ln">451</td><td class="code">        if (preferOwnRenderWeb &amp;&amp; format.ext !== &#x27;svg&#x27;) continue;</td></tr>
 <tr class="cov"><td class="ln">452</td><td class="code">        for (const alias of format.aliases) {</td></tr>
 <tr class="cov"><td class="ln">453</td><td class="code">          const found = itemList.find((it) =&gt; it.type === alias);</td></tr>
-<tr class="cov"><td class="ln">454</td><td class="code">          if (found) { picked = found; pickedFormat = format; pickedAlias = alias; break outer; }</td></tr>
-<tr class="unc"><td class="ln">455</td><td class="code">        }</td></tr>
-<tr class="unc"><td class="ln">456</td><td class="code">      }</td></tr>
+<tr class="unc"><td class="ln">454</td><td class="code">          if (found) { picked = found; pickedFormat = format; pickedAlias = alias; break outer; }</td></tr>
+<tr class="nil"><td class="ln">455</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">456</td><td class="code">      }</td></tr>
 <tr class="nil"><td class="ln">457</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">458</td><td class="code">      // Fallback: try the async Clipboard API too — on macOS it sometimes</td></tr>
-<tr class="cov"><td class="ln">459</td><td class="code">      // exposes formats the sync API doesn&#x27;t. Only fire if we didn&#x27;t</td></tr>
-<tr class="cov"><td class="ln">460</td><td class="code">      // already find a vector format from the sync API.</td></tr>
-<tr class="unc"><td class="ln">461</td><td class="code">      const haveVector = pickedFormat</td></tr>
+<tr class="nil"><td class="ln">458</td><td class="code">      // Fallback: try the async Clipboard API too — on macOS it sometimes</td></tr>
+<tr class="nil"><td class="ln">459</td><td class="code">      // exposes formats the sync API doesn&#x27;t. Only fire if we didn&#x27;t</td></tr>
+<tr class="nil"><td class="ln">460</td><td class="code">      // already find a vector format from the sync API.</td></tr>
+<tr class="part"><td class="ln">461</td><td class="code">      const haveVector = pickedFormat</td></tr>
 <tr class="nil"><td class="ln">462</td><td class="code">        &amp;&amp; (pickedFormat.canonicalMime === &#x27;application/pdf&#x27; || pickedFormat.canonicalMime === &#x27;image/svg+xml&#x27;);</td></tr>
-<tr class="unc"><td class="ln">463</td><td class="code">      if (!haveVector &amp;&amp; typeof navigator !== &#x27;undefined&#x27; &amp;&amp; navigator.clipboard?.read) {</td></tr>
-<tr class="unc"><td class="ln">464</td><td class="code">        try {</td></tr>
-<tr class="unc"><td class="ln">465</td><td class="code">          const items2 = await navigator.clipboard.read();</td></tr>
-<tr class="cov"><td class="ln">466</td><td class="code">          const asyncMimes = items2.flatMap((it) =&gt; it.types);</td></tr>
+<tr class="nil"><td class="ln">463</td><td class="code">      if (!haveVector &amp;&amp; typeof navigator !== &#x27;undefined&#x27; &amp;&amp; navigator.clipboard?.read) {</td></tr>
+<tr class="nil"><td class="ln">464</td><td class="code">        try {</td></tr>
+<tr class="nil"><td class="ln">465</td><td class="code">          const items2 = await navigator.clipboard.read();</td></tr>
+<tr class="nil"><td class="ln">466</td><td class="code">          const asyncMimes = items2.flatMap((it) =&gt; it.types);</td></tr>
 <tr class="cov"><td class="ln">467</td><td class="code">          plog(&#x27;async clipboard types:&#x27;, asyncMimes);</td></tr>
-<tr class="cov"><td class="ln">468</td><td class="code">          // Walk the PREFERRED_FORMATS in priority order; first vector hit wins.</td></tr>
-<tr class="cov"><td class="ln">469</td><td class="code">          for (const format of PREFERRED_FORMATS.filter((f) =&gt; f.canonicalMime === &#x27;application/pdf&#x27; || f.canonicalMime === &#x27;image/svg+xml&#x27;)) {</td></tr>
-<tr class="unc"><td class="ln">470</td><td class="code">            for (const alias of format.aliases) {</td></tr>
-<tr class="unc"><td class="ln">471</td><td class="code">              for (const item of items2) {</td></tr>
-<tr class="cov"><td class="ln">472</td><td class="code">                if (item.types.includes(alias)) {</td></tr>
+<tr class="nil"><td class="ln">468</td><td class="code">          // Walk the PREFERRED_FORMATS in priority order; first vector hit wins.</td></tr>
+<tr class="unc"><td class="ln">469</td><td class="code">          for (const format of PREFERRED_FORMATS.filter((f) =&gt; f.canonicalMime === &#x27;application/pdf&#x27; || f.canonicalMime === &#x27;image/svg+xml&#x27;)) {</td></tr>
+<tr class="nil"><td class="ln">470</td><td class="code">            for (const alias of format.aliases) {</td></tr>
+<tr class="nil"><td class="ln">471</td><td class="code">              for (const item of items2) {</td></tr>
+<tr class="nil"><td class="ln">472</td><td class="code">                if (item.types.includes(alias)) {</td></tr>
 <tr class="cov"><td class="ln">473</td><td class="code">                  const b = await item.getType(alias);</td></tr>
 <tr class="cov"><td class="ln">474</td><td class="code">                  const bytes = new Uint8Array(await b.arrayBuffer());</td></tr>
 <tr class="cov"><td class="ln">475</td><td class="code">                  const fileName = `pasted-${Date.now()}.${format.ext}`;</td></tr>
 <tr class="cov"><td class="ln">476</td><td class="code">                  const relativePath = `images/${fileName}`;</td></tr>
 <tr class="cov"><td class="ln">477</td><td class="code">                  plog(`async picked alias=${alias} → ${format.canonicalMime} (${bytes.length} bytes) → ${fileName}`);</td></tr>
-<tr class="cov"><td class="ln">478</td><td class="code">                  e.preventDefault();</td></tr>
+<tr class="part"><td class="ln">478</td><td class="code">                  e.preventDefault();</td></tr>
 <tr class="cov"><td class="ln">479</td><td class="code">                  await insertPastedAsset(relativePath, bytes, format.canonicalMime, fileName);</td></tr>
 <tr class="cov"><td class="ln">480</td><td class="code">                  return;</td></tr>
-<tr class="cov"><td class="ln">481</td><td class="code">                }</td></tr>
-<tr class="cov"><td class="ln">482</td><td class="code">              }</td></tr>
-<tr class="cov"><td class="ln">483</td><td class="code">            }</td></tr>
-<tr class="cov"><td class="ln">484</td><td class="code">          }</td></tr>
+<tr class="nil"><td class="ln">481</td><td class="code">                }</td></tr>
+<tr class="nil"><td class="ln">482</td><td class="code">              }</td></tr>
+<tr class="nil"><td class="ln">483</td><td class="code">            }</td></tr>
+<tr class="nil"><td class="ln">484</td><td class="code">          }</td></tr>
 <tr class="cov"><td class="ln">485</td><td class="code">        } catch (err) {</td></tr>
 <tr class="cov"><td class="ln">486</td><td class="code">          plog(&#x27;async clipboard read failed:&#x27;, err);</td></tr>
-<tr class="cov"><td class="ln">487</td><td class="code">        }</td></tr>
-<tr class="cov"><td class="ln">488</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">487</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">488</td><td class="code">      }</td></tr>
 <tr class="nil"><td class="ln">489</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">490</td><td class="code">      // Google Slides (and other apps that embed the image in HTML): copying an</td></tr>
-<tr class="cov"><td class="ln">491</td><td class="code">      // image out of Google Slides puts NO image on the clipboard — only text/html</td></tr>
-<tr class="cov"><td class="ln">492</td><td class="code">      // like `&lt;b id=&quot;docs-internal-guid-…&quot;&gt;&lt;img src=&quot;data:image/png;base64,…&quot;&gt;`.</td></tr>
-<tr class="cov"><td class="ln">493</td><td class="code">      // The image-item paths above all miss it, so pull the FIRST data-URL &lt;img&gt;</td></tr>
-<tr class="cov"><td class="ln">494</td><td class="code">      // straight out of the HTML and insert the ORIGINAL bytes (not a re-screenshot,</td></tr>
+<tr class="nil"><td class="ln">490</td><td class="code">      // Google Slides (and other apps that embed the image in HTML): copying an</td></tr>
+<tr class="nil"><td class="ln">491</td><td class="code">      // image out of Google Slides puts NO image on the clipboard — only text/html</td></tr>
+<tr class="nil"><td class="ln">492</td><td class="code">      // like `&lt;b id=&quot;docs-internal-guid-…&quot;&gt;&lt;img src=&quot;data:image/png;base64,…&quot;&gt;`.</td></tr>
+<tr class="nil"><td class="ln">493</td><td class="code">      // The image-item paths above all miss it, so pull the FIRST data-URL &lt;img&gt;</td></tr>
+<tr class="nil"><td class="ln">494</td><td class="code">      // straight out of the HTML and insert the ORIGINAL bytes (not a re-screenshot,</td></tr>
 <tr class="nil"><td class="ln">495</td><td class="code">      // which the rich-HTML fallback below would do — lossy + the &lt;b&gt; wrapper&#x27;s</td></tr>
-<tr class="unc"><td class="ln">496</td><td class="code">      // styling). #158.</td></tr>
-<tr class="unc"><td class="ln">497</td><td class="code">      if (!picked &amp;&amp; !hasEigendeckMarker(htmlEarly)) {</td></tr>
-<tr class="unc"><td class="ln">498</td><td class="code">        const embedded = extractPastedDataUrlImage(htmlEarly);</td></tr>
+<tr class="nil"><td class="ln">496</td><td class="code">      // styling). #158.</td></tr>
+<tr class="part"><td class="ln">497</td><td class="code">      if (!picked &amp;&amp; !hasEigendeckMarker(htmlEarly)) {</td></tr>
+<tr class="nil"><td class="ln">498</td><td class="code">        const embedded = extractPastedDataUrlImage(htmlEarly);</td></tr>
 <tr class="cov"><td class="ln">499</td><td class="code">        if (embedded) {</td></tr>
-<tr class="unc"><td class="ln">500</td><td class="code">          e.preventDefault();</td></tr>
-<tr class="cov"><td class="ln">501</td><td class="code">          const ext = embedded.mime === &#x27;image/jpeg&#x27; ? &#x27;jpg&#x27; : (embedded.mime.split(&#x27;/&#x27;)[1] || &#x27;png&#x27;);</td></tr>
+<tr class="nil"><td class="ln">500</td><td class="code">          e.preventDefault();</td></tr>
+<tr class="nil"><td class="ln">501</td><td class="code">          const ext = embedded.mime === &#x27;image/jpeg&#x27; ? &#x27;jpg&#x27; : (embedded.mime.split(&#x27;/&#x27;)[1] || &#x27;png&#x27;);</td></tr>
 <tr class="cov"><td class="ln">502</td><td class="code">          const fileName = `pasted-${Date.now()}.${ext}`;</td></tr>
-<tr class="cov"><td class="ln">503</td><td class="code">          plog(`extracted data-URL &lt;img&gt; from pasted HTML → ${embedded.mime} (${embedded.bytes.length} bytes) → ${fileName}`);</td></tr>
+<tr class="part"><td class="ln">503</td><td class="code">          plog(`extracted data-URL &lt;img&gt; from pasted HTML → ${embedded.mime} (${embedded.bytes.length} bytes) → ${fileName}`);</td></tr>
 <tr class="cov"><td class="ln">504</td><td class="code">          await insertPastedAsset(`images/${fileName}`, embedded.bytes, embedded.mime, fileName);</td></tr>
 <tr class="cov"><td class="ln">505</td><td class="code">          return;</td></tr>
 <tr class="nil"><td class="ln">506</td><td class="code">        }</td></tr>
@@ -525,31 +526,31 @@
 <tr class="nil"><td class="ln">508</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">509</td><td class="code">      // Copied FILE (Linux/Windows): the clipboard carried a URI list / GNOME</td></tr>
 <tr class="nil"><td class="ln">510</td><td class="code">      // copied-files list of file paths. Resolve them and insert as assets. #160.</td></tr>
-<tr class="cov"><td class="ln">511</td><td class="code">      // (Before the rich-HTML/text fallbacks so a file paste isn&#x27;t mistaken for a</td></tr>
-<tr class="cov"><td class="ln">512</td><td class="code">      // pasted URL string.)</td></tr>
+<tr class="nil"><td class="ln">511</td><td class="code">      // (Before the rich-HTML/text fallbacks so a file paste isn&#x27;t mistaken for a</td></tr>
+<tr class="nil"><td class="ln">512</td><td class="code">      // pasted URL string.)</td></tr>
 <tr class="cov"><td class="ln">513</td><td class="code">      if (!picked &amp;&amp; (uriListEarly || gnomeFilesEarly)) {</td></tr>
 <tr class="cov"><td class="ln">514</td><td class="code">        const { parseUriList, parseGnomeCopiedFiles } = await import(&#x27;../lib/pasteFile&#x27;);<a class="jump" href="src__lib__pasteFile_ts.html" title="src/lib/pasteFile.ts">→ pasteFile.ts</a></td></tr>
 <tr class="cov"><td class="ln">515</td><td class="code">        const paths = gnomeFilesEarly ? parseGnomeCopiedFiles(gnomeFilesEarly) : parseUriList(uriListEarly);</td></tr>
 <tr class="cov"><td class="ln">516</td><td class="code">        if (paths.length &amp;&amp; await insertPastedFilePaths(paths)) { e.preventDefault(); return; }</td></tr>
-<tr class="cov"><td class="ln">517</td><td class="code">      }</td></tr>
-<tr class="cov"><td class="ln">518</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">519</td><td class="code">      // Google Sheets / rich-HTML paste (tables, lists, formatted blocks): no</td></tr>
-<tr class="unc"><td class="ln">520</td><td class="code">      // image on the clipboard, but a &lt;table&gt; etc. in text/html. Render it in the</td></tr>
-<tr class="unc"><td class="ln">521</td><td class="code">      // deck font and screenshot to a PNG — the browser does the layout (far more</td></tr>
-<tr class="unc"><td class="ln">522</td><td class="code">      // robust than parsing one app&#x27;s markup), and it&#x27;s a static snapshot so</td></tr>
-<tr class="unc"><td class="ln">523</td><td class="code">      // thumbnails/present/export work for free.</td></tr>
+<tr class="nil"><td class="ln">517</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">518</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">519</td><td class="code">      // Google Sheets / rich-HTML paste (tables, lists, formatted blocks): no</td></tr>
+<tr class="nil"><td class="ln">520</td><td class="code">      // image on the clipboard, but a &lt;table&gt; etc. in text/html. Render it in the</td></tr>
+<tr class="nil"><td class="ln">521</td><td class="code">      // deck font and screenshot to a PNG — the browser does the layout (far more</td></tr>
+<tr class="nil"><td class="ln">522</td><td class="code">      // robust than parsing one app&#x27;s markup), and it&#x27;s a static snapshot so</td></tr>
+<tr class="nil"><td class="ln">523</td><td class="code">      // thumbnails/present/export work for free.</td></tr>
 <tr class="unc"><td class="ln">524</td><td class="code">      if (!picked &amp;&amp; await insertRichHtmlScreenshot(htmlEarly)) { e.preventDefault(); return; }</td></tr>
-<tr class="unc"><td class="ln">525</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">525</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">526</td><td class="code">      // Linux image fallback (#94): WebKitGTK doesn&#x27;t reliably surface a</td></tr>
-<tr class="unc"><td class="ln">527</td><td class="code">      // screenshot&#x27;s image/png on the sync DataTransfer OR the async Clipboard</td></tr>
-<tr class="unc"><td class="ln">528</td><td class="code">      // API, so both image paths above miss. Read the raster straight off the</td></tr>
-<tr class="unc"><td class="ln">529</td><td class="code">      // system clipboard via arboard (Rust). Only fires when no web-API image was</td></tr>
+<tr class="nil"><td class="ln">527</td><td class="code">      // screenshot&#x27;s image/png on the sync DataTransfer OR the async Clipboard</td></tr>
+<tr class="nil"><td class="ln">528</td><td class="code">      // API, so both image paths above miss. Read the raster straight off the</td></tr>
+<tr class="nil"><td class="ln">529</td><td class="code">      // system clipboard via arboard (Rust). Only fires when no web-API image was</td></tr>
 <tr class="nil"><td class="ln">530</td><td class="code">      // found and there&#x27;s no rich HTML to render (Sheets/Slides handled above), so</td></tr>
-<tr class="unc"><td class="ln">531</td><td class="code">      // it&#x27;s a screenshot-shaped last resort. No-op on macOS (returns null).</td></tr>
+<tr class="nil"><td class="ln">531</td><td class="code">      // it&#x27;s a screenshot-shaped last resort. No-op on macOS (returns null).</td></tr>
 <tr class="unc"><td class="ln">532</td><td class="code">      if (!picked) {</td></tr>
 <tr class="unc"><td class="ln">533</td><td class="code">        try {</td></tr>
-<tr class="unc"><td class="ln">534</td><td class="code">          const { invoke } = await import(&#x27;@tauri-apps/api/core&#x27;);</td></tr>
-<tr class="unc"><td class="ln">535</td><td class="code">          const png = await invoke&lt;number[] | null&gt;(&#x27;clip_read_system_image&#x27;);</td></tr>
+<tr class="nil"><td class="ln">534</td><td class="code">          const { invoke } = await import(&#x27;@tauri-apps/api/core&#x27;);</td></tr>
+<tr class="nil"><td class="ln">535</td><td class="code">          const png = await invoke&lt;number[] | null&gt;(&#x27;clip_read_system_image&#x27;);</td></tr>
 <tr class="unc"><td class="ln">536</td><td class="code">          if (png &amp;&amp; png.length) {</td></tr>
 <tr class="unc"><td class="ln">537</td><td class="code">            e.preventDefault();</td></tr>
 <tr class="unc"><td class="ln">538</td><td class="code">            const fileName = `pasted-${Date.now()}.png`;</td></tr>
@@ -559,36 +560,36 @@
 <tr class="nil"><td class="ln">542</td><td class="code">          }</td></tr>
 <tr class="unc"><td class="ln">543</td><td class="code">        } catch (err) { plog(&#x27;clip_read_system_image failed:&#x27;, err); }</td></tr>
 <tr class="nil"><td class="ln">544</td><td class="code">      }</td></tr>
-<tr class="unc"><td class="ln">545</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">545</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">546</td><td class="code">      // Plain / lightly-styled TEXT with no image (#161): text/plain (Keynote/</td></tr>
-<tr class="unc"><td class="ln">547</td><td class="code">      // Pages/plain text) or inline-only text/html — block-structured HTML was</td></tr>
-<tr class="unc"><td class="ln">548</td><td class="code">      // already handled by the screenshot path above. Create an editable text</td></tr>
-<tr class="unc"><td class="ln">549</td><td class="code">      // element that adopts the deck&#x27;s typography instead of silently no-opping.</td></tr>
+<tr class="nil"><td class="ln">547</td><td class="code">      // Pages/plain text) or inline-only text/html — block-structured HTML was</td></tr>
+<tr class="nil"><td class="ln">548</td><td class="code">      // already handled by the screenshot path above. Create an editable text</td></tr>
+<tr class="nil"><td class="ln">549</td><td class="code">      // element that adopts the deck&#x27;s typography instead of silently no-opping.</td></tr>
 <tr class="nil"><td class="ln">550</td><td class="code">      // (macOS reaches this via the native-pasteboard read above, since WebKit</td></tr>
 <tr class="nil"><td class="ln">551</td><td class="code">      // leaves clipboardData empty for a non-editable paste there.)</td></tr>
-<tr class="cov"><td class="ln">552</td><td class="code">      if (!picked &amp;&amp; insertPastedText(htmlEarly, plainEarly)) { e.preventDefault(); return; }</td></tr>
-<tr class="cov"><td class="ln">553</td><td class="code">&nbsp;</td></tr>
+<tr class="part"><td class="ln">552</td><td class="code">      if (!picked &amp;&amp; insertPastedText(htmlEarly, plainEarly)) { e.preventDefault(); return; }</td></tr>
+<tr class="nil"><td class="ln">553</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">554</td><td class="code">      if (!picked || !pickedFormat) {</td></tr>
-<tr class="cov"><td class="ln">555</td><td class="code">        // Nothing matched any paste path — surface WHAT was on the clipboard so an</td></tr>
+<tr class="nil"><td class="ln">555</td><td class="code">        // Nothing matched any paste path — surface WHAT was on the clipboard so an</td></tr>
 <tr class="nil"><td class="ln">556</td><td class="code">        // unhandled format (a new image type, an odd UTI) is diagnosable from the</td></tr>
 <tr class="nil"><td class="ln">557</td><td class="code">        // console without a rebuild (#178).</td></tr>
 <tr class="cov"><td class="ln">558</td><td class="code">        console.warn(&#x27;[paste] nothing pasteable. native UTIs:&#x27;, nativeUtisForDiag, &#x27;· clipboard items:&#x27;, syncMimes);</td></tr>
 <tr class="cov"><td class="ln">559</td><td class="code">        return;</td></tr>
-<tr class="cov"><td class="ln">560</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">560</td><td class="code">      }</td></tr>
 <tr class="cov"><td class="ln">561</td><td class="code">      e.preventDefault();</td></tr>
 <tr class="cov"><td class="ln">562</td><td class="code">      const blob = picked.getAsFile();</td></tr>
-<tr class="cov"><td class="ln">563</td><td class="code">      if (!blob) { plog(&#x27;getAsFile() returned null for alias&#x27;, pickedAlias); return; }</td></tr>
-<tr class="cov"><td class="ln">564</td><td class="code">&nbsp;</td></tr>
+<tr class="part"><td class="ln">563</td><td class="code">      if (!blob) { plog(&#x27;getAsFile() returned null for alias&#x27;, pickedAlias); return; }</td></tr>
+<tr class="nil"><td class="ln">564</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">565</td><td class="code">      const fileName = `pasted-${Date.now()}.${pickedFormat.ext}`;</td></tr>
 <tr class="cov"><td class="ln">566</td><td class="code">      const relativePath = `images/${fileName}`;</td></tr>
 <tr class="cov"><td class="ln">567</td><td class="code">      const bytes = new Uint8Array(await blob.arrayBuffer());</td></tr>
-<tr class="cov"><td class="ln">568</td><td class="code">      plog(`sync picked alias=${pickedAlias} → ${pickedFormat.canonicalMime} (${bytes.length} bytes) → ${fileName}`);</td></tr>
+<tr class="nil"><td class="ln">568</td><td class="code">      plog(`sync picked alias=${pickedAlias} → ${pickedFormat.canonicalMime} (${bytes.length} bytes) → ${fileName}`);</td></tr>
 <tr class="cov"><td class="ln">569</td><td class="code">      await insertPastedAsset(relativePath, bytes, pickedFormat.canonicalMime, fileName);</td></tr>
-<tr class="cov"><td class="ln">570</td><td class="code">    };</td></tr>
-<tr class="cov"><td class="ln">571</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">570</td><td class="code">    };</td></tr>
+<tr class="nil"><td class="ln">571</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">572</td><td class="code">    /** Insert a bitmap/vector/pdf from CLIPBOARD BYTES (no source file) — the</td></tr>
-<tr class="cov"><td class="ln">573</td><td class="code">     *  native-image / screenshot / async-clipboard paste paths. A copied FILE goes</td></tr>
-<tr class="cov"><td class="ln">574</td><td class="code">     *  through insertFileFromPath instead (it has a real path). */</td></tr>
+<tr class="nil"><td class="ln">573</td><td class="code">     *  native-image / screenshot / async-clipboard paste paths. A copied FILE goes</td></tr>
+<tr class="nil"><td class="ln">574</td><td class="code">     *  through insertFileFromPath instead (it has a real path). */</td></tr>
 <tr class="cov"><td class="ln">575</td><td class="code">    const insertPastedAsset = async (</td></tr>
 <tr class="cov"><td class="ln">576</td><td class="code">      relativePath: string, bytes: Uint8Array, mime: string, fileName: string,</td></tr>
 <tr class="cov"><td class="ln">577</td><td class="code">      position?: { x: number; y: number; width: number; height: number },</td></tr>
@@ -596,100 +597,100 @@
 <tr class="cov"><td class="ln">579</td><td class="code">      let assetId: string;</td></tr>
 <tr class="cov"><td class="ln">580</td><td class="code">      try {</td></tr>
 <tr class="cov"><td class="ln">581</td><td class="code">        const { storeAssetRaw } = await import(&#x27;../lib/assetInsert&#x27;);<a class="jump" href="src__lib__assetInsert_ts.html" title="src/lib/assetInsert.ts">→ assetInsert.ts</a></td></tr>
-<tr class="cov"><td class="ln">582</td><td class="code">        // Paste: no source-on-disk path; pass null for externalPath so the</td></tr>
-<tr class="cov"><td class="ln">583</td><td class="code">        // asset isn&#x27;t watched (clipboard contents have no file to watch).</td></tr>
+<tr class="nil"><td class="ln">582</td><td class="code">        // Paste: no source-on-disk path; pass null for externalPath so the</td></tr>
+<tr class="nil"><td class="ln">583</td><td class="code">        // asset isn&#x27;t watched (clipboard contents have no file to watch).</td></tr>
 <tr class="cov"><td class="ln">584</td><td class="code">        const tStore = performance.now();</td></tr>
-<tr class="cov"><td class="ln">585</td><td class="code">        // Bytes go through the raw-body IPC (memcpy) — avoids the ~300ms/MB</td></tr>
-<tr class="cov"><td class="ln">586</td><td class="code">        // args/JSON path that froze the UI on large assets (#174).</td></tr>
-<tr class="unc"><td class="ln">587</td><td class="code">        assetId = await storeAssetRaw({ path: relativePath, mimeType: mime, externalPath: null, externalMtime: null }, bytes);</td></tr>
+<tr class="nil"><td class="ln">585</td><td class="code">        // Bytes go through the raw-body IPC (memcpy) — avoids the ~300ms/MB</td></tr>
+<tr class="nil"><td class="ln">586</td><td class="code">        // args/JSON path that froze the UI on large assets (#174).</td></tr>
+<tr class="cov"><td class="ln">587</td><td class="code">        assetId = await storeAssetRaw({ path: relativePath, mimeType: mime, externalPath: null, externalMtime: null }, bytes);</td></tr>
 <tr class="cov"><td class="ln">588</td><td class="code">        plog(`db_store_asset: ${(performance.now() - tStore).toFixed(0)}ms`);</td></tr>
 <tr class="cov"><td class="ln">589</td><td class="code">      } catch (e) {</td></tr>
 <tr class="cov"><td class="ln">590</td><td class="code">        console.error(&#x27;Failed to store pasted image:&#x27;, e);</td></tr>
 <tr class="cov"><td class="ln">591</td><td class="code">        return;</td></tr>
-<tr class="cov"><td class="ln">592</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">592</td><td class="code">      }</td></tr>
 <tr class="cov"><td class="ln">593</td><td class="code">      const kind = detectAssetKind(fileName, mime);</td></tr>
-<tr class="cov"><td class="ln">594</td><td class="code">      const tAdd = performance.now();</td></tr>
+<tr class="nil"><td class="ln">594</td><td class="code">      const tAdd = performance.now();</td></tr>
 <tr class="unc"><td class="ln">595</td><td class="code">      addElement({</td></tr>
-<tr class="cov"><td class="ln">596</td><td class="code">        id: crypto.randomUUID(), type: &#x27;image&#x27;,</td></tr>
+<tr class="nil"><td class="ln">596</td><td class="code">        id: crypto.randomUUID(), type: &#x27;image&#x27;,</td></tr>
 <tr class="cov"><td class="ln">597</td><td class="code">        assetId,</td></tr>
 <tr class="nil"><td class="ln">598</td><td class="code">        kind,</td></tr>
 <tr class="nil"><td class="ln">599</td><td class="code">        position: position ?? { x: 360, y: 200, width: 1200, height: 680 },</td></tr>
-<tr class="cov"><td class="ln">600</td><td class="code">      });</td></tr>
-<tr class="unc"><td class="ln">601</td><td class="code">      plog(`addElement: ${(performance.now() - tAdd).toFixed(0)}ms`);</td></tr>
+<tr class="nil"><td class="ln">600</td><td class="code">      });</td></tr>
+<tr class="cov"><td class="ln">601</td><td class="code">      plog(`addElement: ${(performance.now() - tAdd).toFixed(0)}ms`);</td></tr>
 <tr class="cov"><td class="ln">602</td><td class="code">      if (kind === &#x27;svg&#x27;) {</td></tr>
-<tr class="cov"><td class="ln">603</td><td class="code">        // Clipboard bytes have no source folder → the handler just warns that</td></tr>
+<tr class="nil"><td class="ln">603</td><td class="code">        // Clipboard bytes have no source folder → the handler just warns that</td></tr>
 <tr class="nil"><td class="ln">604</td><td class="code">        // external image refs can&#x27;t be embedded.</td></tr>
 <tr class="cov"><td class="ln">605</td><td class="code">        void handleSvgExternalRefs(bytes, fileName, null);</td></tr>
-<tr class="cov"><td class="ln">606</td><td class="code">      }</td></tr>
-<tr class="cov"><td class="ln">607</td><td class="code">    };</td></tr>
-<tr class="cov"><td class="ln">608</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">609</td><td class="code">    /** Rich HTML (tables/lists/formatted blocks) → render in the deck font and</td></tr>
-<tr class="unc"><td class="ln">610</td><td class="code">     *  screenshot to a PNG, inserted as an image. Shared by the clipboardData</td></tr>
-<tr class="cov"><td class="ln">611</td><td class="code">     *  path and the native-pasteboard (macOS) path. Returns true if it inserted. */</td></tr>
-<tr class="unc"><td class="ln">612</td><td class="code">    const insertRichHtmlScreenshot = async (html: string, force = false): Promise&lt;boolean&gt; =&gt; {</td></tr>
-<tr class="unc"><td class="ln">613</td><td class="code">      // `force` (Paste as… → Simple Image) rasterizes regardless of</td></tr>
-<tr class="unc"><td class="ln">614</td><td class="code">      // htmlNeedsScreenshot; the auto path only screenshots real block content.</td></tr>
+<tr class="nil"><td class="ln">606</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">607</td><td class="code">    };</td></tr>
+<tr class="nil"><td class="ln">608</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">609</td><td class="code">    /** Rich HTML (tables/lists/formatted blocks) → render in the deck font and</td></tr>
+<tr class="nil"><td class="ln">610</td><td class="code">     *  screenshot to a PNG, inserted as an image. Shared by the clipboardData</td></tr>
+<tr class="nil"><td class="ln">611</td><td class="code">     *  path and the native-pasteboard (macOS) path. Returns true if it inserted. */</td></tr>
+<tr class="part"><td class="ln">612</td><td class="code">    const insertRichHtmlScreenshot = async (html: string, force = false): Promise&lt;boolean&gt; =&gt; {</td></tr>
+<tr class="nil"><td class="ln">613</td><td class="code">      // `force` (Paste as… → Simple Image) rasterizes regardless of</td></tr>
+<tr class="nil"><td class="ln">614</td><td class="code">      // htmlNeedsScreenshot; the auto path only screenshots real block content.</td></tr>
 <tr class="unc"><td class="ln">615</td><td class="code">      if (!html || (!force &amp;&amp; !htmlNeedsScreenshot(html)) || hasEigendeckMarker(html)) return false;</td></tr>
 <tr class="unc"><td class="ln">616</td><td class="code">      const { resolveFontPackage, bareFamilyName } = await import(&#x27;../lib/fonts&#x27;);<a class="jump" href="src__lib__fonts_ts.html" title="src/lib/fonts.ts">→ fonts.ts</a></td></tr>
-<tr class="unc"><td class="ln">617</td><td class="code">      const cfg = usePresentationStore.getState().presentation.config;</td></tr>
+<tr class="nil"><td class="ln">617</td><td class="code">      const cfg = usePresentationStore.getState().presentation.config;</td></tr>
 <tr class="unc"><td class="ln">618</td><td class="code">      const family = bareFamilyName(resolveFontPackage(cfg?.defaultBodyFont));</td></tr>
 <tr class="unc"><td class="ln">619</td><td class="code">      const cap = await captureHtmlToPng(html, { fontFamily: `&#x27;${family}&#x27;, sans-serif`, scale: 4 });</td></tr>
-<tr class="unc"><td class="ln">620</td><td class="code">      if (!cap) return false;</td></tr>
+<tr class="nil"><td class="ln">620</td><td class="code">      if (!cap) return false;</td></tr>
 <tr class="nil"><td class="ln">621</td><td class="code">      // Slide-space box at ~3x the CSS render (capture is 4x → crisp), capped.</td></tr>
 <tr class="unc"><td class="ln">622</td><td class="code">      const SCALE = 3;</td></tr>
 <tr class="unc"><td class="ln">623</td><td class="code">      let w = cap.width * SCALE, h = cap.height * SCALE;</td></tr>
-<tr class="unc"><td class="ln">624</td><td class="code">      const k = Math.min(1, 1600 / w, 900 / h);</td></tr>
-<tr class="cov"><td class="ln">625</td><td class="code">      w = Math.round(w * k); h = Math.round(h * k);</td></tr>
+<tr class="nil"><td class="ln">624</td><td class="code">      const k = Math.min(1, 1600 / w, 900 / h);</td></tr>
+<tr class="nil"><td class="ln">625</td><td class="code">      w = Math.round(w * k); h = Math.round(h * k);</td></tr>
 <tr class="cov"><td class="ln">626</td><td class="code">      const pos = { x: Math.round((SLIDE_WIDTH - w) / 2), y: Math.round((SLIDE_HEIGHT - h) / 2), width: w, height: h };</td></tr>
-<tr class="unc"><td class="ln">627</td><td class="code">      const fileName = `pasted-html-${Date.now()}.png`;</td></tr>
-<tr class="cov"><td class="ln">628</td><td class="code">      plog(`pasted HTML → png ${cap.width}x${cap.height} font=${family}`);</td></tr>
+<tr class="nil"><td class="ln">627</td><td class="code">      const fileName = `pasted-html-${Date.now()}.png`;</td></tr>
+<tr class="nil"><td class="ln">628</td><td class="code">      plog(`pasted HTML → png ${cap.width}x${cap.height} font=${family}`);</td></tr>
 <tr class="cov"><td class="ln">629</td><td class="code">      await insertPastedAsset(`images/${fileName}`, cap.bytes, &#x27;image/png&#x27;, fileName, pos);</td></tr>
 <tr class="cov"><td class="ln">630</td><td class="code">      return true;</td></tr>
-<tr class="cov"><td class="ln">631</td><td class="code">    };</td></tr>
+<tr class="nil"><td class="ln">631</td><td class="code">    };</td></tr>
 <tr class="nil"><td class="ln">632</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">633</td><td class="code">    /** Plain / lightly-styled text → an editable text element (#161). Shared by</td></tr>
-<tr class="cov"><td class="ln">634</td><td class="code">     *  the clipboardData path and the native-pasteboard (macOS) path. Returns</td></tr>
-<tr class="cov"><td class="ln">635</td><td class="code">     *  true if it inserted. */</td></tr>
-<tr class="unc"><td class="ln">636</td><td class="code">    // Paste a copied FILE (from the OS file manager): resolve the referenced</td></tr>
+<tr class="nil"><td class="ln">633</td><td class="code">    /** Plain / lightly-styled text → an editable text element (#161). Shared by</td></tr>
+<tr class="nil"><td class="ln">634</td><td class="code">     *  the clipboardData path and the native-pasteboard (macOS) path. Returns</td></tr>
+<tr class="nil"><td class="ln">635</td><td class="code">     *  true if it inserted. */</td></tr>
+<tr class="nil"><td class="ln">636</td><td class="code">    // Paste a copied FILE (from the OS file manager): resolve the referenced</td></tr>
 <tr class="nil"><td class="ln">637</td><td class="code">    // paths to asset refs, read each file&#x27;s bytes (gated readFileNative), and</td></tr>
-<tr class="cov"><td class="ln">638</td><td class="code">    // insert as image/svg/pdf elements. Non-asset files are skipped. Returns true</td></tr>
-<tr class="unc"><td class="ln">639</td><td class="code">    // if at least one asset was inserted. Shared by the macOS (public.file-url)</td></tr>
-<tr class="unc"><td class="ln">640</td><td class="code">    // and Linux (text/uri-list) paste branches. #160.</td></tr>
+<tr class="nil"><td class="ln">638</td><td class="code">    // insert as image/svg/pdf elements. Non-asset files are skipped. Returns true</td></tr>
+<tr class="nil"><td class="ln">639</td><td class="code">    // if at least one asset was inserted. Shared by the macOS (public.file-url)</td></tr>
+<tr class="nil"><td class="ln">640</td><td class="code">    // and Linux (text/uri-list) paste branches. #160.</td></tr>
 <tr class="unc"><td class="ln">641</td><td class="code">    const insertPastedFilePaths = async (paths: string[]): Promise&lt;boolean&gt; =&gt; {</td></tr>
 <tr class="nil"><td class="ln">642</td><td class="code">      // Route each pasted file through the SAME insertFileFromPath drag-drop uses,</td></tr>
 <tr class="nil"><td class="ln">643</td><td class="code">      // so copy-from-Finder → paste is equivalent to a drag (watched external ref,</td></tr>
 <tr class="nil"><td class="ln">644</td><td class="code">      // all file types, SVG external-ref embedding). #160.</td></tr>
-<tr class="unc"><td class="ln">645</td><td class="code">      let inserted = false;</td></tr>
-<tr class="unc"><td class="ln">646</td><td class="code">      for (const p of paths) {</td></tr>
-<tr class="cov"><td class="ln">647</td><td class="code">        try { if (await insertFileFromPath(p)) inserted = true; }</td></tr>
-<tr class="unc"><td class="ln">648</td><td class="code">        catch (err) { plog(`pasted file failed for ${p}:`, err); }</td></tr>
-<tr class="cov"><td class="ln">649</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">645</td><td class="code">      let inserted = false;</td></tr>
+<tr class="nil"><td class="ln">646</td><td class="code">      for (const p of paths) {</td></tr>
+<tr class="nil"><td class="ln">647</td><td class="code">        try { if (await insertFileFromPath(p)) inserted = true; }</td></tr>
+<tr class="nil"><td class="ln">648</td><td class="code">        catch (err) { plog(`pasted file failed for ${p}:`, err); }</td></tr>
+<tr class="nil"><td class="ln">649</td><td class="code">      }</td></tr>
 <tr class="unc"><td class="ln">650</td><td class="code">      return inserted;</td></tr>
-<tr class="unc"><td class="ln">651</td><td class="code">    };</td></tr>
-<tr class="unc"><td class="ln">652</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">651</td><td class="code">    };</td></tr>
+<tr class="nil"><td class="ln">652</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">653</td><td class="code">    const insertPastedText = (html: string, plain: string): boolean =&gt; {</td></tr>
 <tr class="nil"><td class="ln">654</td><td class="code">      // No marker guard: element/slide copies are handled by the private-flavor</td></tr>
-<tr class="cov"><td class="ln">655</td><td class="code">      // path above (they return before we get here). Any marked html reaching</td></tr>
-<tr class="unc"><td class="ln">656</td><td class="code">      // this point is an edit-mode TEXT-RUN copy (marker, no element JSON) — it</td></tr>
-<tr class="unc"><td class="ln">657</td><td class="code">      // should become a new text box (docs/copy-and-paste.md Stage 2), same as</td></tr>
+<tr class="nil"><td class="ln">655</td><td class="code">      // path above (they return before we get here). Any marked html reaching</td></tr>
+<tr class="nil"><td class="ln">656</td><td class="code">      // this point is an edit-mode TEXT-RUN copy (marker, no element JSON) — it</td></tr>
+<tr class="nil"><td class="ln">657</td><td class="code">      // should become a new text box (docs/copy-and-paste.md Stage 2), same as</td></tr>
 <tr class="nil"><td class="ln">658</td><td class="code">      // foreign text. sanitizeRichText strips the marker attributes.</td></tr>
-<tr class="cov"><td class="ln">659</td><td class="code">      const elHtml = pasteTextToElementHtml(html, plain);</td></tr>
+<tr class="part"><td class="ln">659</td><td class="code">      const elHtml = pasteTextToElementHtml(html, plain);</td></tr>
 <tr class="unc"><td class="ln">660</td><td class="code">      if (!elHtml) return false;</td></tr>
 <tr class="unc"><td class="ln">661</td><td class="code">      const W = 900, H = 360;</td></tr>
 <tr class="unc"><td class="ln">662</td><td class="code">      const el = createTextElement(&#x27;textbox&#x27;, {</td></tr>
-<tr class="nil"><td class="ln">663</td><td class="code">        x: Math.round((SLIDE_WIDTH - W) / 2), y: Math.round((SLIDE_HEIGHT - H) / 2), width: W, height: H,</td></tr>
+<tr class="unc"><td class="ln">663</td><td class="code">        x: Math.round((SLIDE_WIDTH - W) / 2), y: Math.round((SLIDE_HEIGHT - H) / 2), width: W, height: H,</td></tr>
 <tr class="nil"><td class="ln">664</td><td class="code">      });</td></tr>
 <tr class="unc"><td class="ln">665</td><td class="code">      el.html = elHtml;</td></tr>
 <tr class="unc"><td class="ln">666</td><td class="code">      addElement(el);</td></tr>
 <tr class="unc"><td class="ln">667</td><td class="code">      selectObject({ type: &#x27;element&#x27;, id: el.id });</td></tr>
 <tr class="unc"><td class="ln">668</td><td class="code">      plog(&#x27;pasted text → text element&#x27;);</td></tr>
 <tr class="unc"><td class="ln">669</td><td class="code">      return true;</td></tr>
-<tr class="unc"><td class="ln">670</td><td class="code">    };</td></tr>
+<tr class="nil"><td class="ln">670</td><td class="code">    };</td></tr>
 <tr class="unc"><td class="ln">671</td><td class="code">    window.addEventListener(&#x27;paste&#x27;, handlePaste);</td></tr>
-<tr class="unc"><td class="ln">672</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">673</td><td class="code">    // &quot;Paste as…&quot; (docs/copy-and-paste.md Stage 4): App opens the chooser and</td></tr>
+<tr class="nil"><td class="ln">672</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">673</td><td class="code">    // &quot;Paste as…&quot; (docs/copy-and-paste.md Stage 4): App opens the chooser and</td></tr>
 <tr class="nil"><td class="ln">674</td><td class="code">    // dispatches the picked kind here, where the insert helpers already live —</td></tr>
-<tr class="unc"><td class="ln">675</td><td class="code">    // so the explicit path reuses the exact same insertion as the auto ladder.</td></tr>
+<tr class="nil"><td class="ln">675</td><td class="code">    // so the explicit path reuses the exact same insertion as the auto ladder.</td></tr>
 <tr class="unc"><td class="ln">676</td><td class="code">    const handlePasteAs = async (ev: Event) =&gt; {</td></tr>
 <tr class="unc"><td class="ln">677</td><td class="code">      const kind = (ev as CustomEvent&lt;{ kind: string }&gt;).detail?.kind;</td></tr>
 <tr class="unc"><td class="ln">678</td><td class="code">      if (!kind) return;</td></tr>
@@ -700,49 +701,49 @@
 <tr class="unc"><td class="ln">683</td><td class="code">      if (rep.kind === &#x27;html-image&#x27;) { await insertRichHtmlScreenshot(rep.html || &#x27;&#x27;, true); return; }</td></tr>
 <tr class="unc"><td class="ln">684</td><td class="code">      if (rep.kind === &#x27;html&#x27;) {</td></tr>
 <tr class="unc"><td class="ln">685</td><td class="code">        const { stripEigendeckMarker } = await import(&#x27;../lib/clipboard&#x27;);<a class="jump" href="src__lib__clipboard_ts.html" title="src/lib/clipboard.ts">→ clipboard.ts</a></td></tr>
-<tr class="unc"><td class="ln">686</td><td class="code">        const raw = stripEigendeckMarker(rep.html || &#x27;&#x27;).trim();</td></tr>
-<tr class="unc"><td class="ln">687</td><td class="code">        if (!raw) return;</td></tr>
+<tr class="nil"><td class="ln">686</td><td class="code">        const raw = stripEigendeckMarker(rep.html || &#x27;&#x27;).trim();</td></tr>
+<tr class="nil"><td class="ln">687</td><td class="code">        if (!raw) return;</td></tr>
 <tr class="unc"><td class="ln">688</td><td class="code">        addElement({</td></tr>
 <tr class="unc"><td class="ln">689</td><td class="code">          id: crypto.randomUUID(), type: &#x27;html&#x27;,</td></tr>
 <tr class="unc"><td class="ln">690</td><td class="code">          position: { x: 360, y: 200, width: 1200, height: 680 },</td></tr>
 <tr class="unc"><td class="ln">691</td><td class="code">          html: raw,</td></tr>
-<tr class="unc"><td class="ln">692</td><td class="code">        });</td></tr>
+<tr class="nil"><td class="ln">692</td><td class="code">        });</td></tr>
 <tr class="unc"><td class="ln">693</td><td class="code">        return;</td></tr>
-<tr class="unc"><td class="ln">694</td><td class="code">      }</td></tr>
-<tr class="unc"><td class="ln">695</td><td class="code">      // image / svg / pdf → asset element</td></tr>
+<tr class="nil"><td class="ln">694</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">695</td><td class="code">      // image / svg / pdf → asset element</td></tr>
 <tr class="unc"><td class="ln">696</td><td class="code">      if (rep.bytes &amp;&amp; rep.mime &amp;&amp; rep.ext) {</td></tr>
-<tr class="unc"><td class="ln">697</td><td class="code">        const fileName = `pasted-${Date.now()}.${rep.ext}`;</td></tr>
-<tr class="unc"><td class="ln">698</td><td class="code">        await insertPastedAsset(`images/${fileName}`, rep.bytes, rep.mime, fileName);</td></tr>
+<tr class="nil"><td class="ln">697</td><td class="code">        const fileName = `pasted-${Date.now()}.${rep.ext}`;</td></tr>
+<tr class="nil"><td class="ln">698</td><td class="code">        await insertPastedAsset(`images/${fileName}`, rep.bytes, rep.mime, fileName);</td></tr>
 <tr class="nil"><td class="ln">699</td><td class="code">      }</td></tr>
 <tr class="nil"><td class="ln">700</td><td class="code">    };</td></tr>
-<tr class="unc"><td class="ln">701</td><td class="code">    window.addEventListener(&#x27;eigendeck:paste-as&#x27;, handlePasteAs as EventListener);</td></tr>
+<tr class="nil"><td class="ln">701</td><td class="code">    window.addEventListener(&#x27;eigendeck:paste-as&#x27;, handlePasteAs as EventListener);</td></tr>
 <tr class="nil"><td class="ln">702</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">703</td><td class="code">    return () =&gt; {</td></tr>
 <tr class="unc"><td class="ln">704</td><td class="code">      window.removeEventListener(&#x27;paste&#x27;, handlePaste);</td></tr>
 <tr class="unc"><td class="ln">705</td><td class="code">      window.removeEventListener(&#x27;eigendeck:paste-as&#x27;, handlePasteAs as EventListener);</td></tr>
 <tr class="nil"><td class="ln">706</td><td class="code">    };</td></tr>
-<tr class="nil"><td class="ln">707</td><td class="code">  }, [projectPath, addElement]);</td></tr>
+<tr class="unc"><td class="ln">707</td><td class="code">  }, [projectPath, addElement]);</td></tr>
 <tr class="nil"><td class="ln">708</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">709</td><td class="code">  // Marquee drag-to-select on canvas background</td></tr>
 <tr class="unc"><td class="ln">710</td><td class="code">  const handleCanvasPointerDown = useCallback((e: React.PointerEvent&lt;HTMLDivElement&gt;) =&gt; {</td></tr>
-<tr class="unc"><td class="ln">711</td><td class="code">    if (e.target !== e.currentTarget) return; // only on canvas background</td></tr>
-<tr class="unc"><td class="ln">712</td><td class="code">    e.preventDefault();</td></tr>
+<tr class="nil"><td class="ln">711</td><td class="code">    if (e.target !== e.currentTarget) return; // only on canvas background</td></tr>
+<tr class="nil"><td class="ln">712</td><td class="code">    e.preventDefault();</td></tr>
 <tr class="unc"><td class="ln">713</td><td class="code">    selectObject({ type: &#x27;slide&#x27; });</td></tr>
 <tr class="nil"><td class="ln">714</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">715</td><td class="code">    const canvas = canvasRef.current;</td></tr>
-<tr class="unc"><td class="ln">716</td><td class="code">    if (!canvas) return;</td></tr>
+<tr class="nil"><td class="ln">716</td><td class="code">    if (!canvas) return;</td></tr>
 <tr class="unc"><td class="ln">717</td><td class="code">    const rect = canvas.getBoundingClientRect();</td></tr>
 <tr class="unc"><td class="ln">718</td><td class="code">    const startX = (e.clientX - rect.left) / scale;</td></tr>
-<tr class="unc"><td class="ln">719</td><td class="code">    const startY = (e.clientY - rect.top) / scale;</td></tr>
-<tr class="unc"><td class="ln">720</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">719</td><td class="code">    const startY = (e.clientY - rect.top) / scale;</td></tr>
+<tr class="nil"><td class="ln">720</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">721</td><td class="code">    setMarquee({ x1: startX, y1: startY, x2: startX, y2: startY });</td></tr>
-<tr class="unc"><td class="ln">722</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">722</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">723</td><td class="code">    const handleMove = (me: PointerEvent) =&gt; {</td></tr>
 <tr class="unc"><td class="ln">724</td><td class="code">      const mx = (me.clientX - rect.left) / scale;</td></tr>
 <tr class="unc"><td class="ln">725</td><td class="code">      const my = (me.clientY - rect.top) / scale;</td></tr>
 <tr class="unc"><td class="ln">726</td><td class="code">      setMarquee({ x1: startX, y1: startY, x2: mx, y2: my });</td></tr>
-<tr class="unc"><td class="ln">727</td><td class="code">    };</td></tr>
-<tr class="unc"><td class="ln">728</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">727</td><td class="code">    };</td></tr>
+<tr class="nil"><td class="ln">728</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">729</td><td class="code">    const handleUp = (me: PointerEvent) =&gt; {</td></tr>
 <tr class="unc"><td class="ln">730</td><td class="code">      window.removeEventListener(&#x27;pointermove&#x27;, handleMove);</td></tr>
 <tr class="unc"><td class="ln">731</td><td class="code">      window.removeEventListener(&#x27;pointerup&#x27;, handleUp);</td></tr>
@@ -757,139 +758,139 @@
 <tr class="nil"><td class="ln">740</td><td class="code">      // Only select if marquee is larger than a small threshold (avoid accidental clicks)</td></tr>
 <tr class="unc"><td class="ln">741</td><td class="code">      if (selX2 - selX1 &gt; 5 || selY2 - selY1 &gt; 5) {</td></tr>
 <tr class="unc"><td class="ln">742</td><td class="code">        const currentSlide = usePresentationStore.getState().presentation.slides[</td></tr>
-<tr class="nil"><td class="ln">743</td><td class="code">          usePresentationStore.getState().currentSlideIndex</td></tr>
+<tr class="unc"><td class="ln">743</td><td class="code">          usePresentationStore.getState().currentSlideIndex</td></tr>
 <tr class="nil"><td class="ln">744</td><td class="code">        ];</td></tr>
 <tr class="unc"><td class="ln">745</td><td class="code">        const hitIds = currentSlide.elements</td></tr>
 <tr class="nil"><td class="ln">746</td><td class="code">          .filter((el: SlideElement) =&gt; {</td></tr>
-<tr class="unc"><td class="ln">747</td><td class="code">            if (el.type === &#x27;arrow&#x27;) {</td></tr>
-<tr class="cov"><td class="ln">748</td><td class="code">              // Check if either endpoint is inside the marquee</td></tr>
+<tr class="nil"><td class="ln">747</td><td class="code">            if (el.type === &#x27;arrow&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">748</td><td class="code">              // Check if either endpoint is inside the marquee</td></tr>
 <tr class="cov"><td class="ln">749</td><td class="code">              return (el.x1 &gt;= selX1 &amp;&amp; el.x1 &lt;= selX2 &amp;&amp; el.y1 &gt;= selY1 &amp;&amp; el.y1 &lt;= selY2) ||</td></tr>
 <tr class="cov"><td class="ln">750</td><td class="code">                     (el.x2 &gt;= selX1 &amp;&amp; el.x2 &lt;= selX2 &amp;&amp; el.y2 &gt;= selY1 &amp;&amp; el.y2 &lt;= selY2);</td></tr>
-<tr class="cov"><td class="ln">751</td><td class="code">            }</td></tr>
-<tr class="cov"><td class="ln">752</td><td class="code">            // Box intersection test</td></tr>
+<tr class="nil"><td class="ln">751</td><td class="code">            }</td></tr>
+<tr class="nil"><td class="ln">752</td><td class="code">            // Box intersection test</td></tr>
 <tr class="cov"><td class="ln">753</td><td class="code">            const elX1 = el.position.x;</td></tr>
 <tr class="cov"><td class="ln">754</td><td class="code">            const elY1 = el.position.y;</td></tr>
-<tr class="cov"><td class="ln">755</td><td class="code">            const elX2 = el.position.x + el.position.width;</td></tr>
-<tr class="unc"><td class="ln">756</td><td class="code">            const elY2 = el.position.y + el.position.height;</td></tr>
+<tr class="nil"><td class="ln">755</td><td class="code">            const elX2 = el.position.x + el.position.width;</td></tr>
+<tr class="nil"><td class="ln">756</td><td class="code">            const elY2 = el.position.y + el.position.height;</td></tr>
 <tr class="unc"><td class="ln">757</td><td class="code">            return elX1 &lt; selX2 &amp;&amp; elX2 &gt; selX1 &amp;&amp; elY1 &lt; selY2 &amp;&amp; elY2 &gt; selY1;</td></tr>
 <tr class="nil"><td class="ln">758</td><td class="code">          })</td></tr>
-<tr class="cov"><td class="ln">759</td><td class="code">          .map((el: SlideElement) =&gt; el.id);</td></tr>
-<tr class="cov"><td class="ln">760</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">759</td><td class="code">          .map((el: SlideElement) =&gt; el.id);</td></tr>
+<tr class="nil"><td class="ln">760</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">761</td><td class="code">        if (hitIds.length === 1) {</td></tr>
-<tr class="unc"><td class="ln">762</td><td class="code">          selectObject({ type: &#x27;element&#x27;, id: hitIds[0] });</td></tr>
+<tr class="nil"><td class="ln">762</td><td class="code">          selectObject({ type: &#x27;element&#x27;, id: hitIds[0] });</td></tr>
 <tr class="cov"><td class="ln">763</td><td class="code">        } else if (hitIds.length &gt; 1) {</td></tr>
-<tr class="unc"><td class="ln">764</td><td class="code">          selectObject({ type: &#x27;multi&#x27;, ids: hitIds });</td></tr>
+<tr class="nil"><td class="ln">764</td><td class="code">          selectObject({ type: &#x27;multi&#x27;, ids: hitIds });</td></tr>
 <tr class="nil"><td class="ln">765</td><td class="code">        }</td></tr>
 <tr class="nil"><td class="ln">766</td><td class="code">      }</td></tr>
 <tr class="nil"><td class="ln">767</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">768</td><td class="code">      setMarquee(null);</td></tr>
-<tr class="cov"><td class="ln">769</td><td class="code">    };</td></tr>
-<tr class="cov"><td class="ln">770</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">771</td><td class="code">    window.addEventListener(&#x27;pointermove&#x27;, handleMove);</td></tr>
-<tr class="unc"><td class="ln">772</td><td class="code">    window.addEventListener(&#x27;pointerup&#x27;, handleUp);</td></tr>
-<tr class="cov"><td class="ln">773</td><td class="code">  }, [scale, selectObject]);</td></tr>
-<tr class="cov"><td class="ln">774</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">775</td><td class="code">  // Context menu for canvas background. (Per-element right-click is handled in</td></tr>
-<tr class="cov"><td class="ln">776</td><td class="code">  // DraggableBox, which stops propagation before this fires.)</td></tr>
-<tr class="unc"><td class="ln">777</td><td class="code">  const handleCanvasContextMenu = useCallback((e: React.MouseEvent) =&gt; {</td></tr>
-<tr class="unc"><td class="ln">778</td><td class="code">    if (e.target !== e.currentTarget) return;</td></tr>
-<tr class="unc"><td class="ln">779</td><td class="code">    e.preventDefault();</td></tr>
-<tr class="unc"><td class="ln">780</td><td class="code">    const store = usePresentationStore.getState();</td></tr>
-<tr class="unc"><td class="ln">781</td><td class="code">    const items: MenuEntry[] = [</td></tr>
-<tr class="cov"><td class="ln">782</td><td class="code">      { label: &#x27;Add Title&#x27;, onClick: () =&gt; store.addElement(createTextElement(&#x27;title&#x27;)) },</td></tr>
-<tr class="cov"><td class="ln">783</td><td class="code">      { label: &#x27;Add Body&#x27;, onClick: () =&gt; store.addElement(createTextElement(&#x27;body&#x27;)) },</td></tr>
-<tr class="cov"><td class="ln">784</td><td class="code">      { label: &#x27;Add Text Box&#x27;, onClick: () =&gt; store.addElement(createTextElement(&#x27;textbox&#x27;)) },</td></tr>
-<tr class="cov"><td class="ln">785</td><td class="code">      { label: &#x27;Add Annotation&#x27;, onClick: () =&gt; store.addElement(createTextElement(&#x27;annotation&#x27;)) },</td></tr>
-<tr class="cov"><td class="ln">786</td><td class="code">      { label: &#x27;Add Footnote&#x27;, onClick: () =&gt; store.addElement(createTextElement(&#x27;footnote&#x27;)) },</td></tr>
+<tr class="nil"><td class="ln">768</td><td class="code">      setMarquee(null);</td></tr>
+<tr class="nil"><td class="ln">769</td><td class="code">    };</td></tr>
+<tr class="nil"><td class="ln">770</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">771</td><td class="code">    window.addEventListener(&#x27;pointermove&#x27;, handleMove);</td></tr>
+<tr class="nil"><td class="ln">772</td><td class="code">    window.addEventListener(&#x27;pointerup&#x27;, handleUp);</td></tr>
+<tr class="part"><td class="ln">773</td><td class="code">  }, [scale, selectObject]);</td></tr>
+<tr class="nil"><td class="ln">774</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">775</td><td class="code">  // Context menu for canvas background. (Per-element right-click is handled in</td></tr>
+<tr class="nil"><td class="ln">776</td><td class="code">  // DraggableBox, which stops propagation before this fires.)</td></tr>
+<tr class="cov"><td class="ln">777</td><td class="code">  const handleCanvasContextMenu = useCallback((e: React.MouseEvent) =&gt; {</td></tr>
+<tr class="nil"><td class="ln">778</td><td class="code">    if (e.target !== e.currentTarget) return;</td></tr>
+<tr class="nil"><td class="ln">779</td><td class="code">    e.preventDefault();</td></tr>
+<tr class="nil"><td class="ln">780</td><td class="code">    const store = usePresentationStore.getState();</td></tr>
+<tr class="nil"><td class="ln">781</td><td class="code">    const items: MenuEntry[] = [</td></tr>
+<tr class="nil"><td class="ln">782</td><td class="code">      { label: &#x27;Add Title&#x27;, onClick: () =&gt; store.addElement(createTextElement(&#x27;title&#x27;)) },</td></tr>
+<tr class="nil"><td class="ln">783</td><td class="code">      { label: &#x27;Add Body&#x27;, onClick: () =&gt; store.addElement(createTextElement(&#x27;body&#x27;)) },</td></tr>
+<tr class="nil"><td class="ln">784</td><td class="code">      { label: &#x27;Add Text Box&#x27;, onClick: () =&gt; store.addElement(createTextElement(&#x27;textbox&#x27;)) },</td></tr>
+<tr class="nil"><td class="ln">785</td><td class="code">      { label: &#x27;Add Annotation&#x27;, onClick: () =&gt; store.addElement(createTextElement(&#x27;annotation&#x27;)) },</td></tr>
+<tr class="nil"><td class="ln">786</td><td class="code">      { label: &#x27;Add Footnote&#x27;, onClick: () =&gt; store.addElement(createTextElement(&#x27;footnote&#x27;)) },</td></tr>
 <tr class="nil"><td class="ln">787</td><td class="code">      { separator: true },</td></tr>
-<tr class="cov"><td class="ln">788</td><td class="code">      { label: &#x27;Add Arrow&#x27;, onClick: () =&gt; store.addElement({ id: crypto.randomUUID(), type: &#x27;arrow&#x27;, x1: 400, y1: 400, x2: 800, y2: 400, position: { x: 0, y: 0, width: 0, height: 0 }, color: &#x27;#2563eb&#x27;, strokeWidth: 4, headSize: 16 }) },</td></tr>
+<tr class="nil"><td class="ln">788</td><td class="code">      { label: &#x27;Add Arrow&#x27;, onClick: () =&gt; store.addElement({ id: crypto.randomUUID(), type: &#x27;arrow&#x27;, x1: 400, y1: 400, x2: 800, y2: 400, position: { x: 0, y: 0, width: 0, height: 0 }, color: &#x27;#2563eb&#x27;, strokeWidth: 4, headSize: 16 }) },</td></tr>
 <tr class="nil"><td class="ln">789</td><td class="code">      { separator: true },</td></tr>
-<tr class="cov"><td class="ln">790</td><td class="code">      { label: &#x27;Paste&#x27;, shortcut: &#x27;\u2318V&#x27;, onClick: () =&gt; document.dispatchEvent(new KeyboardEvent(&#x27;keydown&#x27;, { key: &#x27;v&#x27;, metaKey: true })) },</td></tr>
-<tr class="cov"><td class="ln">791</td><td class="code">      { label: &#x27;Paste as\u2026&#x27;, onClick: () =&gt; window.dispatchEvent(new CustomEvent(&#x27;eigendeck:open-paste-as&#x27;)) },</td></tr>
+<tr class="nil"><td class="ln">790</td><td class="code">      { label: &#x27;Paste&#x27;, shortcut: &#x27;\u2318V&#x27;, onClick: () =&gt; document.dispatchEvent(new KeyboardEvent(&#x27;keydown&#x27;, { key: &#x27;v&#x27;, metaKey: true })) },</td></tr>
+<tr class="nil"><td class="ln">791</td><td class="code">      { label: &#x27;Paste as\u2026&#x27;, onClick: () =&gt; window.dispatchEvent(new CustomEvent(&#x27;eigendeck:open-paste-as&#x27;)) },</td></tr>
 <tr class="nil"><td class="ln">792</td><td class="code">      { separator: true },</td></tr>
 <tr class="nil"><td class="ln">793</td><td class="code">      { label: &#x27;Slide Properties&#x27;, onClick: () =&gt; {</td></tr>
-<tr class="unc"><td class="ln">794</td><td class="code">        store.selectObject({ type: &#x27;slide&#x27; });</td></tr>
-<tr class="unc"><td class="ln">795</td><td class="code">        if (!store.showProperties) store.toggleProperties();</td></tr>
+<tr class="nil"><td class="ln">794</td><td class="code">        store.selectObject({ type: &#x27;slide&#x27; });</td></tr>
+<tr class="nil"><td class="ln">795</td><td class="code">        if (!store.showProperties) store.toggleProperties();</td></tr>
 <tr class="nil"><td class="ln">796</td><td class="code">      }},</td></tr>
 <tr class="nil"><td class="ln">797</td><td class="code">    ];</td></tr>
-<tr class="unc"><td class="ln">798</td><td class="code">    window.dispatchEvent(new CustomEvent(&#x27;show-context-menu&#x27;, { detail: { x: e.clientX, y: e.clientY, items } }));</td></tr>
+<tr class="nil"><td class="ln">798</td><td class="code">    window.dispatchEvent(new CustomEvent(&#x27;show-context-menu&#x27;, { detail: { x: e.clientX, y: e.clientY, items } }));</td></tr>
 <tr class="nil"><td class="ln">799</td><td class="code">  }, []);</td></tr>
 <tr class="nil"><td class="ln">800</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">801</td><td class="code">  // Clear the context-target highlight when any context menu closes.</td></tr>
-<tr class="unc"><td class="ln">802</td><td class="code">  useEffect(() =&gt; {</td></tr>
-<tr class="unc"><td class="ln">803</td><td class="code">    const clear = () =&gt; setContextTarget(null);</td></tr>
-<tr class="unc"><td class="ln">804</td><td class="code">    window.addEventListener(&#x27;context-menu-closed&#x27;, clear);</td></tr>
-<tr class="unc"><td class="ln">805</td><td class="code">    return () =&gt; window.removeEventListener(&#x27;context-menu-closed&#x27;, clear);</td></tr>
+<tr class="nil"><td class="ln">802</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">803</td><td class="code">    const clear = () =&gt; setContextTarget(null);</td></tr>
+<tr class="nil"><td class="ln">804</td><td class="code">    window.addEventListener(&#x27;context-menu-closed&#x27;, clear);</td></tr>
+<tr class="nil"><td class="ln">805</td><td class="code">    return () =&gt; window.removeEventListener(&#x27;context-menu-closed&#x27;, clear);</td></tr>
 <tr class="nil"><td class="ln">806</td><td class="code">  }, []);</td></tr>
 <tr class="nil"><td class="ln">807</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">808</td><td class="code">  // Drag-and-drop files onto canvas</td></tr>
-<tr class="unc"><td class="ln">809</td><td class="code">  const [dragOver, setDragOver] = useState(false);</td></tr>
+<tr class="nil"><td class="ln">809</td><td class="code">  const [dragOver, setDragOver] = useState(false);</td></tr>
 <tr class="nil"><td class="ln">810</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">811</td><td class="code">  // Diagnostic logging — surface in the Debug Console (intercepts console.log)</td></tr>
 <tr class="nil"><td class="ln">812</td><td class="code">  // so &quot;drag from PowerPoint did nothing on release&quot; is debuggable.</td></tr>
-<tr class="unc"><td class="ln">813</td><td class="code">  const DRAG_LOG = false;  // flip true to trace drag/drop pasteboard handling</td></tr>
-<tr class="unc"><td class="ln">814</td><td class="code">  const dlog = (...a: unknown[]): void =&gt; {</td></tr>
-<tr class="unc"><td class="ln">815</td><td class="code">    if (DRAG_LOG) console.log(`[drag-evt ${new Date().toISOString().slice(11, 23)}]`, ...a);</td></tr>
+<tr class="nil"><td class="ln">813</td><td class="code">  const DRAG_LOG = false;  // flip true to trace drag/drop pasteboard handling</td></tr>
+<tr class="nil"><td class="ln">814</td><td class="code">  const dlog = (...a: unknown[]): void =&gt; {</td></tr>
+<tr class="nil"><td class="ln">815</td><td class="code">    if (DRAG_LOG) console.log(`[drag-evt ${new Date().toISOString().slice(11, 23)}]`, ...a);</td></tr>
 <tr class="nil"><td class="ln">816</td><td class="code">  };</td></tr>
 <tr class="nil"><td class="ln">817</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">818</td><td class="code">  const handleDragEnter = useCallback((e: React.DragEvent) =&gt; {</td></tr>
 <tr class="cov"><td class="ln">819</td><td class="code">    e.preventDefault();</td></tr>
-<tr class="cov"><td class="ln">820</td><td class="code">    dlog(&#x27;dragenter target=&#x27;, (e.target as Element).tagName,</td></tr>
+<tr class="nil"><td class="ln">820</td><td class="code">    dlog(&#x27;dragenter target=&#x27;, (e.target as Element).tagName,</td></tr>
 <tr class="nil"><td class="ln">821</td><td class="code">         &#x27;types=&#x27;, Array.from(e.dataTransfer.types),</td></tr>
 <tr class="nil"><td class="ln">822</td><td class="code">         &#x27;files=&#x27;, e.dataTransfer.files.length);</td></tr>
 <tr class="nil"><td class="ln">823</td><td class="code">  }, []);</td></tr>
 <tr class="nil"><td class="ln">824</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">825</td><td class="code">  const handleDragOver = useCallback((e: React.DragEvent) =&gt; {</td></tr>
-<tr class="unc"><td class="ln">826</td><td class="code">    e.preventDefault();</td></tr>
-<tr class="unc"><td class="ln">827</td><td class="code">    e.stopPropagation();</td></tr>
+<tr class="nil"><td class="ln">825</td><td class="code">  const handleDragOver = useCallback((e: React.DragEvent) =&gt; {</td></tr>
+<tr class="nil"><td class="ln">826</td><td class="code">    e.preventDefault();</td></tr>
+<tr class="nil"><td class="ln">827</td><td class="code">    e.stopPropagation();</td></tr>
 <tr class="nil"><td class="ln">828</td><td class="code">    // Signal we accept the drop so the OS shows the right cursor.</td></tr>
-<tr class="unc"><td class="ln">829</td><td class="code">    if (e.dataTransfer) e.dataTransfer.dropEffect = &#x27;copy&#x27;;</td></tr>
+<tr class="nil"><td class="ln">829</td><td class="code">    if (e.dataTransfer) e.dataTransfer.dropEffect = &#x27;copy&#x27;;</td></tr>
 <tr class="cov"><td class="ln">830</td><td class="code">    setDragOver(true);</td></tr>
-<tr class="cov"><td class="ln">831</td><td class="code">  }, []);</td></tr>
+<tr class="nil"><td class="ln">831</td><td class="code">  }, []);</td></tr>
 <tr class="nil"><td class="ln">832</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">833</td><td class="code">  const handleDragLeave = useCallback((e: React.DragEvent) =&gt; {</td></tr>
 <tr class="cov"><td class="ln">834</td><td class="code">    e.preventDefault();</td></tr>
-<tr class="unc"><td class="ln">835</td><td class="code">    setDragOver(false);</td></tr>
+<tr class="nil"><td class="ln">835</td><td class="code">    setDragOver(false);</td></tr>
 <tr class="nil"><td class="ln">836</td><td class="code">  }, []);</td></tr>
 <tr class="nil"><td class="ln">837</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">838</td><td class="code">  const handleDrop = useCallback(async (e: React.DragEvent) =&gt; {</td></tr>
-<tr class="unc"><td class="ln">839</td><td class="code">    dlog(&#x27;DROP FIRED target=&#x27;, (e.target as Element).tagName,</td></tr>
+<tr class="nil"><td class="ln">838</td><td class="code">  const handleDrop = useCallback(async (e: React.DragEvent) =&gt; {</td></tr>
+<tr class="nil"><td class="ln">839</td><td class="code">    dlog(&#x27;DROP FIRED target=&#x27;, (e.target as Element).tagName,</td></tr>
 <tr class="nil"><td class="ln">840</td><td class="code">         &#x27;types=&#x27;, Array.from(e.dataTransfer.types),</td></tr>
 <tr class="cov"><td class="ln">841</td><td class="code">         &#x27;files=&#x27;, e.dataTransfer.files.length);</td></tr>
-<tr class="cov"><td class="ln">842</td><td class="code">    e.preventDefault();</td></tr>
+<tr class="nil"><td class="ln">842</td><td class="code">    e.preventDefault();</td></tr>
 <tr class="cov"><td class="ln">843</td><td class="code">    e.stopPropagation();</td></tr>
 <tr class="cov"><td class="ln">844</td><td class="code">    setDragOver(false);</td></tr>
 <tr class="nil"><td class="ln">845</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">846</td><td class="code">    // FILE drops are delivered by Tauri&#x27;s OS-level win.onDragDropEvent</td></tr>
+<tr class="nil"><td class="ln">846</td><td class="code">    // FILE drops are delivered by Tauri&#x27;s OS-level win.onDragDropEvent</td></tr>
 <tr class="nil"><td class="ln">847</td><td class="code">    // below; processing them here too would duplicate. Detect by</td></tr>
 <tr class="nil"><td class="ln">848</td><td class="code">    // dataTransfer.files: non-empty =&gt; Tauri&#x27;s path will handle it.</td></tr>
 <tr class="cov"><td class="ln">849</td><td class="code">    if (e.dataTransfer.files.length &gt; 0) { dlog(&#x27;skipping in-memory path — Tauri OS event will handle the file drop&#x27;); return; }</td></tr>
-<tr class="cov"><td class="ln">850</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">851</td><td class="code">    // IN-MEMORY drops (e.g. dragging a shape OUT of PowerPoint) DON&#x27;T</td></tr>
-<tr class="cov"><td class="ln">852</td><td class="code">    // fire Tauri&#x27;s file event; only the DOM gets them. Same shape as</td></tr>
-<tr class="cov"><td class="ln">853</td><td class="code">    // a paste, just from the drag pasteboard instead of the general</td></tr>
+<tr class="nil"><td class="ln">850</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">851</td><td class="code">    // IN-MEMORY drops (e.g. dragging a shape OUT of PowerPoint) DON&#x27;T</td></tr>
+<tr class="nil"><td class="ln">852</td><td class="code">    // fire Tauri&#x27;s file event; only the DOM gets them. Same shape as</td></tr>
+<tr class="nil"><td class="ln">853</td><td class="code">    // a paste, just from the drag pasteboard instead of the general</td></tr>
 <tr class="nil"><td class="ln">854</td><td class="code">    // one — and the webview&#x27;s DataTransfer is filtered the same way</td></tr>
 <tr class="nil"><td class="ln">855</td><td class="code">    // (only image/png + a few standard MIMEs reach JS), so we go to</td></tr>
 <tr class="nil"><td class="ln">856</td><td class="code">    // the native NSPasteboard for the drag pasteboard to see vendor</td></tr>
 <tr class="nil"><td class="ln">857</td><td class="code">    // UTIs like com.microsoft.image-svg-xml.</td></tr>
-<tr class="unc"><td class="ln">858</td><td class="code">    const store = usePresentationStore.getState();</td></tr>
-<tr class="unc"><td class="ln">859</td><td class="code">    try {</td></tr>
-<tr class="unc"><td class="ln">860</td><td class="code">      const { invoke } = await import(&#x27;@tauri-apps/api/core&#x27;);</td></tr>
-<tr class="unc"><td class="ln">861</td><td class="code">      const utis = await invoke&lt;string[]&gt;(&#x27;pasteboard_list_drag_types&#x27;);</td></tr>
-<tr class="unc"><td class="ln">862</td><td class="code">      dlog(&#x27;native drag pasteboard UTIs:&#x27;, utis);</td></tr>
+<tr class="cov"><td class="ln">858</td><td class="code">    const store = usePresentationStore.getState();</td></tr>
+<tr class="cov"><td class="ln">859</td><td class="code">    try {</td></tr>
+<tr class="cov"><td class="ln">860</td><td class="code">      const { invoke } = await import(&#x27;@tauri-apps/api/core&#x27;);</td></tr>
+<tr class="cov"><td class="ln">861</td><td class="code">      const utis = await invoke&lt;string[]&gt;(&#x27;pasteboard_list_drag_types&#x27;);</td></tr>
+<tr class="cov"><td class="ln">862</td><td class="code">      dlog(&#x27;native drag pasteboard UTIs:&#x27;, utis);</td></tr>
 <tr class="nil"><td class="ln">863</td><td class="code">      // Same priority order as paste (SVG &gt; PDF &gt; raster); flip SVG/PDF</td></tr>
 <tr class="nil"><td class="ln">864</td><td class="code">      // once pdfium displays PDFs.</td></tr>
-<tr class="unc"><td class="ln">865</td><td class="code">      const NATIVE_PREFER: Array&lt;{ utis: string[]; ext: string; mime: string }&gt; = [</td></tr>
+<tr class="nil"><td class="ln">865</td><td class="code">      const NATIVE_PREFER: Array&lt;{ utis: string[]; ext: string; mime: string }&gt; = [</td></tr>
 <tr class="nil"><td class="ln">866</td><td class="code">        { utis: [&#x27;public.svg-image&#x27;, &#x27;com.microsoft.image-svg-xml&#x27;, &#x27;image/svg+xml&#x27;], ext: &#x27;svg&#x27;, mime: &#x27;image/svg+xml&#x27; },</td></tr>
 <tr class="nil"><td class="ln">867</td><td class="code">        { utis: [&#x27;com.adobe.pdf&#x27;, &#x27;application/pdf&#x27;], ext: &#x27;pdf&#x27;, mime: &#x27;application/pdf&#x27; },</td></tr>
 <tr class="nil"><td class="ln">868</td><td class="code">        { utis: [&#x27;public.png&#x27;, &#x27;image/png&#x27;], ext: &#x27;png&#x27;, mime: &#x27;image/png&#x27; },</td></tr>
 <tr class="nil"><td class="ln">869</td><td class="code">        { utis: [&#x27;public.jpeg&#x27;, &#x27;image/jpeg&#x27;, &#x27;public.jpg&#x27;], ext: &#x27;jpg&#x27;, mime: &#x27;image/jpeg&#x27; },</td></tr>
 <tr class="nil"><td class="ln">870</td><td class="code">      ];</td></tr>
-<tr class="unc"><td class="ln">871</td><td class="code">      for (const pref of NATIVE_PREFER) {</td></tr>
-<tr class="unc"><td class="ln">872</td><td class="code">        for (const uti of pref.utis) {</td></tr>
-<tr class="unc"><td class="ln">873</td><td class="code">          if (!utis.includes(uti)) continue;</td></tr>
-<tr class="unc"><td class="ln">874</td><td class="code">          const bytesArr = await invoke&lt;number[] | null&gt;(&#x27;pasteboard_read_drag_type&#x27;, { uti });</td></tr>
-<tr class="unc"><td class="ln">875</td><td class="code">          if (!bytesArr || bytesArr.length === 0) continue;</td></tr>
+<tr class="nil"><td class="ln">871</td><td class="code">      for (const pref of NATIVE_PREFER) {</td></tr>
+<tr class="nil"><td class="ln">872</td><td class="code">        for (const uti of pref.utis) {</td></tr>
+<tr class="nil"><td class="ln">873</td><td class="code">          if (!utis.includes(uti)) continue;</td></tr>
+<tr class="nil"><td class="ln">874</td><td class="code">          const bytesArr = await invoke&lt;number[] | null&gt;(&#x27;pasteboard_read_drag_type&#x27;, { uti });</td></tr>
+<tr class="nil"><td class="ln">875</td><td class="code">          if (!bytesArr || bytesArr.length === 0) continue;</td></tr>
 <tr class="cov"><td class="ln">876</td><td class="code">          const bytes = new Uint8Array(bytesArr);</td></tr>
 <tr class="cov"><td class="ln">877</td><td class="code">          const fileName = `dropped-${Date.now()}.${pref.ext}`;</td></tr>
 <tr class="cov"><td class="ln">878</td><td class="code">          const relativePath = `images/${fileName}`;</td></tr>
@@ -898,57 +899,57 @@
 <tr class="cov"><td class="ln">881</td><td class="code">          dlog(`native picked uti=${uti} → ${pref.mime} (${bytes.length} bytes) → ${fileName}`);</td></tr>
 <tr class="cov"><td class="ln">882</td><td class="code">          const assetId = await invoke&lt;string&gt;(&#x27;db_store_asset&#x27;, {</td></tr>
 <tr class="cov"><td class="ln">883</td><td class="code">            path: relativePath, data: Array.from(bytes), mimeType: pref.mime,</td></tr>
-<tr class="nil"><td class="ln">884</td><td class="code">            externalPath: null, externalMtime: null,</td></tr>
+<tr class="cov"><td class="ln">884</td><td class="code">            externalPath: null, externalMtime: null,</td></tr>
 <tr class="nil"><td class="ln">885</td><td class="code">          });</td></tr>
-<tr class="unc"><td class="ln">886</td><td class="code">          store.addElement({</td></tr>
-<tr class="nil"><td class="ln">887</td><td class="code">            id: crypto.randomUUID(), type: &#x27;image&#x27;, assetId, kind,</td></tr>
-<tr class="nil"><td class="ln">888</td><td class="code">            position: { x: 360, y: 200, width: 1200, height: 680 },</td></tr>
+<tr class="cov"><td class="ln">886</td><td class="code">          store.addElement({</td></tr>
+<tr class="cov"><td class="ln">887</td><td class="code">            id: crypto.randomUUID(), type: &#x27;image&#x27;, assetId, kind,</td></tr>
+<tr class="cov"><td class="ln">888</td><td class="code">            position: { x: 360, y: 200, width: 1200, height: 680 },</td></tr>
 <tr class="nil"><td class="ln">889</td><td class="code">          });</td></tr>
 <tr class="nil"><td class="ln">890</td><td class="code">          // No unsaved-warning toast: native pasteboard drag stores with</td></tr>
 <tr class="nil"><td class="ln">891</td><td class="code">          // externalPath=null (synthetic name like dropped-&lt;ts&gt;.svg),</td></tr>
 <tr class="nil"><td class="ln">892</td><td class="code">          // so watching wouldn&#x27;t apply even after Save. storeAssetWithCollisionCheck</td></tr>
 <tr class="nil"><td class="ln">893</td><td class="code">          // fires the warning automatically for paths that DO have an</td></tr>
 <tr class="nil"><td class="ln">894</td><td class="code">          // external_path — this branch doesn&#x27;t go through that helper.</td></tr>
-<tr class="unc"><td class="ln">895</td><td class="code">          return;</td></tr>
+<tr class="nil"><td class="ln">895</td><td class="code">          return;</td></tr>
 <tr class="nil"><td class="ln">896</td><td class="code">        }</td></tr>
 <tr class="nil"><td class="ln">897</td><td class="code">      }</td></tr>
-<tr class="unc"><td class="ln">898</td><td class="code">      dlog(&#x27;native drag pasteboard had no preferred UTI; falling back to DataTransfer&#x27;);</td></tr>
+<tr class="nil"><td class="ln">898</td><td class="code">      dlog(&#x27;native drag pasteboard had no preferred UTI; falling back to DataTransfer&#x27;);</td></tr>
 <tr class="nil"><td class="ln">899</td><td class="code">    } catch (err) {</td></tr>
-<tr class="unc"><td class="ln">900</td><td class="code">      dlog(&#x27;native drag pasteboard read failed:&#x27;, err);</td></tr>
+<tr class="nil"><td class="ln">900</td><td class="code">      dlog(&#x27;native drag pasteboard read failed:&#x27;, err);</td></tr>
 <tr class="nil"><td class="ln">901</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">902</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">903</td><td class="code">    // Web fallback: DataTransfer.items (filtered by WebKit to standard</td></tr>
 <tr class="nil"><td class="ln">904</td><td class="code">    // MIMEs). Worth trying for non-Mac and as a safety net.</td></tr>
-<tr class="unc"><td class="ln">905</td><td class="code">    const items = Array.from(e.dataTransfer.items);</td></tr>
-<tr class="unc"><td class="ln">906</td><td class="code">    dlog(&#x27;DataTransfer items:&#x27;, items.map((it) =&gt; `${it.kind}:${it.type}`));</td></tr>
-<tr class="unc"><td class="ln">907</td><td class="code">    for (const mime of [&#x27;image/svg+xml&#x27;, &#x27;image/png&#x27;, &#x27;image/jpeg&#x27;] as const) {</td></tr>
-<tr class="unc"><td class="ln">908</td><td class="code">      const item = items.find((it) =&gt; it.type === mime);</td></tr>
-<tr class="unc"><td class="ln">909</td><td class="code">      if (!item) continue;</td></tr>
-<tr class="unc"><td class="ln">910</td><td class="code">      const blob = item.getAsFile();</td></tr>
-<tr class="unc"><td class="ln">911</td><td class="code">      if (!blob) continue;</td></tr>
-<tr class="unc"><td class="ln">912</td><td class="code">      const ext = mime === &#x27;image/svg+xml&#x27; ? &#x27;svg&#x27; : (mime.split(&#x27;/&#x27;)[1] || &#x27;png&#x27;);</td></tr>
-<tr class="unc"><td class="ln">913</td><td class="code">      const fileName = `dropped-${Date.now()}.${ext}`;</td></tr>
-<tr class="unc"><td class="ln">914</td><td class="code">      const relativePath = `images/${fileName}`;</td></tr>
-<tr class="unc"><td class="ln">915</td><td class="code">      const bytes = new Uint8Array(await blob.arrayBuffer());</td></tr>
-<tr class="unc"><td class="ln">916</td><td class="code">      const kind = mime === &#x27;image/svg+xml&#x27; ? &#x27;svg&#x27; : &#x27;raster&#x27;;</td></tr>
-<tr class="unc"><td class="ln">917</td><td class="code">      dlog(`DataTransfer picked ${mime} (${bytes.length} bytes) → ${fileName}`);</td></tr>
-<tr class="unc"><td class="ln">918</td><td class="code">      const { invoke } = await import(&#x27;@tauri-apps/api/core&#x27;);</td></tr>
-<tr class="unc"><td class="ln">919</td><td class="code">      const assetId = await invoke&lt;string&gt;(&#x27;db_store_asset&#x27;, {</td></tr>
+<tr class="nil"><td class="ln">905</td><td class="code">    const items = Array.from(e.dataTransfer.items);</td></tr>
+<tr class="nil"><td class="ln">906</td><td class="code">    dlog(&#x27;DataTransfer items:&#x27;, items.map((it) =&gt; `${it.kind}:${it.type}`));</td></tr>
+<tr class="nil"><td class="ln">907</td><td class="code">    for (const mime of [&#x27;image/svg+xml&#x27;, &#x27;image/png&#x27;, &#x27;image/jpeg&#x27;] as const) {</td></tr>
+<tr class="nil"><td class="ln">908</td><td class="code">      const item = items.find((it) =&gt; it.type === mime);</td></tr>
+<tr class="nil"><td class="ln">909</td><td class="code">      if (!item) continue;</td></tr>
+<tr class="nil"><td class="ln">910</td><td class="code">      const blob = item.getAsFile();</td></tr>
+<tr class="nil"><td class="ln">911</td><td class="code">      if (!blob) continue;</td></tr>
+<tr class="nil"><td class="ln">912</td><td class="code">      const ext = mime === &#x27;image/svg+xml&#x27; ? &#x27;svg&#x27; : (mime.split(&#x27;/&#x27;)[1] || &#x27;png&#x27;);</td></tr>
+<tr class="nil"><td class="ln">913</td><td class="code">      const fileName = `dropped-${Date.now()}.${ext}`;</td></tr>
+<tr class="nil"><td class="ln">914</td><td class="code">      const relativePath = `images/${fileName}`;</td></tr>
+<tr class="nil"><td class="ln">915</td><td class="code">      const bytes = new Uint8Array(await blob.arrayBuffer());</td></tr>
+<tr class="nil"><td class="ln">916</td><td class="code">      const kind = mime === &#x27;image/svg+xml&#x27; ? &#x27;svg&#x27; : &#x27;raster&#x27;;</td></tr>
+<tr class="nil"><td class="ln">917</td><td class="code">      dlog(`DataTransfer picked ${mime} (${bytes.length} bytes) → ${fileName}`);</td></tr>
+<tr class="nil"><td class="ln">918</td><td class="code">      const { invoke } = await import(&#x27;@tauri-apps/api/core&#x27;);</td></tr>
+<tr class="nil"><td class="ln">919</td><td class="code">      const assetId = await invoke&lt;string&gt;(&#x27;db_store_asset&#x27;, {</td></tr>
 <tr class="nil"><td class="ln">920</td><td class="code">        path: relativePath, data: Array.from(bytes), mimeType: mime,</td></tr>
 <tr class="nil"><td class="ln">921</td><td class="code">        externalPath: null, externalMtime: null,</td></tr>
 <tr class="nil"><td class="ln">922</td><td class="code">      });</td></tr>
-<tr class="unc"><td class="ln">923</td><td class="code">      store.addElement({</td></tr>
+<tr class="nil"><td class="ln">923</td><td class="code">      store.addElement({</td></tr>
 <tr class="nil"><td class="ln">924</td><td class="code">        id: crypto.randomUUID(), type: &#x27;image&#x27;, assetId, kind,</td></tr>
 <tr class="nil"><td class="ln">925</td><td class="code">        position: { x: 360, y: 200, width: 1200, height: 680 },</td></tr>
 <tr class="nil"><td class="ln">926</td><td class="code">      });</td></tr>
 <tr class="nil"><td class="ln">927</td><td class="code">      // Same as the native-pasteboard branch above: externalPath=null,</td></tr>
 <tr class="nil"><td class="ln">928</td><td class="code">      // no watching to warn about.</td></tr>
-<tr class="unc"><td class="ln">929</td><td class="code">      return;</td></tr>
+<tr class="nil"><td class="ln">929</td><td class="code">      return;</td></tr>
 <tr class="nil"><td class="ln">930</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">931</td><td class="code">  }, []);</td></tr>
 <tr class="nil"><td class="ln">932</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">933</td><td class="code">  // Tauri drag-drop event (provides file paths directly)</td></tr>
-<tr class="unc"><td class="ln">934</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">934</td><td class="code">  useEffect(() =&gt; {</td></tr>
 <tr class="nil"><td class="ln">935</td><td class="code">    // Async-effect cleanup race: if the cleanup runs before the</td></tr>
 <tr class="nil"><td class="ln">936</td><td class="code">    // await for onDragDropEvent resolves (StrictMode double-invoke</td></tr>
 <tr class="nil"><td class="ln">937</td><td class="code">    // in dev, or fast remount under HMR), the first listener leaks</td></tr>
@@ -956,42 +957,42 @@
 <tr class="nil"><td class="ln">939</td><td class="code">    // both handlers → N copies of the asset get added. Track a</td></tr>
 <tr class="nil"><td class="ln">940</td><td class="code">    // `cancelled` flag and immediately unsubscribe if we were torn</td></tr>
 <tr class="nil"><td class="ln">941</td><td class="code">    // down during the await.</td></tr>
-<tr class="unc"><td class="ln">942</td><td class="code">    let unlisten: (() =&gt; void) | null = null;</td></tr>
-<tr class="unc"><td class="ln">943</td><td class="code">    let cancelled = false;</td></tr>
-<tr class="unc"><td class="ln">944</td><td class="code">    (async () =&gt; {</td></tr>
-<tr class="unc"><td class="ln">945</td><td class="code">      try {</td></tr>
-<tr class="unc"><td class="ln">946</td><td class="code">        const { getCurrentWebviewWindow } = await import(&#x27;@tauri-apps/api/webviewWindow&#x27;);</td></tr>
-<tr class="unc"><td class="ln">947</td><td class="code">        const win = getCurrentWebviewWindow();</td></tr>
-<tr class="unc"><td class="ln">948</td><td class="code">        const u = await win.onDragDropEvent(async (event) =&gt; {</td></tr>
-<tr class="unc"><td class="ln">949</td><td class="code">          if (event.payload.type === &#x27;drop&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">942</td><td class="code">    let unlisten: (() =&gt; void) | null = null;</td></tr>
+<tr class="nil"><td class="ln">943</td><td class="code">    let cancelled = false;</td></tr>
+<tr class="nil"><td class="ln">944</td><td class="code">    (async () =&gt; {</td></tr>
+<tr class="nil"><td class="ln">945</td><td class="code">      try {</td></tr>
+<tr class="nil"><td class="ln">946</td><td class="code">        const { getCurrentWebviewWindow } = await import(&#x27;@tauri-apps/api/webviewWindow&#x27;);</td></tr>
+<tr class="nil"><td class="ln">947</td><td class="code">        const win = getCurrentWebviewWindow();</td></tr>
+<tr class="nil"><td class="ln">948</td><td class="code">        const u = await win.onDragDropEvent(async (event) =&gt; {</td></tr>
+<tr class="nil"><td class="ln">949</td><td class="code">          if (event.payload.type === &#x27;drop&#x27;) {</td></tr>
 <tr class="nil"><td class="ln">950</td><td class="code">            // Shared with copy-from-Finder paste (insertFileFromPath) so drag and</td></tr>
 <tr class="nil"><td class="ln">951</td><td class="code">            // paste are equivalent by construction.</td></tr>
-<tr class="unc"><td class="ln">952</td><td class="code">            for (const fullPath of event.payload.paths) await insertFileFromPath(fullPath);</td></tr>
+<tr class="nil"><td class="ln">952</td><td class="code">            for (const fullPath of event.payload.paths) await insertFileFromPath(fullPath);</td></tr>
 <tr class="nil"><td class="ln">953</td><td class="code">          }</td></tr>
 <tr class="nil"><td class="ln">954</td><td class="code">        });</td></tr>
 <tr class="nil"><td class="ln">955</td><td class="code">        // If the effect was cleaned up while we were awaiting the</td></tr>
 <tr class="nil"><td class="ln">956</td><td class="code">        // subscribe, immediately undo it.</td></tr>
-<tr class="unc"><td class="ln">957</td><td class="code">        if (cancelled) {</td></tr>
-<tr class="unc"><td class="ln">958</td><td class="code">          u();</td></tr>
+<tr class="nil"><td class="ln">957</td><td class="code">        if (cancelled) {</td></tr>
+<tr class="nil"><td class="ln">958</td><td class="code">          u();</td></tr>
 <tr class="nil"><td class="ln">959</td><td class="code">        } else {</td></tr>
-<tr class="unc"><td class="ln">960</td><td class="code">          unlisten = u;</td></tr>
+<tr class="nil"><td class="ln">960</td><td class="code">          unlisten = u;</td></tr>
 <tr class="nil"><td class="ln">961</td><td class="code">        }</td></tr>
 <tr class="nil"><td class="ln">962</td><td class="code">      } catch {</td></tr>
 <tr class="nil"><td class="ln">963</td><td class="code">        // Not in Tauri — HTML5 drag events will handle it</td></tr>
 <tr class="nil"><td class="ln">964</td><td class="code">      }</td></tr>
 <tr class="nil"><td class="ln">965</td><td class="code">    })();</td></tr>
-<tr class="unc"><td class="ln">966</td><td class="code">    return () =&gt; {</td></tr>
-<tr class="unc"><td class="ln">967</td><td class="code">      cancelled = true;</td></tr>
-<tr class="unc"><td class="ln">968</td><td class="code">      if (unlisten) unlisten();</td></tr>
+<tr class="nil"><td class="ln">966</td><td class="code">    return () =&gt; {</td></tr>
+<tr class="nil"><td class="ln">967</td><td class="code">      cancelled = true;</td></tr>
+<tr class="nil"><td class="ln">968</td><td class="code">      if (unlisten) unlisten();</td></tr>
 <tr class="nil"><td class="ln">969</td><td class="code">    };</td></tr>
 <tr class="nil"><td class="ln">970</td><td class="code">  }, []);</td></tr>
 <tr class="nil"><td class="ln">971</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">972</td><td class="code">  if (!slide) return null;</td></tr>
+<tr class="nil"><td class="ln">972</td><td class="code">  if (!slide) return null;</td></tr>
 <tr class="nil"><td class="ln">973</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">974</td><td class="code">  const { author, venue } = presentation.config;</td></tr>
-<tr class="unc"><td class="ln">975</td><td class="code">  const meta = [author, venue].filter(Boolean).join(&#x27; \u00B7 &#x27;);</td></tr>
+<tr class="nil"><td class="ln">974</td><td class="code">  const { author, venue } = presentation.config;</td></tr>
+<tr class="nil"><td class="ln">975</td><td class="code">  const meta = [author, venue].filter(Boolean).join(&#x27; \u00B7 &#x27;);</td></tr>
 <tr class="nil"><td class="ln">976</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">977</td><td class="code">  return (</td></tr>
+<tr class="nil"><td class="ln">977</td><td class="code">  return (</td></tr>
 <tr class="nil"><td class="ln">978</td><td class="code">    &lt;div className=&quot;slide-editor&quot;&gt;</td></tr>
 <tr class="nil"><td class="ln">979</td><td class="code">      {/* Theme now in inspector panel (PropertiesPanel); layout removed in v2 schema */}</td></tr>
 <tr class="nil"><td class="ln">980</td><td class="code">      &lt;div className={`slide-canvas-container ${dragOver ? &#x27;drag-over&#x27; : &#x27;&#x27;}`} ref={containerRef}</td></tr>
@@ -1033,10 +1034,10 @@
 <tr class="nil"><td class="ln">1016</td><td class="code">            /&gt;</td></tr>
 <tr class="nil"><td class="ln">1017</td><td class="code">          )}</td></tr>
 <tr class="nil"><td class="ln">1018</td><td class="code">          {slide.elements.map((el, idx) =&gt; {</td></tr>
-<tr class="unc"><td class="ln">1019</td><td class="code">            const isSelected = selectedObject?.type === &#x27;element&#x27; &amp;&amp; selectedObject.id === el.id</td></tr>
+<tr class="nil"><td class="ln">1019</td><td class="code">            const isSelected = selectedObject?.type === &#x27;element&#x27; &amp;&amp; selectedObject.id === el.id</td></tr>
 <tr class="nil"><td class="ln">1020</td><td class="code">              || selectedObject?.type === &#x27;multi&#x27; &amp;&amp; selectedObject.ids.includes(el.id);</td></tr>
-<tr class="unc"><td class="ln">1021</td><td class="code">            const slideTheme = resolveTheme(presentation.theme, slide.theme);</td></tr>
-<tr class="unc"><td class="ln">1022</td><td class="code">            return (</td></tr>
+<tr class="nil"><td class="ln">1021</td><td class="code">            const slideTheme = resolveTheme(presentation.theme, slide.theme);</td></tr>
+<tr class="nil"><td class="ln">1022</td><td class="code">            return (</td></tr>
 <tr class="nil"><td class="ln">1023</td><td class="code">              &lt;SlideElementRenderer</td></tr>
 <tr class="nil"><td class="ln">1024</td><td class="code">                key={el.id}</td></tr>
 <tr class="nil"><td class="ln">1025</td><td class="code">                element={el}</td></tr>
@@ -1046,11 +1047,11 @@
 <tr class="nil"><td class="ln">1029</td><td class="code">                isSelected={isSelected}</td></tr>
 <tr class="nil"><td class="ln">1030</td><td class="code">                slideBackground={slideTheme.background}</td></tr>
 <tr class="nil"><td class="ln">1031</td><td class="code">                theme={slideTheme}</td></tr>
-<tr class="unc"><td class="ln">1032</td><td class="code">                onUpdate={(changes) =&gt; updateElement(el.id, changes)}</td></tr>
-<tr class="unc"><td class="ln">1033</td><td class="code">                onDelete={() =&gt; deleteElement(el.id)}</td></tr>
+<tr class="nil"><td class="ln">1032</td><td class="code">                onUpdate={(changes) =&gt; updateElement(el.id, changes)}</td></tr>
+<tr class="nil"><td class="ln">1033</td><td class="code">                onDelete={() =&gt; deleteElement(el.id)}</td></tr>
 <tr class="nil"><td class="ln">1034</td><td class="code">                onSelect={(e) =&gt; {</td></tr>
-<tr class="unc"><td class="ln">1035</td><td class="code">                  if (e?.shiftKey) toggleSelectElement(el.id);</td></tr>
-<tr class="unc"><td class="ln">1036</td><td class="code">                  else selectObject({ type: &#x27;element&#x27;, id: el.id });</td></tr>
+<tr class="nil"><td class="ln">1035</td><td class="code">                  if (e?.shiftKey) toggleSelectElement(el.id);</td></tr>
+<tr class="nil"><td class="ln">1036</td><td class="code">                  else selectObject({ type: &#x27;element&#x27;, id: el.id });</td></tr>
 <tr class="nil"><td class="ln">1037</td><td class="code">                }}</td></tr>
 <tr class="nil"><td class="ln">1038</td><td class="code">              /&gt;</td></tr>
 <tr class="nil"><td class="ln">1039</td><td class="code">            );</td></tr>
@@ -1058,21 +1059,21 @@
 <tr class="nil"><td class="ln">1041</td><td class="code">          {/* Hidden controller iframes for demo-piece elements,</td></tr>
 <tr class="nil"><td class="ln">1042</td><td class="code">              deduped by assetId. */}</td></tr>
 <tr class="nil"><td class="ln">1043</td><td class="code">          {(() =&gt; {</td></tr>
-<tr class="unc"><td class="ln">1044</td><td class="code">            const controllers = new Set&lt;string&gt;();</td></tr>
-<tr class="unc"><td class="ln">1045</td><td class="code">            for (const el of slide.elements) {</td></tr>
-<tr class="unc"><td class="ln">1046</td><td class="code">              if (el.type !== &#x27;demo-piece&#x27;) continue;</td></tr>
-<tr class="unc"><td class="ln">1047</td><td class="code">              controllers.add(el.assetId);</td></tr>
+<tr class="nil"><td class="ln">1044</td><td class="code">            const controllers = new Set&lt;string&gt;();</td></tr>
+<tr class="nil"><td class="ln">1045</td><td class="code">            for (const el of slide.elements) {</td></tr>
+<tr class="nil"><td class="ln">1046</td><td class="code">              if (el.type !== &#x27;demo-piece&#x27;) continue;</td></tr>
+<tr class="nil"><td class="ln">1047</td><td class="code">              controllers.add(el.assetId);</td></tr>
 <tr class="nil"><td class="ln">1048</td><td class="code">            }</td></tr>
-<tr class="unc"><td class="ln">1049</td><td class="code">            return Array.from(controllers).map((assetId) =&gt; (</td></tr>
-<tr class="unc"><td class="ln">1050</td><td class="code">              &lt;ControllerIframe key={`controller-${assetId}`} assetId={assetId} /&gt;</td></tr>
+<tr class="nil"><td class="ln">1049</td><td class="code">            return Array.from(controllers).map((assetId) =&gt; (</td></tr>
+<tr class="nil"><td class="ln">1050</td><td class="code">              &lt;ControllerIframe key={`controller-${assetId}`} assetId={assetId} /&gt;</td></tr>
 <tr class="nil"><td class="ln">1051</td><td class="code">            ));</td></tr>
 <tr class="nil"><td class="ln">1052</td><td class="code">          })()}</td></tr>
 <tr class="nil"><td class="ln">1053</td><td class="code">          {marquee &amp;&amp; (() =&gt; {</td></tr>
-<tr class="unc"><td class="ln">1054</td><td class="code">            const x = Math.min(marquee.x1, marquee.x2);</td></tr>
-<tr class="unc"><td class="ln">1055</td><td class="code">            const y = Math.min(marquee.y1, marquee.y2);</td></tr>
-<tr class="unc"><td class="ln">1056</td><td class="code">            const w = Math.abs(marquee.x2 - marquee.x1);</td></tr>
-<tr class="unc"><td class="ln">1057</td><td class="code">            const h = Math.abs(marquee.y2 - marquee.y1);</td></tr>
-<tr class="unc"><td class="ln">1058</td><td class="code">            return (</td></tr>
+<tr class="nil"><td class="ln">1054</td><td class="code">            const x = Math.min(marquee.x1, marquee.x2);</td></tr>
+<tr class="nil"><td class="ln">1055</td><td class="code">            const y = Math.min(marquee.y1, marquee.y2);</td></tr>
+<tr class="nil"><td class="ln">1056</td><td class="code">            const w = Math.abs(marquee.x2 - marquee.x1);</td></tr>
+<tr class="nil"><td class="ln">1057</td><td class="code">            const h = Math.abs(marquee.y2 - marquee.y1);</td></tr>
+<tr class="nil"><td class="ln">1058</td><td class="code">            return (</td></tr>
 <tr class="nil"><td class="ln">1059</td><td class="code">              &lt;div className=&quot;marquee-selection&quot; style={{</td></tr>
 <tr class="nil"><td class="ln">1060</td><td class="code">                position: &#x27;absolute&#x27;, left: x, top: y, width: w, height: h,</td></tr>
 <tr class="nil"><td class="ln">1061</td><td class="code">                border: &#x27;2px dashed #3b82f6&#x27;, background: &#x27;rgba(59, 130, 246, 0.08)&#x27;,</td></tr>
@@ -1095,14 +1096,14 @@
 <tr class="nil"><td class="ln">1078</td><td class="code">/** Hidden controller iframe that loads demo HTML from SQLite (opaque origin;</td></tr>
 <tr class="nil"><td class="ln">1079</td><td class="code"> *  docs/DEMO-PLATFORM.md). Comm with its pieces goes over the parent relay. */</td></tr>
 <tr class="nil"><td class="ln">1080</td><td class="code">function ControllerIframe({ assetId }: { assetId: string }) {</td></tr>
-<tr class="unc"><td class="ln">1081</td><td class="code">  const config = usePresentationStore((s) =&gt; s.presentation.config);</td></tr>
-<tr class="unc"><td class="ln">1082</td><td class="code">  const theme = usePresentationStore((s) =&gt; s.presentation.theme);</td></tr>
-<tr class="unc"><td class="ln">1083</td><td class="code">  const slide = usePresentationStore((s) =&gt; s.presentation.slides[s.currentSlideIndex]);</td></tr>
-<tr class="unc"><td class="ln">1084</td><td class="code">  const fontFacesCss = useDeckFontFacesCss();</td></tr>
-<tr class="unc"><td class="ln">1085</td><td class="code">  const varsCss = slide ? demoVarsCssForSlide(config, theme, slide) : &#x27;&#x27;;</td></tr>
-<tr class="unc"><td class="ln">1086</td><td class="code">  const src = useDemoDoc(assetId, { hash: &#x27;role=controller&#x27;, channelKey: assetId, varsCss, fontFacesCss });</td></tr>
-<tr class="unc"><td class="ln">1087</td><td class="code">  if (!src) return null;</td></tr>
-<tr class="unc"><td class="ln">1088</td><td class="code">  return (</td></tr>
+<tr class="nil"><td class="ln">1081</td><td class="code">  const config = usePresentationStore((s) =&gt; s.presentation.config);</td></tr>
+<tr class="nil"><td class="ln">1082</td><td class="code">  const theme = usePresentationStore((s) =&gt; s.presentation.theme);</td></tr>
+<tr class="nil"><td class="ln">1083</td><td class="code">  const slide = usePresentationStore((s) =&gt; s.presentation.slides[s.currentSlideIndex]);</td></tr>
+<tr class="nil"><td class="ln">1084</td><td class="code">  const fontFacesCss = useDeckFontFacesCss();</td></tr>
+<tr class="nil"><td class="ln">1085</td><td class="code">  const varsCss = slide ? demoVarsCssForSlide(config, theme, slide) : &#x27;&#x27;;</td></tr>
+<tr class="nil"><td class="ln">1086</td><td class="code">  const src = useDemoDoc(assetId, { hash: &#x27;role=controller&#x27;, channelKey: assetId, varsCss, fontFacesCss });</td></tr>
+<tr class="nil"><td class="ln">1087</td><td class="code">  if (!src) return null;</td></tr>
+<tr class="nil"><td class="ln">1088</td><td class="code">  return (</td></tr>
 <tr class="nil"><td class="ln">1089</td><td class="code">    &lt;iframe</td></tr>
 <tr class="nil"><td class="ln">1090</td><td class="code">      src={src}</td></tr>
 <tr class="nil"><td class="ln">1091</td><td class="code">      sandbox=&quot;allow-scripts&quot;</td></tr>

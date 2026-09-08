@@ -5,13 +5,14 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/pasteAs.ts </h1>
   <div class="stats">
-    <span class="stat"><b>100%</b> covered</span>
-    <span class="stat">53/53 executable</span>
-    <span class="stat unc-txt">0 uncovered</span>
+    <span class="stat"><b>99%</b> covered</span>
+    <span class="stat">67/68 statements</span>
+    <span class="stat unc-txt">1 uncovered</span>
     <span class="stat">159 raw lines</span>
     <span class="stat">0.37% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:33.333%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:66.667%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:98.529%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:1.471%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__components__PasteAsModal_tsx.html">PasteAsModal.tsx</a> <a href="src__components__SlideEditor_tsx.html">SlideEditor.tsx</a></div>
 </header>
@@ -49,24 +50,24 @@
 <tr class="nil"><td class="ln">32</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">33</td><td class="code">// Order = the order shown in the chooser (richest graphics first, text last).</td></tr>
 <tr class="cov"><td class="ln">34</td><td class="code">const KINDS: KindSpec[] = [</td></tr>
-<tr class="nil"><td class="ln">35</td><td class="code">  { kind: &#x27;image&#x27;, label: &#x27;Image&#x27;,</td></tr>
-<tr class="nil"><td class="ln">36</td><td class="code">    types: [&#x27;public.png&#x27;, &#x27;image/png&#x27;, &#x27;public.jpeg&#x27;, &#x27;image/jpeg&#x27;, &#x27;public.jpg&#x27;, &#x27;public.tiff&#x27;, &#x27;image/tiff&#x27;, &#x27;image/gif&#x27;, &#x27;com.compuserve.gif&#x27;, &#x27;image/webp&#x27;, &#x27;org.webmproject.webp&#x27;],</td></tr>
-<tr class="nil"><td class="ln">37</td><td class="code">    mime: &#x27;image/png&#x27;, ext: &#x27;png&#x27; },</td></tr>
-<tr class="nil"><td class="ln">38</td><td class="code">  { kind: &#x27;svg&#x27;, label: &#x27;SVG&#x27;,</td></tr>
-<tr class="nil"><td class="ln">39</td><td class="code">    types: [&#x27;public.svg-image&#x27;, &#x27;com.microsoft.image-svg-xml&#x27;, &#x27;image/svg+xml&#x27;],</td></tr>
-<tr class="nil"><td class="ln">40</td><td class="code">    mime: &#x27;image/svg+xml&#x27;, ext: &#x27;svg&#x27; },</td></tr>
-<tr class="nil"><td class="ln">41</td><td class="code">  { kind: &#x27;pdf&#x27;, label: &#x27;PDF&#x27;,</td></tr>
-<tr class="nil"><td class="ln">42</td><td class="code">    types: [&#x27;com.adobe.pdf&#x27;, &#x27;application/pdf&#x27;],</td></tr>
-<tr class="nil"><td class="ln">43</td><td class="code">    mime: &#x27;application/pdf&#x27;, ext: &#x27;pdf&#x27; },</td></tr>
+<tr class="cov"><td class="ln">35</td><td class="code">  { kind: &#x27;image&#x27;, label: &#x27;Image&#x27;,</td></tr>
+<tr class="cov"><td class="ln">36</td><td class="code">    types: [&#x27;public.png&#x27;, &#x27;image/png&#x27;, &#x27;public.jpeg&#x27;, &#x27;image/jpeg&#x27;, &#x27;public.jpg&#x27;, &#x27;public.tiff&#x27;, &#x27;image/tiff&#x27;, &#x27;image/gif&#x27;, &#x27;com.compuserve.gif&#x27;, &#x27;image/webp&#x27;, &#x27;org.webmproject.webp&#x27;],</td></tr>
+<tr class="cov"><td class="ln">37</td><td class="code">    mime: &#x27;image/png&#x27;, ext: &#x27;png&#x27; },</td></tr>
+<tr class="cov"><td class="ln">38</td><td class="code">  { kind: &#x27;svg&#x27;, label: &#x27;SVG&#x27;,</td></tr>
+<tr class="cov"><td class="ln">39</td><td class="code">    types: [&#x27;public.svg-image&#x27;, &#x27;com.microsoft.image-svg-xml&#x27;, &#x27;image/svg+xml&#x27;],</td></tr>
+<tr class="cov"><td class="ln">40</td><td class="code">    mime: &#x27;image/svg+xml&#x27;, ext: &#x27;svg&#x27; },</td></tr>
+<tr class="cov"><td class="ln">41</td><td class="code">  { kind: &#x27;pdf&#x27;, label: &#x27;PDF&#x27;,</td></tr>
+<tr class="cov"><td class="ln">42</td><td class="code">    types: [&#x27;com.adobe.pdf&#x27;, &#x27;application/pdf&#x27;],</td></tr>
+<tr class="cov"><td class="ln">43</td><td class="code">    mime: &#x27;application/pdf&#x27;, ext: &#x27;pdf&#x27; },</td></tr>
 <tr class="nil"><td class="ln">44</td><td class="code">  // Synthesized (no raw clipboard type): rasterize the clipboard HTML to a</td></tr>
 <tr class="nil"><td class="ln">45</td><td class="code">  // static PNG. Offered only when HTML *and* text are present — see</td></tr>
 <tr class="nil"><td class="ln">46</td><td class="code">  // clipboardRepresentations. mime/ext are the captured output.</td></tr>
-<tr class="nil"><td class="ln">47</td><td class="code">  { kind: &#x27;html-image&#x27;, label: &#x27;Simple Image&#x27;,</td></tr>
-<tr class="nil"><td class="ln">48</td><td class="code">    types: [], mime: &#x27;image/png&#x27;, ext: &#x27;png&#x27; },</td></tr>
-<tr class="nil"><td class="ln">49</td><td class="code">  { kind: &#x27;html&#x27;, label: &#x27;HTML element&#x27;,</td></tr>
-<tr class="nil"><td class="ln">50</td><td class="code">    types: [&#x27;public.html&#x27;, &#x27;text/html&#x27;] },</td></tr>
-<tr class="nil"><td class="ln">51</td><td class="code">  { kind: &#x27;text&#x27;, label: &#x27;Text&#x27;,</td></tr>
-<tr class="nil"><td class="ln">52</td><td class="code">    types: [&#x27;public.utf8-plain-text&#x27;, &#x27;public.text&#x27;, &#x27;text/plain&#x27;, &#x27;public.rtf&#x27;, &#x27;text/rtf&#x27;] },</td></tr>
+<tr class="cov"><td class="ln">47</td><td class="code">  { kind: &#x27;html-image&#x27;, label: &#x27;Simple Image&#x27;,</td></tr>
+<tr class="cov"><td class="ln">48</td><td class="code">    types: [], mime: &#x27;image/png&#x27;, ext: &#x27;png&#x27; },</td></tr>
+<tr class="cov"><td class="ln">49</td><td class="code">  { kind: &#x27;html&#x27;, label: &#x27;HTML element&#x27;,</td></tr>
+<tr class="cov"><td class="ln">50</td><td class="code">    types: [&#x27;public.html&#x27;, &#x27;text/html&#x27;] },</td></tr>
+<tr class="cov"><td class="ln">51</td><td class="code">  { kind: &#x27;text&#x27;, label: &#x27;Text&#x27;,</td></tr>
+<tr class="cov"><td class="ln">52</td><td class="code">    types: [&#x27;public.utf8-plain-text&#x27;, &#x27;public.text&#x27;, &#x27;text/plain&#x27;, &#x27;public.rtf&#x27;, &#x27;text/rtf&#x27;] },</td></tr>
 <tr class="nil"><td class="ln">53</td><td class="code">];</td></tr>
 <tr class="nil"><td class="ln">54</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">55</td><td class="code">const HTML_TYPES = [&#x27;public.html&#x27;, &#x27;text/html&#x27;];</td></tr>
@@ -80,13 +81,13 @@
 <tr class="nil"><td class="ln">63</td><td class="code">  // are present — i.e. a rich copy (browser/Word/Docs) where rasterizing is a</td></tr>
 <tr class="nil"><td class="ln">64</td><td class="code">  // meaningful alternative to pasting the text.</td></tr>
 <tr class="cov"><td class="ln">65</td><td class="code">  const htmlImage = has(HTML_TYPES) &amp;&amp; has(TEXT_TYPES);</td></tr>
-<tr class="cov"><td class="ln">66</td><td class="code">  return KINDS</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code">  return KINDS</td></tr>
 <tr class="cov"><td class="ln">67</td><td class="code">    .filter((k) =&gt; (k.kind === &#x27;html-image&#x27; ? htmlImage : has(k.types)))</td></tr>
 <tr class="cov"><td class="ln">68</td><td class="code">    .map((k) =&gt; ({ kind: k.kind, label: k.label }));</td></tr>
 <tr class="nil"><td class="ln">69</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">70</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">71</td><td class="code">async function invokeSafe&lt;T&gt;(cmd: string, args: Record&lt;string, unknown&gt;): Promise&lt;T | null&gt; {</td></tr>
-<tr class="cov"><td class="ln">72</td><td class="code">  try {</td></tr>
+<tr class="nil"><td class="ln">72</td><td class="code">  try {</td></tr>
 <tr class="cov"><td class="ln">73</td><td class="code">    const { invoke } = await import(&#x27;@tauri-apps/api/core&#x27;);</td></tr>
 <tr class="cov"><td class="ln">74</td><td class="code">    return await invoke&lt;T&gt;(cmd, args);</td></tr>
 <tr class="nil"><td class="ln">75</td><td class="code">  } catch {</td></tr>
@@ -100,8 +101,8 @@
 <tr class="cov"><td class="ln">83</td><td class="code">  const out = new Set&lt;string&gt;();</td></tr>
 <tr class="cov"><td class="ln">84</td><td class="code">  const native = await invokeSafe&lt;string[]&gt;(&#x27;pasteboard_list_types&#x27;, {});</td></tr>
 <tr class="cov"><td class="ln">85</td><td class="code">  native?.forEach((t) =&gt; out.add(t));</td></tr>
-<tr class="cov"><td class="ln">86</td><td class="code">  if (typeof navigator !== &#x27;undefined&#x27; &amp;&amp; navigator.clipboard?.read) {</td></tr>
-<tr class="cov"><td class="ln">87</td><td class="code">    try {</td></tr>
+<tr class="nil"><td class="ln">86</td><td class="code">  if (typeof navigator !== &#x27;undefined&#x27; &amp;&amp; navigator.clipboard?.read) {</td></tr>
+<tr class="nil"><td class="ln">87</td><td class="code">    try {</td></tr>
 <tr class="cov"><td class="ln">88</td><td class="code">      const items = await navigator.clipboard.read();</td></tr>
 <tr class="cov"><td class="ln">89</td><td class="code">      items.forEach((it) =&gt; it.types.forEach((t) =&gt; out.add(t)));</td></tr>
 <tr class="nil"><td class="ln">90</td><td class="code">    } catch { /* permission / not focused */ }</td></tr>
@@ -115,12 +116,12 @@
 <tr class="nil"><td class="ln">98</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">99</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">100</td><td class="code">async function readAsyncBytes(mimes: string[]): Promise&lt;Uint8Array | null&gt; {</td></tr>
-<tr class="cov"><td class="ln">101</td><td class="code">  if (typeof navigator === &#x27;undefined&#x27; || !navigator.clipboard?.read) return null;</td></tr>
-<tr class="cov"><td class="ln">102</td><td class="code">  try {</td></tr>
+<tr class="part"><td class="ln">101</td><td class="code">  if (typeof navigator === &#x27;undefined&#x27; || !navigator.clipboard?.read) return null;</td></tr>
+<tr class="nil"><td class="ln">102</td><td class="code">  try {</td></tr>
 <tr class="cov"><td class="ln">103</td><td class="code">    const items = await navigator.clipboard.read();</td></tr>
-<tr class="cov"><td class="ln">104</td><td class="code">    for (const it of items) {</td></tr>
-<tr class="cov"><td class="ln">105</td><td class="code">      for (const m of mimes) {</td></tr>
-<tr class="cov"><td class="ln">106</td><td class="code">        if (it.types.includes(m)) {</td></tr>
+<tr class="nil"><td class="ln">104</td><td class="code">    for (const it of items) {</td></tr>
+<tr class="nil"><td class="ln">105</td><td class="code">      for (const m of mimes) {</td></tr>
+<tr class="nil"><td class="ln">106</td><td class="code">        if (it.types.includes(m)) {</td></tr>
 <tr class="cov"><td class="ln">107</td><td class="code">          const blob = await it.getType(m);</td></tr>
 <tr class="cov"><td class="ln">108</td><td class="code">          return new Uint8Array(await blob.arrayBuffer());</td></tr>
 <tr class="nil"><td class="ln">109</td><td class="code">        }</td></tr>
@@ -145,17 +146,17 @@
 <tr class="cov"><td class="ln">128</td><td class="code">  const spec = KINDS.find((k) =&gt; k.kind === kind);</td></tr>
 <tr class="cov"><td class="ln">129</td><td class="code">  if (!spec) return null;</td></tr>
 <tr class="nil"><td class="ln">130</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">131</td><td class="code">  if (kind === &#x27;text&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">131</td><td class="code">  if (kind === &#x27;text&#x27;) {</td></tr>
 <tr class="cov"><td class="ln">132</td><td class="code">    const nb = await readNativeBytes(&#x27;public.utf8-plain-text&#x27;) ?? await readNativeBytes(&#x27;public.text&#x27;);</td></tr>
 <tr class="cov"><td class="ln">133</td><td class="code">    if (nb) return { kind, text: new TextDecoder(&#x27;utf-8&#x27;).decode(nb) };</td></tr>
-<tr class="cov"><td class="ln">134</td><td class="code">    try {</td></tr>
+<tr class="nil"><td class="ln">134</td><td class="code">    try {</td></tr>
 <tr class="cov"><td class="ln">135</td><td class="code">      const t = await navigator.clipboard?.readText?.();</td></tr>
 <tr class="cov"><td class="ln">136</td><td class="code">      if (t) return { kind, text: t };</td></tr>
 <tr class="nil"><td class="ln">137</td><td class="code">    } catch { /* ignore */ }</td></tr>
 <tr class="cov"><td class="ln">138</td><td class="code">    return null;</td></tr>
 <tr class="nil"><td class="ln">139</td><td class="code">  }</td></tr>
 <tr class="nil"><td class="ln">140</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">141</td><td class="code">  if (kind === &#x27;html&#x27; || kind === &#x27;html-image&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">141</td><td class="code">  if (kind === &#x27;html&#x27; || kind === &#x27;html-image&#x27;) {</td></tr>
 <tr class="nil"><td class="ln">142</td><td class="code">    // Both read the clipboard HTML; the caller rasterizes it for &#x27;html-image&#x27;</td></tr>
 <tr class="nil"><td class="ln">143</td><td class="code">    // and creates a raw HTML element for &#x27;html&#x27;.</td></tr>
 <tr class="cov"><td class="ln">144</td><td class="code">    const nb = await readNativeBytes(&#x27;public.html&#x27;);</td></tr>
@@ -166,7 +167,7 @@
 <tr class="nil"><td class="ln">149</td><td class="code">  }</td></tr>
 <tr class="nil"><td class="ln">150</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">151</td><td class="code">  // image / svg / pdf → raw bytes</td></tr>
-<tr class="cov"><td class="ln">152</td><td class="code">  for (const t of spec.types) {</td></tr>
+<tr class="nil"><td class="ln">152</td><td class="code">  for (const t of spec.types) {</td></tr>
 <tr class="cov"><td class="ln">153</td><td class="code">    const nb = await readNativeBytes(t);</td></tr>
 <tr class="cov"><td class="ln">154</td><td class="code">    if (nb) return { kind, bytes: nb, mime: spec.mime, ext: spec.ext };</td></tr>
 <tr class="nil"><td class="ln">155</td><td class="code">  }</td></tr>

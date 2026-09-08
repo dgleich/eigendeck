@@ -6,12 +6,13 @@
   <h1>src/export-cli.ts </h1>
   <div class="stats">
     <span class="stat"><b>0%</b> covered</span>
-    <span class="stat">0/83 executable</span>
-    <span class="stat unc-txt">83 uncovered</span>
+    <span class="stat">0/95 statements</span>
+    <span class="stat unc-txt">95 uncovered</span>
     <span class="stat">212 raw lines</span>
     <span class="stat">0.50% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:0.000%"></span><span class="seg unc" style="width:39.151%"></span><span class="seg nil" style="width:60.849%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:0.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:100.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__lib__assetCachePreview_mjs.html">assetCachePreview.mjs</a> <a href="src__lib__exportCore_mjs.html">exportCore.mjs</a> <a href="src__lib__fonts_ts.html">fonts.ts</a> <a href="src__lib__mathjax_ts.html">mathjax.ts</a> <a href="src__lib__mathjaxRenderer_ts.html">mathjaxRenderer.ts</a> <a href="src__lib__normalizePresentation_ts.html">normalizePresentation.ts</a> <a href="src__lib__printLayer_ts.html">printLayer.ts</a> <a href="src__lib__printSlideHtml_ts.html">printSlideHtml.ts</a></div>
   <div class="links"><span>imported by:</span> <i>none</i></div>
 </header>
@@ -54,14 +55,14 @@
 <tr class="nil"><td class="ln">37</td><td class="code">// unused here (the cache key is element-only) but accepted for honesty.</td></tr>
 <tr class="nil"><td class="ln">38</td><td class="code">// eslint-disable-next-line @typescript-eslint/no-explicit-any</td></tr>
 <tr class="nil"><td class="ln">39</td><td class="code">async function getElementPreview(el: any, _slide?: any): Promise&lt;string | null&gt; {</td></tr>
-<tr class="unc"><td class="ln">40</td><td class="code">  try {</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">  try {</td></tr>
 <tr class="unc"><td class="ln">41</td><td class="code">    const key = previewLookupKey(el);</td></tr>
 <tr class="unc"><td class="ln">42</td><td class="code">    if (!key) return null;</td></tr>
 <tr class="unc"><td class="ln">43</td><td class="code">    const variants = await invoke&lt;CacheVariant[]&gt;(&#x27;db_list_asset_cache_variants&#x27;, { sourceId: key.sourceId });</td></tr>
 <tr class="unc"><td class="ln">44</td><td class="code">    const best = pickLargestVariant(variants, key.variant);</td></tr>
 <tr class="unc"><td class="ln">45</td><td class="code">    if (!best) return null;</td></tr>
 <tr class="unc"><td class="ln">46</td><td class="code">    const buf = await invoke&lt;ArrayBuffer&gt;(&#x27;db_get_asset_cache_bytes&#x27;, {</td></tr>
-<tr class="nil"><td class="ln">47</td><td class="code">      sourceId: key.sourceId, variant: key.variant, width: best.width, height: best.height,</td></tr>
+<tr class="unc"><td class="ln">47</td><td class="code">      sourceId: key.sourceId, variant: key.variant, width: best.width, height: best.height,</td></tr>
 <tr class="nil"><td class="ln">48</td><td class="code">    });</td></tr>
 <tr class="unc"><td class="ln">49</td><td class="code">    const bytes = new Uint8Array(buf);</td></tr>
 <tr class="unc"><td class="ln">50</td><td class="code">    if (!bytes.length) return null;</td></tr>
@@ -83,7 +84,7 @@
 <tr class="nil"><td class="ln">66</td><td class="code"> * SVG from the cache (or singleton-rendered SVG), returns the patched html.</td></tr>
 <tr class="nil"><td class="ln">67</td><td class="code"> */</td></tr>
 <tr class="nil"><td class="ln">68</td><td class="code">function makeCachingRenderMath(preamble: string) {</td></tr>
-<tr class="unc"><td class="ln">69</td><td class="code">  return async (html: string, bundleId?: string): Promise&lt;string&gt; =&gt; {</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code">  return async (html: string, bundleId?: string): Promise&lt;string&gt; =&gt; {</td></tr>
 <tr class="unc"><td class="ln">70</td><td class="code">    if (!/\$\$[\s\S]+?\$\$|\$[^\$\n]+?\$/.test(html)) return html;</td></tr>
 <tr class="nil"><td class="ln">71</td><td class="code">    // Use bundleId &#x27;ptsans&#x27; as default if not provided (singleton fallback).</td></tr>
 <tr class="unc"><td class="ln">72</td><td class="code">    const bundle = bundleId || &#x27;ptsans&#x27;;</td></tr>
@@ -91,15 +92,15 @@
 <tr class="nil"><td class="ln">74</td><td class="code">    // Walk the HTML similar to renderMathInHtml — skip tags, find $..$/$$..$$.</td></tr>
 <tr class="unc"><td class="ln">75</td><td class="code">    const parts: string[] = [];</td></tr>
 <tr class="unc"><td class="ln">76</td><td class="code">    let i = 0;</td></tr>
-<tr class="unc"><td class="ln">77</td><td class="code">    while (i &lt; html.length) {</td></tr>
-<tr class="unc"><td class="ln">78</td><td class="code">      if (html[i] === &#x27;&lt;&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">77</td><td class="code">    while (i &lt; html.length) {</td></tr>
+<tr class="nil"><td class="ln">78</td><td class="code">      if (html[i] === &#x27;&lt;&#x27;) {</td></tr>
 <tr class="unc"><td class="ln">79</td><td class="code">        const end = html.indexOf(&#x27;&gt;&#x27;, i);</td></tr>
 <tr class="unc"><td class="ln">80</td><td class="code">        if (end !== -1) { parts.push(html.slice(i, end + 1)); i = end + 1; continue; }</td></tr>
 <tr class="nil"><td class="ln">81</td><td class="code">      }</td></tr>
 <tr class="nil"><td class="ln">82</td><td class="code">      // Display $$..$$</td></tr>
-<tr class="unc"><td class="ln">83</td><td class="code">      if (html[i] === &#x27;$&#x27; &amp;&amp; html[i + 1] === &#x27;$&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">83</td><td class="code">      if (html[i] === &#x27;$&#x27; &amp;&amp; html[i + 1] === &#x27;$&#x27;) {</td></tr>
 <tr class="unc"><td class="ln">84</td><td class="code">        const end = html.indexOf(&#x27;$$&#x27;, i + 2);</td></tr>
-<tr class="unc"><td class="ln">85</td><td class="code">        if (end !== -1) {</td></tr>
+<tr class="nil"><td class="ln">85</td><td class="code">        if (end !== -1) {</td></tr>
 <tr class="unc"><td class="ln">86</td><td class="code">          const tex = html.slice(i + 2, end);</td></tr>
 <tr class="unc"><td class="ln">87</td><td class="code">          const svg = await renderOne(tex, bundle, true, preamble);</td></tr>
 <tr class="unc"><td class="ln">88</td><td class="code">          parts.push(`&lt;div style=&quot;text-align:center;&quot;&gt;${svg}&lt;/div&gt;`);</td></tr>
@@ -108,9 +109,9 @@
 <tr class="nil"><td class="ln">91</td><td class="code">        }</td></tr>
 <tr class="nil"><td class="ln">92</td><td class="code">      }</td></tr>
 <tr class="nil"><td class="ln">93</td><td class="code">      // Inline $..$</td></tr>
-<tr class="unc"><td class="ln">94</td><td class="code">      if (html[i] === &#x27;$&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">94</td><td class="code">      if (html[i] === &#x27;$&#x27;) {</td></tr>
 <tr class="unc"><td class="ln">95</td><td class="code">        const end = html.indexOf(&#x27;$&#x27;, i + 1);</td></tr>
-<tr class="unc"><td class="ln">96</td><td class="code">        if (end !== -1 &amp;&amp; !html.slice(i + 1, end).includes(&#x27;\n&#x27;)) {</td></tr>
+<tr class="nil"><td class="ln">96</td><td class="code">        if (end !== -1 &amp;&amp; !html.slice(i + 1, end).includes(&#x27;\n&#x27;)) {</td></tr>
 <tr class="unc"><td class="ln">97</td><td class="code">          const tex = html.slice(i + 1, end);</td></tr>
 <tr class="unc"><td class="ln">98</td><td class="code">          const svg = await renderOne(tex, bundle, false, preamble);</td></tr>
 <tr class="unc"><td class="ln">99</td><td class="code">          parts.push(svg);</td></tr>
@@ -131,9 +132,9 @@
 <tr class="nil"><td class="ln">114</td><td class="code"> */</td></tr>
 <tr class="nil"><td class="ln">115</td><td class="code">async function renderOne(tex: string, bundleId: string, display: boolean, preamble: string): Promise&lt;string&gt; {</td></tr>
 <tr class="unc"><td class="ln">116</td><td class="code">  const key = mathCacheKey(tex, bundleId, display, preamble);</td></tr>
-<tr class="unc"><td class="ln">117</td><td class="code">  try {</td></tr>
+<tr class="nil"><td class="ln">117</td><td class="code">  try {</td></tr>
 <tr class="unc"><td class="ln">118</td><td class="code">    const row = await invoke&lt;CachedMathRow | null&gt;(&#x27;db_get_math_svg&#x27;, { key });</td></tr>
-<tr class="unc"><td class="ln">119</td><td class="code">    if (row) {</td></tr>
+<tr class="nil"><td class="ln">119</td><td class="code">    if (row) {</td></tr>
 <tr class="nil"><td class="ln">120</td><td class="code">      // Match the inline-math vertical-align tweak the iframe-pool render adds.</td></tr>
 <tr class="unc"><td class="ln">121</td><td class="code">      if (display) return row.svg;</td></tr>
 <tr class="unc"><td class="ln">122</td><td class="code">      const valign = row.valign || &#x27;-0.025ex&#x27;;</td></tr>
@@ -142,7 +143,7 @@
 <tr class="nil"><td class="ln">125</td><td class="code">  } catch { /* fall through to singleton */ }</td></tr>
 <tr class="nil"><td class="ln">126</td><td class="code">  // Cache miss: use the singleton renderer (will be in body font only).</td></tr>
 <tr class="unc"><td class="ln">127</td><td class="code">  const wrapped = display ? `$$${tex}$$` : `$${tex}$`;</td></tr>
-<tr class="unc"><td class="ln">128</td><td class="code">  try {</td></tr>
+<tr class="nil"><td class="ln">128</td><td class="code">  try {</td></tr>
 <tr class="unc"><td class="ln">129</td><td class="code">    const out = await renderMathInHtml(wrapped);</td></tr>
 <tr class="unc"><td class="ln">130</td><td class="code">    return out;</td></tr>
 <tr class="nil"><td class="ln">131</td><td class="code">  } catch {</td></tr>
@@ -151,7 +152,7 @@
 <tr class="nil"><td class="ln">134</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">135</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">136</td><td class="code">async function main() {</td></tr>
-<tr class="unc"><td class="ln">137</td><td class="code">  try {</td></tr>
+<tr class="nil"><td class="ln">137</td><td class="code">  try {</td></tr>
 <tr class="unc"><td class="ln">138</td><td class="code">    const args = await invoke&lt;{ dbPath: string; outputPath: string }&gt;(&#x27;cli_export_args&#x27;);</td></tr>
 <tr class="unc"><td class="ln">139</td><td class="code">    await invoke(&#x27;db_open&#x27;, { path: args.dbPath });</td></tr>
 <tr class="unc"><td class="ln">140</td><td class="code">    const json = await invoke&lt;string&gt;(&#x27;db_export_json&#x27;);</td></tr>
@@ -167,7 +168,7 @@
 <tr class="unc"><td class="ln">150</td><td class="code">    console.log(`Exporting &quot;${presentation.title}&quot; (${presentation.slides.length} slides)...`);</td></tr>
 <tr class="nil"><td class="ln">151</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">152</td><td class="code">    const preamble = presentation.config?.mathPreamble || &#x27;&#x27;;</td></tr>
-<tr class="unc"><td class="ln">153</td><td class="code">    if (preamble) {</td></tr>
+<tr class="nil"><td class="ln">153</td><td class="code">    if (preamble) {</td></tr>
 <tr class="unc"><td class="ln">154</td><td class="code">      try { await applyMathPreamble(preamble); } catch (e) { console.warn(&#x27;preamble apply failed:&#x27;, e); }</td></tr>
 <tr class="nil"><td class="ln">155</td><td class="code">    }</td></tr>
 <tr class="unc"><td class="ln">156</td><td class="code">    const cachingRender = makeCachingRenderMath(preamble);</td></tr>
@@ -191,7 +192,7 @@
 <tr class="unc"><td class="ln">174</td><td class="code">    try { ({ slideHtmls: printSlideHtmls } = await preparePrintLayer(presentation, { renderMath: cachingRender })); }</td></tr>
 <tr class="unc"><td class="ln">175</td><td class="code">    catch (e) { console.warn(&#x27;print layer (cli) failed:&#x27;, e); }</td></tr>
 <tr class="nil"><td class="ln">176</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">177</td><td class="code">    const html = await buildExportHtml({</td></tr>
+<tr class="nil"><td class="ln">177</td><td class="code">    const html = await buildExportHtml({</td></tr>
 <tr class="nil"><td class="ln">178</td><td class="code">      presentation,</td></tr>
 <tr class="nil"><td class="ln">179</td><td class="code">      fontFacesCss,</td></tr>
 <tr class="nil"><td class="ln">180</td><td class="code">      printSlideHtmls,</td></tr>

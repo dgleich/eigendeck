@@ -5,13 +5,14 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/textStyle.mjs </h1>
   <div class="stats">
-    <span class="stat"><b>98%</b> covered</span>
-    <span class="stat">45/46 executable</span>
-    <span class="stat unc-txt">1 uncovered</span>
+    <span class="stat"><b>97%</b> covered</span>
+    <span class="stat">63/65 statements</span>
+    <span class="stat unc-txt">2 uncovered</span>
     <span class="stat">126 raw lines</span>
     <span class="stat">0.29% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:35.714%"></span><span class="seg unc" style="width:0.794%"></span><span class="seg nil" style="width:63.492%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:96.923%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:3.077%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src__components__ColorControl_tsx.html">ColorControl.tsx</a> <a href="src__components__PresentMode_tsx.html">PresentMode.tsx</a> <a href="src__components__TextElementSvg_tsx.html">TextElementSvg.tsx</a> <a href="src__lib__elementDescriptor_mjs.html">elementDescriptor.mjs</a> <a href="src__lib__exportCore_mjs.html">exportCore.mjs</a> <a href="src__lib__htmlVars_mjs.html">htmlVars.mjs</a> <a href="src__lib__printSlideHtml_ts.html">printSlideHtml.ts</a> <a href="src__lib__textElementHtml_mjs.html">textElementHtml.mjs</a> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
 </header>
@@ -36,7 +37,7 @@
 <tr class="cov"><td class="ln">19</td><td class="code">  const a = el.backgroundOpacity ?? 1;</td></tr>
 <tr class="cov"><td class="ln">20</td><td class="code">  if (a &gt;= 1) return el.backgroundColor;</td></tr>
 <tr class="cov"><td class="ln">21</td><td class="code">  const hex = el.backgroundColor.replace(&#x27;#&#x27;, &#x27;&#x27;);</td></tr>
-<tr class="cov"><td class="ln">22</td><td class="code">  if (/^[0-9a-fA-F]{6}$/.test(hex)) {</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">  if (/^[0-9a-fA-F]{6}$/.test(hex)) {</td></tr>
 <tr class="cov"><td class="ln">23</td><td class="code">    const r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);</td></tr>
 <tr class="cov"><td class="ln">24</td><td class="code">    return `rgba(${r}, ${g}, ${b}, ${a})`;</td></tr>
 <tr class="nil"><td class="ln">25</td><td class="code">  }</td></tr>
@@ -65,7 +66,7 @@
 <tr class="nil"><td class="ln">48</td><td class="code">/** Rec.601 luminance (0–255) of a #rrggbb color; 0 on bad input. */</td></tr>
 <tr class="nil"><td class="ln">49</td><td class="code">function luma601(hex) {</td></tr>
 <tr class="cov"><td class="ln">50</td><td class="code">  const h = (hex || &#x27;&#x27;).replace(&#x27;#&#x27;, &#x27;&#x27;);</td></tr>
-<tr class="cov"><td class="ln">51</td><td class="code">  if (!/^[0-9a-fA-F]{6}$/.test(h)) return 0;</td></tr>
+<tr class="part"><td class="ln">51</td><td class="code">  if (!/^[0-9a-fA-F]{6}$/.test(h)) return 0;</td></tr>
 <tr class="cov"><td class="ln">52</td><td class="code">  return 0.299 * parseInt(h.slice(0, 2), 16) + 0.587 * parseInt(h.slice(2, 4), 16) + 0.114 * parseInt(h.slice(4, 6), 16);</td></tr>
 <tr class="nil"><td class="ln">53</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">54</td><td class="code">&nbsp;</td></tr>
@@ -77,7 +78,7 @@
 <tr class="nil"><td class="ln">60</td><td class="code"> *  surface — an earlier white-wash desaturated it into a muddy grey slate. Otherwise</td></tr>
 <tr class="nil"><td class="ln">61</td><td class="code"> *  the fixed backgroundColor. `theme` is the resolved ThemeColors ({ background, accent }). */</td></tr>
 <tr class="nil"><td class="ln">62</td><td class="code">export function textBackgroundResolved(el, theme) {</td></tr>
-<tr class="cov"><td class="ln">63</td><td class="code">  if (el &amp;&amp; el.boxTint &amp;&amp; theme) {</td></tr>
+<tr class="nil"><td class="ln">63</td><td class="code">  if (el &amp;&amp; el.boxTint &amp;&amp; theme) {</td></tr>
 <tr class="cov"><td class="ln">64</td><td class="code">    const bg = theme.background || &#x27;#ffffff&#x27;;</td></tr>
 <tr class="cov"><td class="ln">65</td><td class="code">    const base = el.boxTint === &#x27;accent&#x27; ? (theme.accent || &#x27;#3b82f6&#x27;) : el.boxTint;</td></tr>
 <tr class="cov"><td class="ln">66</td><td class="code">    return mixHex(bg, base, luma601(bg) &lt; 100 ? TINT_STRENGTH_DARK : TINT_STRENGTH);</td></tr>
@@ -99,7 +100,7 @@
 <tr class="nil"><td class="ln">82</td><td class="code">/** Text legibility effect (#73): drop shadow or high-contrast glow. */</td></tr>
 <tr class="nil"><td class="ln">83</td><td class="code">export function textEffectCss(effect, color) {</td></tr>
 <tr class="cov"><td class="ln">84</td><td class="code">  if (effect === &#x27;shadow&#x27;) return &#x27;0 2px 4px rgba(0,0,0,0.45)&#x27;;</td></tr>
-<tr class="cov"><td class="ln">85</td><td class="code">  if (effect === &#x27;glow&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">85</td><td class="code">  if (effect === &#x27;glow&#x27;) {</td></tr>
 <tr class="cov"><td class="ln">86</td><td class="code">    const h = haloFor(color);</td></tr>
 <tr class="cov"><td class="ln">87</td><td class="code">    return `0 0 3px ${h}, 0 0 6px ${h}, 0 0 10px ${h}`;</td></tr>
 <tr class="nil"><td class="ln">88</td><td class="code">  }</td></tr>
@@ -126,8 +127,8 @@
 <tr class="cov"><td class="ln">109</td><td class="code">  if (!sh) return { left: 0, right: 0, top: 0, bottom: 0 };</td></tr>
 <tr class="cov"><td class="ln">110</td><td class="code">  const [ox = 0, oy = 0, b = 0] = sh.split(/\s+/).map((t) =&gt; parseFloat(t) || 0);</td></tr>
 <tr class="cov"><td class="ln">111</td><td class="code">  return {</td></tr>
-<tr class="nil"><td class="ln">112</td><td class="code">    left: Math.max(0, b - ox), right: Math.max(0, b + ox),</td></tr>
-<tr class="nil"><td class="ln">113</td><td class="code">    top: Math.max(0, b - oy), bottom: Math.max(0, b + oy),</td></tr>
+<tr class="cov"><td class="ln">112</td><td class="code">    left: Math.max(0, b - ox), right: Math.max(0, b + ox),</td></tr>
+<tr class="cov"><td class="ln">113</td><td class="code">    top: Math.max(0, b - oy), bottom: Math.max(0, b + oy),</td></tr>
 <tr class="nil"><td class="ln">114</td><td class="code">  };</td></tr>
 <tr class="nil"><td class="ln">115</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">116</td><td class="code">&nbsp;</td></tr>
@@ -136,8 +137,8 @@
 <tr class="nil"><td class="ln">119</td><td class="code"> *  (TextElementSvg) and the HTML export (exportCore). */</td></tr>
 <tr class="nil"><td class="ln">120</td><td class="code">export function applyCodeFont(html, mono) {</td></tr>
 <tr class="cov"><td class="ln">121</td><td class="code">  if (!mono || !html) return html || &#x27;&#x27;;</td></tr>
-<tr class="cov"><td class="ln">122</td><td class="code">  return html.replace(/&lt;code\b([^&gt;]*)&gt;/gi, (_m, attrs) =&gt;</td></tr>
-<tr class="cov"><td class="ln">123</td><td class="code">    /\bstyle\s*=/.test(attrs)</td></tr>
+<tr class="nil"><td class="ln">122</td><td class="code">  return html.replace(/&lt;code\b([^&gt;]*)&gt;/gi, (_m, attrs) =&gt;</td></tr>
+<tr class="nil"><td class="ln">123</td><td class="code">    /\bstyle\s*=/.test(attrs)</td></tr>
 <tr class="cov"><td class="ln">124</td><td class="code">      ? `&lt;code${attrs.replace(/style\s*=\s*&quot;([^&quot;]*)&quot;/i, (_s, c) =&gt; `style=&quot;${c};font-family:${mono}&quot;`)}&gt;`</td></tr>
 <tr class="nil"><td class="ln">125</td><td class="code">      : `&lt;code${attrs} style=&quot;font-family:${mono}&quot;&gt;`);</td></tr>
 <tr class="nil"><td class="ln">126</td><td class="code">}</td></tr></table>

@@ -5,40 +5,41 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/clipboardModel.ts </h1>
   <div class="stats">
-    <span class="stat"><b>93%</b> covered</span>
-    <span class="stat">27/29 executable</span>
+    <span class="stat"><b>90%</b> covered</span>
+    <span class="stat">18/20 statements</span>
     <span class="stat unc-txt">2 uncovered</span>
     <span class="stat">73 raw lines</span>
     <span class="stat">0.17% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:36.986%"></span><span class="seg unc" style="width:2.740%"></span><span class="seg nil" style="width:60.274%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:90.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:10.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
   <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__components__SlideEditor_tsx.html">SlideEditor.tsx</a> <a href="src__lib__pasteClip_ts.html">pasteClip.ts</a></div>
 </header>
-<table class="src"><tr class="cov"><td class="ln">1</td><td class="code">// The private Eigendeck clipboard &quot;flavor&quot;.</td></tr>
-<tr class="cov"><td class="ln">2</td><td class="code">//</td></tr>
-<tr class="cov"><td class="ln">3</td><td class="code">// Per docs/copy-and-paste.md: we stop keeping a separate authoritative in-memory</td></tr>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// The private Eigendeck clipboard &quot;flavor&quot;.</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// Per docs/copy-and-paste.md: we stop keeping a separate authoritative in-memory</td></tr>
 <tr class="nil"><td class="ln">4</td><td class="code">// buffer (clipboardRef) and instead carry the copied element(s)/slide as JSON on</td></tr>
-<tr class="cov"><td class="ln">5</td><td class="code">// the OS clipboard, base64-embedded in the text/html representation behind our</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// the OS clipboard, base64-embedded in the text/html representation behind our</td></tr>
 <tr class="nil"><td class="ln">6</td><td class="code">// marker. On paste we decode it FIRST — so an internal copy round-trips with full</td></tr>
 <tr class="nil"><td class="ln">7</td><td class="code">// fidelity (references included) straight from the clipboard, with nothing to go</td></tr>
-<tr class="cov"><td class="ln">8</td><td class="code">// stale. (Figma&#x27;s technique; when copy later routes through Rust NSPasteboard we</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">// stale. (Figma&#x27;s technique; when copy later routes through Rust NSPasteboard we</td></tr>
 <tr class="nil"><td class="ln">9</td><td class="code">// can promote this to a real custom UTI.)</td></tr>
 <tr class="nil"><td class="ln">10</td><td class="code">//</td></tr>
-<tr class="cov"><td class="ln">11</td><td class="code">// The codec is pure + unit-tested. Encoding/reading the actual clipboard, and</td></tr>
-<tr class="cov"><td class="ln">12</td><td class="code">// re-resolving links/sync on paste, live in the copy/paste handlers.</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">// The codec is pure + unit-tested. Encoding/reading the actual clipboard, and</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">// re-resolving links/sync on paste, live in the copy/paste handlers.</td></tr>
 <tr class="nil"><td class="ln">13</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">14</td><td class="code">import type { SlideElement } from &#x27;../types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
-<tr class="cov"><td class="ln">15</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">16</td><td class="code">const MARKER_ATTR = &#x27;data-eigendeck-copy&#x27;;</td></tr>
 <tr class="cov"><td class="ln">17</td><td class="code">const JSON_ATTR = &#x27;data-eigendeck-json&#x27;;</td></tr>
 <tr class="cov"><td class="ln">18</td><td class="code">export const CLIP_VERSION = 1;</td></tr>
-<tr class="cov"><td class="ln">19</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">20</td><td class="code">/** The copied objects. `elements` for one-or-more elements (their JSON carries</td></tr>
-<tr class="cov"><td class="ln">21</td><td class="code"> *  link/sync metadata); `slide` for a whole-slide copy. `from*` records the</td></tr>
-<tr class="cov"><td class="ln">22</td><td class="code"> *  origin so paste can decide independent-copy vs re-link vs new-slide. */</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">/** The copied objects. `elements` for one-or-more elements (their JSON carries</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code"> *  link/sync metadata); `slide` for a whole-slide copy. `from*` records the</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code"> *  origin so paste can decide independent-copy vs re-link vs new-slide. */</td></tr>
 <tr class="nil"><td class="ln">23</td><td class="code">export interface EigendeckClip {</td></tr>
-<tr class="unc"><td class="ln">24</td><td class="code">  v: number;</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">  v: number;</td></tr>
 <tr class="nil"><td class="ln">25</td><td class="code">  kind: &#x27;elements&#x27; | &#x27;slide&#x27;;</td></tr>
 <tr class="nil"><td class="ln">26</td><td class="code">  elements?: SlideElement[];</td></tr>
 <tr class="nil"><td class="ln">27</td><td class="code">  slide?: unknown;</td></tr>
@@ -79,10 +80,10 @@
 <tr class="nil"><td class="ln">62</td><td class="code">  // screenshot/text fallback.</td></tr>
 <tr class="cov"><td class="ln">63</td><td class="code">  const m = html.match(new RegExp(`${JSON_ATTR}=[&quot;&#x27;]([A-Za-z0-9+/=]+)[&quot;&#x27;]`));</td></tr>
 <tr class="cov"><td class="ln">64</td><td class="code">  if (!m) return null;</td></tr>
-<tr class="cov"><td class="ln">65</td><td class="code">  try {</td></tr>
+<tr class="nil"><td class="ln">65</td><td class="code">  try {</td></tr>
 <tr class="cov"><td class="ln">66</td><td class="code">    const clip = JSON.parse(b64decode(m[1])) as EigendeckClip;</td></tr>
 <tr class="cov"><td class="ln">67</td><td class="code">    if (!clip || (clip.kind !== &#x27;elements&#x27; &amp;&amp; clip.kind !== &#x27;slide&#x27;)) return null;</td></tr>
-<tr class="cov"><td class="ln">68</td><td class="code">    if (clip.kind === &#x27;elements&#x27; &amp;&amp; !Array.isArray(clip.elements)) return null;</td></tr>
+<tr class="part"><td class="ln">68</td><td class="code">    if (clip.kind === &#x27;elements&#x27; &amp;&amp; !Array.isArray(clip.elements)) return null;</td></tr>
 <tr class="cov"><td class="ln">69</td><td class="code">    return clip;</td></tr>
 <tr class="nil"><td class="ln">70</td><td class="code">  } catch {</td></tr>
 <tr class="unc"><td class="ln">71</td><td class="code">    return null;</td></tr>

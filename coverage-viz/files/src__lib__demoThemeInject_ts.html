@@ -6,12 +6,13 @@
   <h1>src/lib/demoThemeInject.ts </h1>
   <div class="stats">
     <span class="stat"><b>100%</b> covered</span>
-    <span class="stat">12/12 executable</span>
+    <span class="stat">6/6 statements</span>
     <span class="stat unc-txt">0 uncovered</span>
     <span class="stat">38 raw lines</span>
     <span class="stat">0.09% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:31.579%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:68.421%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:100.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:0.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__lib__demoTheme_mjs.html">demoTheme.mjs</a> <a href="src__lib__themes_ts.html">themes.ts</a> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
   <div class="links"><span>imported by:</span> <a href="src__components__PresentSlide_tsx.html">PresentSlide.tsx</a> <a href="src__components__SlideEditor_tsx.html">SlideEditor.tsx</a> <a href="src__components__SlideElementRenderer_tsx.html">SlideElementRenderer.tsx</a> <a href="src__components__notebook__IsolatedOutput_tsx.html">IsolatedOutput.tsx</a> <a href="src__store__fileOps_ts.html">fileOps.ts</a></div>
 </header>
@@ -31,22 +32,22 @@
 <tr class="cov"><td class="ln">14</td><td class="code">  fontForPreset, bareFamilyName, bareNarrowFamilyName,</td></tr>
 <tr class="cov"><td class="ln">15</td><td class="code">  resolveMonoFontPackage,</td></tr>
 <tr class="cov"><td class="ln">16</td><td class="code">} from &#x27;./fonts&#x27;;</td></tr>
-<tr class="nil"><td class="ln">17</td><td class="code">import { demoThemeVarsCss } from &#x27;./demoTheme.mjs&#x27;;<a class="jump" href="src__lib__demoTheme_mjs.html" title="src/lib/demoTheme.mjs">→ demoTheme.mjs</a></td></tr>
+<tr class="cov"><td class="ln">17</td><td class="code">import { demoThemeVarsCss } from &#x27;./demoTheme.mjs&#x27;;<a class="jump" href="src__lib__demoTheme_mjs.html" title="src/lib/demoTheme.mjs">→ demoTheme.mjs</a></td></tr>
 <tr class="nil"><td class="ln">18</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">19</td><td class="code">/** The :root{--eigendeck-*} block for a slide&#x27;s resolved theme + fonts. */</td></tr>
-<tr class="nil"><td class="ln">20</td><td class="code">export function demoVarsCssForSlide(config: PresentationConfig, theme: string, slide: Slide): string {</td></tr>
+<tr class="cov"><td class="ln">20</td><td class="code">export function demoVarsCssForSlide(config: PresentationConfig, theme: string, slide: Slide): string {</td></tr>
 <tr class="cov"><td class="ln">21</td><td class="code">  const colors = resolveTheme(theme, slide.theme);</td></tr>
-<tr class="cov"><td class="ln">22</td><td class="code">  const bodyPkg = fontForPreset(&#x27;body&#x27;, slide, config);</td></tr>
-<tr class="cov"><td class="ln">23</td><td class="code">  const monoPkg = resolveMonoFontPackage(config?.defaultMonoFont);</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">  const bodyPkg = fontForPreset(&#x27;body&#x27;, slide, config);</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">  const monoPkg = resolveMonoFontPackage(config?.defaultMonoFont);</td></tr>
 <tr class="nil"><td class="ln">24</td><td class="code">  // Mono pkg carries a full CSS stack (&quot;&#x27;Source Code Pro&#x27;, monospace&quot;); take the</td></tr>
 <tr class="nil"><td class="ln">25</td><td class="code">  // first quoted family for the bare --eigendeck-mono name.</td></tr>
-<tr class="cov"><td class="ln">26</td><td class="code">  const monoFamily = monoPkg?.family?.match(/&#x27;([^&#x27;]+)&#x27;/)?.[1] || undefined;</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">  const monoFamily = monoPkg?.family?.match(/&#x27;([^&#x27;]+)&#x27;/)?.[1] || undefined;</td></tr>
 <tr class="nil"><td class="ln">27</td><td class="code">  // Only PT Sans ships a real narrow variant. For every other font, fall back to</td></tr>
 <tr class="nil"><td class="ln">28</td><td class="code">  // the body font itself (NOT a clashing &#x27;PT Sans Narrow&#x27;) so a demo using</td></tr>
 <tr class="nil"><td class="ln">29</td><td class="code">  // var(--eigendeck-narrow) stays in the deck&#x27;s typeface — same as the footnote</td></tr>
 <tr class="nil"><td class="ln">30</td><td class="code">  // preset&#x27;s cascade.</td></tr>
-<tr class="cov"><td class="ln">31</td><td class="code">  const narrowFamily = bareNarrowFamilyName(bodyPkg) || bareFamilyName(bodyPkg);</td></tr>
-<tr class="cov"><td class="ln">32</td><td class="code">  return demoThemeVarsCss(colors, {</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">  const narrowFamily = bareNarrowFamilyName(bodyPkg) || bareFamilyName(bodyPkg);</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code">  return demoThemeVarsCss(colors, {</td></tr>
 <tr class="nil"><td class="ln">33</td><td class="code">    font: bareFamilyName(bodyPkg),</td></tr>
 <tr class="nil"><td class="ln">34</td><td class="code">    narrow: narrowFamily,</td></tr>
 <tr class="nil"><td class="ln">35</td><td class="code">    mono: monoFamily,</td></tr>

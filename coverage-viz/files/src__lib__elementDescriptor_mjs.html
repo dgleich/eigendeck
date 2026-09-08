@@ -6,12 +6,13 @@
   <h1>src/lib/elementDescriptor.mjs </h1>
   <div class="stats">
     <span class="stat"><b>100%</b> covered</span>
-    <span class="stat">6/6 executable</span>
+    <span class="stat">6/6 statements</span>
     <span class="stat unc-txt">0 uncovered</span>
     <span class="stat">69 raw lines</span>
     <span class="stat">0.16% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:8.696%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:91.304%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:100.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:0.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__lib__arrowGeometry_mjs.html">arrowGeometry.mjs</a> <a href="src__lib__textStyle_mjs.html">textStyle.mjs</a></div>
   <div class="links"><span>imported by:</span> <a href="src__components__ElementView_tsx.html">ElementView.tsx</a> <a href="src__components__LinkOverlay_tsx.html">LinkOverlay.tsx</a> <a href="src__components__PresentSlide_tsx.html">PresentSlide.tsx</a> <a href="src__components__SlideElementRenderer_tsx.html">SlideElementRenderer.tsx</a> <a href="src__components__SlideThumbnail_tsx.html">SlideThumbnail.tsx</a> <a href="src__lib__elementHtml_mjs.html">elementHtml.mjs</a> <a href="src__lib__imageVisualStyle_ts.html">imageVisualStyle.ts</a></div>
 </header>
@@ -42,8 +43,8 @@
 <tr class="nil"><td class="ln">25</td><td class="code"> *  (e.g. the link overlay) a tinted cover falls back to the plain slide background. */</td></tr>
 <tr class="nil"><td class="ln">26</td><td class="code">export function describeCover(el, resolvedSlideBg, theme) {</td></tr>
 <tr class="cov"><td class="ln">27</td><td class="code">  const background = el.boxTint</td></tr>
-<tr class="nil"><td class="ln">28</td><td class="code">    ? (textBackgroundResolved(el, theme) || resolvedSlideBg)</td></tr>
-<tr class="nil"><td class="ln">29</td><td class="code">    : (el.color || resolvedSlideBg);</td></tr>
+<tr class="cov"><td class="ln">28</td><td class="code">    ? (textBackgroundResolved(el, theme) || resolvedSlideBg)</td></tr>
+<tr class="cov"><td class="ln">29</td><td class="code">    : (el.color || resolvedSlideBg);</td></tr>
 <tr class="cov"><td class="ln">30</td><td class="code">  return { kind: &#x27;cover&#x27;, box: el.position, background };</td></tr>
 <tr class="nil"><td class="ln">31</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">32</td><td class="code">&nbsp;</td></tr>
@@ -57,10 +58,10 @@
 <tr class="nil"><td class="ln">40</td><td class="code"> */</td></tr>
 <tr class="nil"><td class="ln">41</td><td class="code">export function imageVisuals(el) {</td></tr>
 <tr class="cov"><td class="ln">42</td><td class="code">  return {</td></tr>
-<tr class="nil"><td class="ln">43</td><td class="code">    shadow: el.shadow ? &#x27;drop-shadow(4px 8px 16px rgba(0,0,0,0.3))&#x27; : undefined,</td></tr>
-<tr class="nil"><td class="ln">44</td><td class="code">    borderRadius: el.borderRadius || undefined,</td></tr>
-<tr class="nil"><td class="ln">45</td><td class="code">    opacity: (el.opacity != null &amp;&amp; el.opacity &lt; 1) ? el.opacity : undefined,</td></tr>
-<tr class="nil"><td class="ln">46</td><td class="code">    transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,</td></tr>
+<tr class="cov"><td class="ln">43</td><td class="code">    shadow: el.shadow ? &#x27;drop-shadow(4px 8px 16px rgba(0,0,0,0.3))&#x27; : undefined,</td></tr>
+<tr class="cov"><td class="ln">44</td><td class="code">    borderRadius: el.borderRadius || undefined,</td></tr>
+<tr class="cov"><td class="ln">45</td><td class="code">    opacity: (el.opacity != null &amp;&amp; el.opacity &lt; 1) ? el.opacity : undefined,</td></tr>
+<tr class="cov"><td class="ln">46</td><td class="code">    transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,</td></tr>
 <tr class="nil"><td class="ln">47</td><td class="code">  };</td></tr>
 <tr class="nil"><td class="ln">48</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">49</td><td class="code">&nbsp;</td></tr>
@@ -79,9 +80,9 @@
 <tr class="nil"><td class="ln">62</td><td class="code">  // `&#x27;accent&#x27;` follows the slide theme (resolveColor); default stays #2563eb.</td></tr>
 <tr class="cov"><td class="ln">63</td><td class="code">  const color = resolveColor(el.color, theme, &#x27;#2563eb&#x27;);</td></tr>
 <tr class="cov"><td class="ln">64</td><td class="code">  return {</td></tr>
-<tr class="nil"><td class="ln">65</td><td class="code">    kind: &#x27;arrow&#x27;, x1, y1, x2, y2, color, strokeWidth, headSize, heads, opacity,</td></tr>
-<tr class="nil"><td class="ln">66</td><td class="code">    c1x, c1y, c2x, c2y, points,</td></tr>
-<tr class="nil"><td class="ln">67</td><td class="code">    geo: arrowGeometry(x1, y1, x2, y2, headSize, heads, c1x, c1y, c2x, c2y, points),</td></tr>
+<tr class="cov"><td class="ln">65</td><td class="code">    kind: &#x27;arrow&#x27;, x1, y1, x2, y2, color, strokeWidth, headSize, heads, opacity,</td></tr>
+<tr class="cov"><td class="ln">66</td><td class="code">    c1x, c1y, c2x, c2y, points,</td></tr>
+<tr class="cov"><td class="ln">67</td><td class="code">    geo: arrowGeometry(x1, y1, x2, y2, headSize, heads, c1x, c1y, c2x, c2y, points),</td></tr>
 <tr class="nil"><td class="ln">68</td><td class="code">  };</td></tr>
 <tr class="nil"><td class="ln">69</td><td class="code">}</td></tr></table>
 </body></html>

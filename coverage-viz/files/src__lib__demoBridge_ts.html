@@ -5,33 +5,34 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/demoBridge.ts </h1>
   <div class="stats">
-    <span class="stat"><b>85%</b> covered</span>
-    <span class="stat">41/48 executable</span>
-    <span class="stat unc-txt">7 uncovered</span>
+    <span class="stat"><b>93%</b> covered</span>
+    <span class="stat">25/27 statements</span>
+    <span class="stat unc-txt">2 uncovered</span>
     <span class="stat">222 raw lines</span>
     <span class="stat">0.52% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:18.468%"></span><span class="seg unc" style="width:3.153%"></span><span class="seg nil" style="width:78.378%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:92.593%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:7.407%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__lib__demoManifest_ts.html">demoManifest.ts</a></div>
   <div class="links"><span>imported by:</span> <a href="src__lib__demoMount_ts.html">demoMount.ts</a></div>
 </header>
 <table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// The shared demo bridge (docs/DEMO-PLATFORM.md §6). Injected into a demo</td></tr>
 <tr class="nil"><td class="ln">2</td><td class="code">// document at mount so an OPAQUE-ORIGIN iframe behaves like a normal one:</td></tr>
-<tr class="cov"><td class="ln">3</td><td class="code">//   - patches URLSearchParams so demos reading location.hash still get their</td></tr>
-<tr class="cov"><td class="ln">4</td><td class="code">//     role/piece params (srcdoc/opaque contexts can lose location.hash)</td></tr>
-<tr class="cov"><td class="ln">5</td><td class="code">//   - replaces BroadcastChannel with a parent-relayed postMessage channel,</td></tr>
-<tr class="unc"><td class="ln">6</td><td class="code">//     namespaced per instance via channelKey, so a demo&#x27;s pieces + controller</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">//   - patches URLSearchParams so demos reading location.hash still get their</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">//     role/piece params (srcdoc/opaque contexts can lose location.hash)</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">//   - replaces BroadcastChannel with a parent-relayed postMessage channel,</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">//     namespaced per instance via channelKey, so a demo&#x27;s pieces + controller</td></tr>
 <tr class="nil"><td class="ln">7</td><td class="code">//     talk to each other but not across instances</td></tr>
 <tr class="nil"><td class="ln">8</td><td class="code">//</td></tr>
 <tr class="nil"><td class="ln">9</td><td class="code">// This is the in-app twin of the export path&#x27;s injectDemoBootstrap; they will be</td></tr>
-<tr class="cov"><td class="ln">10</td><td class="code">// unified on this module when the platform work hardens. Kept as a pure string</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">// unified on this module when the platform work hardens. Kept as a pure string</td></tr>
 <tr class="nil"><td class="ln">11</td><td class="code">// builder (no DOM/React) so it can be shared and tested.</td></tr>
 <tr class="nil"><td class="ln">12</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">13</td><td class="code">// modern-screenshot UMD, inlined so the OPAQUE-ORIGIN demo can rasterize ITSELF</td></tr>
 <tr class="nil"><td class="ln">14</td><td class="code">// (the parent can&#x27;t reach contentDocument). Only spliced when capture is on</td></tr>
 <tr class="nil"><td class="ln">15</td><td class="code">// (editor mounts) — docs/DEMO-PLATFORM.md §8. The UMD sets window.modernScreenshot.</td></tr>
-<tr class="nil"><td class="ln">16</td><td class="code">import MS_UMD_RAW from &#x27;modern-screenshot/dist/index.js?raw&#x27;;</td></tr>
-<tr class="nil"><td class="ln">17</td><td class="code">import { hostsToCspSources } from &#x27;./demoManifest&#x27;;<a class="jump" href="src__lib__demoManifest_ts.html" title="src/lib/demoManifest.ts">→ demoManifest.ts</a></td></tr>
+<tr class="cov"><td class="ln">16</td><td class="code">import MS_UMD_RAW from &#x27;modern-screenshot/dist/index.js?raw&#x27;;</td></tr>
+<tr class="cov"><td class="ln">17</td><td class="code">import { hostsToCspSources } from &#x27;./demoManifest&#x27;;<a class="jump" href="src__lib__demoManifest_ts.html" title="src/lib/demoManifest.ts">→ demoManifest.ts</a></td></tr>
 <tr class="nil"><td class="ln">18</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">19</td><td class="code">// modern-screenshot minimizes serialized styles by diffing against defaults</td></tr>
 <tr class="nil"><td class="ln">20</td><td class="code">// computed in a NESTED sandbox iframe (`getSandBox` -&gt; `contentWindow.document`).</td></tr>
@@ -39,15 +40,15 @@
 <tr class="nil"><td class="ln">22</td><td class="code">// access throws &quot;Blocked a frame ... cross-origin&quot;. Neuter the sandbox lookup so</td></tr>
 <tr class="nil"><td class="ln">23</td><td class="code">// getDefaultStyle takes its graceful empty-Map path (no minimization, still</td></tr>
 <tr class="nil"><td class="ln">24</td><td class="code">// correct). See docs/DEMO-PLATFORM.md §8 and issue #117.</td></tr>
-<tr class="cov"><td class="ln">25</td><td class="code">//</td></tr>
-<tr class="cov"><td class="ln">26</td><td class="code">// The match is a MINIFIED token, so modern-screenshot is PINNED (exact 4.7.0 in</td></tr>
-<tr class="cov"><td class="ln">27</td><td class="code">// package.json). The guard below turns a token mismatch into a loud build/import</td></tr>
-<tr class="cov"><td class="ln">28</td><td class="code">// error instead of a silent capture regression — a deliberate version bump must</td></tr>
-<tr class="cov"><td class="ln">29</td><td class="code">// re-derive the token from dist/index.js.</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">// The match is a MINIFIED token, so modern-screenshot is PINNED (exact 4.7.0 in</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">// package.json). The guard below turns a token mismatch into a loud build/import</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">// error instead of a silent capture regression — a deliberate version bump must</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">// re-derive the token from dist/index.js.</td></tr>
 <tr class="cov"><td class="ln">30</td><td class="code">const MS_SANDBOX_TOKEN = &#x27;u=c==null?void 0:c.contentWindow&#x27;;</td></tr>
-<tr class="cov"><td class="ln">31</td><td class="code">const MS_UMD = MS_UMD_RAW.replace(MS_SANDBOX_TOKEN, &#x27;u=void 0&#x27;);</td></tr>
-<tr class="cov"><td class="ln">32</td><td class="code">if (MS_UMD === MS_UMD_RAW) {</td></tr>
-<tr class="unc"><td class="ln">33</td><td class="code">  throw new Error(</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">const MS_UMD = MS_UMD_RAW.replace(MS_SANDBOX_TOKEN, &#x27;u=void 0&#x27;);</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code">if (MS_UMD === MS_UMD_RAW) {</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">  throw new Error(</td></tr>
 <tr class="nil"><td class="ln">34</td><td class="code">    &#x27;demoBridge: modern-screenshot sandbox patch did not apply. The pinned build &#x27; +</td></tr>
 <tr class="nil"><td class="ln">35</td><td class="code">    &#x27;(package.json: modern-screenshot 4.7.0) changed its minified output. Re-derive &#x27; +</td></tr>
 <tr class="nil"><td class="ln">36</td><td class="code">    &#x27;MS_SANDBOX_TOKEN from node_modules/modern-screenshot/dist/index.js — see issue #117.&#x27;,</td></tr>
@@ -57,7 +58,7 @@
 <tr class="nil"><td class="ln">40</td><td class="code">// Capture handler: on a {type:&#x27;capture&#x27;} request, rasterize document.body and</td></tr>
 <tr class="nil"><td class="ln">41</td><td class="code">// post the PNG data URL back. Runs modern-screenshot on the MAIN thread (no</td></tr>
 <tr class="nil"><td class="ln">42</td><td class="code">// worker option) so Tauri&#x27;s blocked blob-Worker never comes into play.</td></tr>
-<tr class="cov"><td class="ln">43</td><td class="code">const CAPTURE_HANDLER = `&lt;script&gt;</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">const CAPTURE_HANDLER = `&lt;script&gt;</td></tr>
 <tr class="nil"><td class="ln">44</td><td class="code">(function(){</td></tr>
 <tr class="nil"><td class="ln">45</td><td class="code">  window.addEventListener(&#x27;message&#x27;, function(e){</td></tr>
 <tr class="nil"><td class="ln">46</td><td class="code">    var d=e.data;</td></tr>
@@ -66,25 +67,25 @@
 <tr class="cov"><td class="ln">49</td><td class="code">    function send(m){ try{ window.parent.postMessage(m,&#x27;*&#x27;); }catch(_){} }</td></tr>
 <tr class="nil"><td class="ln">50</td><td class="code">    if(!ms||!ms.domToDataUrl){ send({__eigendeck:1,type:&#x27;capture-result&#x27;,id:d.id,error:&#x27;no-modern-screenshot&#x27;}); return; }</td></tr>
 <tr class="cov"><td class="ln">51</td><td class="code">    ms.domToDataUrl(document.body||document.documentElement, {width:d.width,height:d.height,scale:1,backgroundColor:d.backgroundColor})</td></tr>
-<tr class="nil"><td class="ln">52</td><td class="code">      .then(function(u){ send({__eigendeck:1,type:&#x27;capture-result&#x27;,id:d.id,dataUrl:u}); })</td></tr>
-<tr class="nil"><td class="ln">53</td><td class="code">      .catch(function(err){ send({__eigendeck:1,type:&#x27;capture-result&#x27;,id:d.id,error:String(err)}); });</td></tr>
+<tr class="cov"><td class="ln">52</td><td class="code">      .then(function(u){ send({__eigendeck:1,type:&#x27;capture-result&#x27;,id:d.id,dataUrl:u}); })</td></tr>
+<tr class="cov"><td class="ln">53</td><td class="code">      .catch(function(err){ send({__eigendeck:1,type:&#x27;capture-result&#x27;,id:d.id,error:String(err)}); });</td></tr>
 <tr class="nil"><td class="ln">54</td><td class="code">  });</td></tr>
 <tr class="nil"><td class="ln">55</td><td class="code">})();</td></tr>
-<tr class="nil"><td class="ln">56</td><td class="code">&lt;/script&gt;`;</td></tr>
+<tr class="cov"><td class="ln">56</td><td class="code">&lt;/script&gt;`;</td></tr>
 <tr class="nil"><td class="ln">57</td><td class="code">&nbsp;</td></tr>
-<tr class="nil"><td class="ln">58</td><td class="code">export interface DemoBridgeOpts {</td></tr>
+<tr class="cov"><td class="ln">58</td><td class="code">export interface DemoBridgeOpts {</td></tr>
 <tr class="nil"><td class="ln">59</td><td class="code">  /** editor-only: inline modern-screenshot + a capture handler for thumbnails. */</td></tr>
 <tr class="nil"><td class="ln">60</td><td class="code">  capture?: boolean;</td></tr>
-<tr class="cov"><td class="ln">61</td><td class="code">  /** notebook output: report content height to the parent so the host iframe</td></tr>
-<tr class="cov"><td class="ln">62</td><td class="code">   *  grows to fit (a demo owns a fixed box; an output does not). */</td></tr>
+<tr class="nil"><td class="ln">61</td><td class="code">  /** notebook output: report content height to the parent so the host iframe</td></tr>
+<tr class="nil"><td class="ln">62</td><td class="code">   *  grows to fit (a demo owns a fixed box; an output does not). */</td></tr>
 <tr class="cov"><td class="ln">63</td><td class="code">  reportSize?: boolean;</td></tr>
-<tr class="cov"><td class="ln">64</td><td class="code">  /** network policy for this demo. &#x27;block&#x27; = no internet at all (default-src &#x27;none&#x27;;</td></tr>
-<tr class="cov"><td class="ln">65</td><td class="code">   *  only the demo&#x27;s own inline scripts/styles + data:/blob: assets render). { hosts }</td></tr>
-<tr class="cov"><td class="ln">66</td><td class="code">   *  = internet SCOPED to those declared hosts (the manifest allowlist) for scripts,</td></tr>
+<tr class="nil"><td class="ln">64</td><td class="code">  /** network policy for this demo. &#x27;block&#x27; = no internet at all (default-src &#x27;none&#x27;;</td></tr>
+<tr class="nil"><td class="ln">65</td><td class="code">   *  only the demo&#x27;s own inline scripts/styles + data:/blob: assets render). { hosts }</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code">   *  = internet SCOPED to those declared hosts (the manifest allowlist) for scripts,</td></tr>
 <tr class="nil"><td class="ln">67</td><td class="code">   *  styles, fetch, images, media, fonts; anything else is blocked. Either way the</td></tr>
 <tr class="nil"><td class="ln">68</td><td class="code">   *  demo still renders from its own content, and WebRTC is neutered (CSP blind spot).</td></tr>
-<tr class="cov"><td class="ln">69</td><td class="code">   *  Omitted → treated as &#x27;block&#x27; (fail closed): a demo is never mounted un-gated. */</td></tr>
-<tr class="nil"><td class="ln">70</td><td class="code">  net?: &#x27;block&#x27; | { hosts: string[] };</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code">   *  Omitted → treated as &#x27;block&#x27; (fail closed): a demo is never mounted un-gated. */</td></tr>
+<tr class="cov"><td class="ln">70</td><td class="code">  net?: &#x27;block&#x27; | { hosts: string[] };</td></tr>
 <tr class="nil"><td class="ln">71</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">72</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">73</td><td class="code">// Injected FIRST in &lt;head&gt;. The CSP &lt;meta&gt; must precede any resource load to be</td></tr>
@@ -98,11 +99,11 @@
 <tr class="nil"><td class="ln">81</td><td class="code">// CSP, so delete its constructors before any demo code runs (robust: the demo is</td></tr>
 <tr class="nil"><td class="ln">82</td><td class="code">// opaque-origin, so it can&#x27;t steal a fresh copy from a nested frame).</td></tr>
 <tr class="nil"><td class="ln">83</td><td class="code">function netBlockMeta(net: &#x27;block&#x27; | { hosts: string[] }): string {</td></tr>
-<tr class="cov"><td class="ln">84</td><td class="code">  const hostSrc = net === &#x27;block&#x27; ? &#x27;&#x27; : hostsToCspSources(net.hosts);</td></tr>
-<tr class="cov"><td class="ln">85</td><td class="code">  const s = hostSrc ? ` ${hostSrc}` : &#x27;&#x27;;        // declared hosts appended to a directive</td></tr>
-<tr class="cov"><td class="ln">86</td><td class="code">  const connect = hostSrc || &quot;&#x27;none&#x27;&quot;;</td></tr>
-<tr class="cov"><td class="ln">87</td><td class="code">  const form = hostSrc || &quot;&#x27;none&#x27;&quot;;</td></tr>
-<tr class="cov"><td class="ln">88</td><td class="code">  const csp = [</td></tr>
+<tr class="nil"><td class="ln">84</td><td class="code">  const hostSrc = net === &#x27;block&#x27; ? &#x27;&#x27; : hostsToCspSources(net.hosts);</td></tr>
+<tr class="nil"><td class="ln">85</td><td class="code">  const s = hostSrc ? ` ${hostSrc}` : &#x27;&#x27;;        // declared hosts appended to a directive</td></tr>
+<tr class="nil"><td class="ln">86</td><td class="code">  const connect = hostSrc || &quot;&#x27;none&#x27;&quot;;</td></tr>
+<tr class="nil"><td class="ln">87</td><td class="code">  const form = hostSrc || &quot;&#x27;none&#x27;&quot;;</td></tr>
+<tr class="nil"><td class="ln">88</td><td class="code">  const csp = [</td></tr>
 <tr class="nil"><td class="ln">89</td><td class="code">    &quot;default-src &#x27;none&#x27;&quot;,</td></tr>
 <tr class="nil"><td class="ln">90</td><td class="code">    // &#x27;wasm-unsafe-eval&#x27; permits WebAssembly compilation ONLY (NOT JS eval/new</td></tr>
 <tr class="nil"><td class="ln">91</td><td class="code">    // Function — that&#x27;s the separate, dangerous &#x27;unsafe-eval&#x27;). Without it, script-src</td></tr>
@@ -122,13 +123,13 @@
 <tr class="nil"><td class="ln">105</td><td class="code">    `form-action ${form}`,</td></tr>
 <tr class="nil"><td class="ln">106</td><td class="code">    &quot;base-uri &#x27;none&#x27;&quot;,</td></tr>
 <tr class="nil"><td class="ln">107</td><td class="code">  ].join(&#x27;; &#x27;);</td></tr>
-<tr class="cov"><td class="ln">108</td><td class="code">  return `&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;${csp}&quot;&gt;`</td></tr>
+<tr class="nil"><td class="ln">108</td><td class="code">  return `&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;${csp}&quot;&gt;`</td></tr>
 <tr class="nil"><td class="ln">109</td><td class="code">    + `&lt;script&gt;try{delete window.RTCPeerConnection;delete window.webkitRTCPeerConnection;delete window.RTCDataChannel;delete window.WebTransport;}catch(e){}&lt;/script&gt;`;</td></tr>
 <tr class="nil"><td class="ln">110</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">111</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">112</td><td class="code">// Post the document&#x27;s content height to the parent whenever it changes, so the</td></tr>
 <tr class="nil"><td class="ln">113</td><td class="code">// host can size the (opaque) iframe to its content. See docs/NOTEBOOK-ISOLATION.md §5.</td></tr>
-<tr class="cov"><td class="ln">114</td><td class="code">const SIZE_REPORTER = `&lt;script&gt;</td></tr>
+<tr class="nil"><td class="ln">114</td><td class="code">const SIZE_REPORTER = `&lt;script&gt;</td></tr>
 <tr class="nil"><td class="ln">115</td><td class="code">(function(){</td></tr>
 <tr class="nil"><td class="ln">116</td><td class="code">  function send(){ try{ var el=document.documentElement;</td></tr>
 <tr class="nil"><td class="ln">117</td><td class="code">    window.parent.postMessage({__eigendeck:1,type:&#x27;iso-size&#x27;,h:Math.ceil(Math.max(el.scrollHeight, (document.body?document.body.scrollHeight:0)))}, &#x27;*&#x27;); }catch(_){} }</td></tr>
@@ -141,15 +142,15 @@
 <tr class="nil"><td class="ln">124</td><td class="code">/** Splice the bridge &lt;script&gt; into a demo HTML string. `hash` is like</td></tr>
 <tr class="nil"><td class="ln">125</td><td class="code"> *  &quot;#piece=graph&quot; (or &quot;&quot;), `channelKey` namespaces the relay per demo instance. */</td></tr>
 <tr class="nil"><td class="ln">126</td><td class="code">export function injectDemoBridge(html: string, hash: string, channelKey: string, opts: DemoBridgeOpts = {}): string {</td></tr>
-<tr class="cov"><td class="ln">127</td><td class="code">  const hashParams: Record&lt;string, string&gt; = {};</td></tr>
-<tr class="cov"><td class="ln">128</td><td class="code">  if (hash) {</td></tr>
-<tr class="unc"><td class="ln">129</td><td class="code">    const qs = hash.startsWith(&#x27;#&#x27;) ? hash.slice(1) : hash;</td></tr>
-<tr class="unc"><td class="ln">130</td><td class="code">    for (const part of qs.split(&#x27;&amp;&#x27;)) {</td></tr>
-<tr class="unc"><td class="ln">131</td><td class="code">      const [k, v] = part.split(&#x27;=&#x27;);</td></tr>
-<tr class="unc"><td class="ln">132</td><td class="code">      if (k) hashParams[k] = v || &#x27;&#x27;;</td></tr>
+<tr class="nil"><td class="ln">127</td><td class="code">  const hashParams: Record&lt;string, string&gt; = {};</td></tr>
+<tr class="nil"><td class="ln">128</td><td class="code">  if (hash) {</td></tr>
+<tr class="nil"><td class="ln">129</td><td class="code">    const qs = hash.startsWith(&#x27;#&#x27;) ? hash.slice(1) : hash;</td></tr>
+<tr class="nil"><td class="ln">130</td><td class="code">    for (const part of qs.split(&#x27;&amp;&#x27;)) {</td></tr>
+<tr class="nil"><td class="ln">131</td><td class="code">      const [k, v] = part.split(&#x27;=&#x27;);</td></tr>
+<tr class="nil"><td class="ln">132</td><td class="code">      if (k) hashParams[k] = v || &#x27;&#x27;;</td></tr>
 <tr class="nil"><td class="ln">133</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">134</td><td class="code">  }</td></tr>
-<tr class="cov"><td class="ln">135</td><td class="code">  const bootstrap = `&lt;script&gt;</td></tr>
+<tr class="nil"><td class="ln">135</td><td class="code">  const bootstrap = `&lt;script&gt;</td></tr>
 <tr class="nil"><td class="ln">136</td><td class="code">(function(){</td></tr>
 <tr class="nil"><td class="ln">137</td><td class="code">  var __ch = ${JSON.stringify(channelKey)};</td></tr>
 <tr class="nil"><td class="ln">138</td><td class="code">  var __hp = ${JSON.stringify(hashParams)};</td></tr>
@@ -161,8 +162,8 @@
 <tr class="nil"><td class="ln">144</td><td class="code">  // swallows Space/arrows in present mode so the deck can&#x27;t advance. Bubble phase</td></tr>
 <tr class="nil"><td class="ln">145</td><td class="code">  // + !defaultPrevented + not-a-form-field means a genuinely interactive demo (a</td></tr>
 <tr class="nil"><td class="ln">146</td><td class="code">  // stepper that uses arrows) keeps them by calling preventDefault; the parent</td></tr>
-<tr class="cov"><td class="ln">147</td><td class="code">  // only acts on this in present mode (the editor ignores it).</td></tr>
-<tr class="cov"><td class="ln">148</td><td class="code">  var __NAVK = {&#x27; &#x27;:1,&#x27;ArrowLeft&#x27;:1,&#x27;ArrowRight&#x27;:1,&#x27;ArrowUp&#x27;:1,&#x27;ArrowDown&#x27;:1,&#x27;PageUp&#x27;:1,&#x27;PageDown&#x27;:1,&#x27;Home&#x27;:1,&#x27;End&#x27;:1};</td></tr>
+<tr class="nil"><td class="ln">147</td><td class="code">  // only acts on this in present mode (the editor ignores it).</td></tr>
+<tr class="part"><td class="ln">148</td><td class="code">  var __NAVK = {&#x27; &#x27;:1,&#x27;ArrowLeft&#x27;:1,&#x27;ArrowRight&#x27;:1,&#x27;ArrowUp&#x27;:1,&#x27;ArrowDown&#x27;:1,&#x27;PageUp&#x27;:1,&#x27;PageDown&#x27;:1,&#x27;Home&#x27;:1,&#x27;End&#x27;:1};</td></tr>
 <tr class="cov"><td class="ln">149</td><td class="code">  window.addEventListener(&#x27;keydown&#x27;, function(e){</td></tr>
 <tr class="cov"><td class="ln">150</td><td class="code">    if(!__NAVK[e.key] || e.defaultPrevented) return;</td></tr>
 <tr class="cov"><td class="ln">151</td><td class="code">    var t=e.target;</td></tr>
@@ -227,14 +228,14 @@
 <tr class="nil"><td class="ln">210</td><td class="code">  setTimeout(function(){ if (!__seenTick) __nativeMode(); }, 1500);</td></tr>
 <tr class="nil"><td class="ln">211</td><td class="code">})();</td></tr>
 <tr class="nil"><td class="ln">212</td><td class="code">&lt;/script&gt;`;</td></tr>
-<tr class="cov"><td class="ln">213</td><td class="code">  let scripts = opts.capture ? bootstrap + `&lt;script&gt;${MS_UMD}&lt;/script&gt;` + CAPTURE_HANDLER : bootstrap;</td></tr>
-<tr class="cov"><td class="ln">214</td><td class="code">  if (opts.reportSize) scripts += SIZE_REPORTER;</td></tr>
+<tr class="nil"><td class="ln">213</td><td class="code">  let scripts = opts.capture ? bootstrap + `&lt;script&gt;${MS_UMD}&lt;/script&gt;` + CAPTURE_HANDLER : bootstrap;</td></tr>
+<tr class="nil"><td class="ln">214</td><td class="code">  if (opts.reportSize) scripts += SIZE_REPORTER;</td></tr>
 <tr class="nil"><td class="ln">215</td><td class="code">  // The network policy (CSP meta + WebRTC neuter) must be FIRST in &lt;head&gt;. Default</td></tr>
 <tr class="nil"><td class="ln">216</td><td class="code">  // to &#x27;block&#x27; (fail CLOSED): a demo built without an explicit net policy gets the</td></tr>
 <tr class="nil"><td class="ln">217</td><td class="code">  // offline lockdown, never an un-gated document — so a future caller that forgets</td></tr>
 <tr class="nil"><td class="ln">218</td><td class="code">  // to pass `net` can&#x27;t accidentally mount a demo with no CSP at all.</td></tr>
-<tr class="cov"><td class="ln">219</td><td class="code">  scripts = netBlockMeta(opts.net ?? &#x27;block&#x27;) + scripts;</td></tr>
-<tr class="cov"><td class="ln">220</td><td class="code">  if (html.includes(&#x27;&lt;head&gt;&#x27;)) return html.replace(&#x27;&lt;head&gt;&#x27;, &#x27;&lt;head&gt;&#x27; + scripts);</td></tr>
-<tr class="unc"><td class="ln">221</td><td class="code">  return scripts + html;</td></tr>
+<tr class="nil"><td class="ln">219</td><td class="code">  scripts = netBlockMeta(opts.net ?? &#x27;block&#x27;) + scripts;</td></tr>
+<tr class="nil"><td class="ln">220</td><td class="code">  if (html.includes(&#x27;&lt;head&gt;&#x27;)) return html.replace(&#x27;&lt;head&gt;&#x27;, &#x27;&lt;head&gt;&#x27; + scripts);</td></tr>
+<tr class="nil"><td class="ln">221</td><td class="code">  return scripts + html;</td></tr>
 <tr class="nil"><td class="ln">222</td><td class="code">}</td></tr></table>
 </body></html>

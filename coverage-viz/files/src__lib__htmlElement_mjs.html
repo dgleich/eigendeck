@@ -6,12 +6,13 @@
   <h1>src/lib/htmlElement.mjs </h1>
   <div class="stats">
     <span class="stat"><b>100%</b> covered</span>
-    <span class="stat">16/16 executable</span>
+    <span class="stat">16/16 statements</span>
     <span class="stat unc-txt">0 uncovered</span>
     <span class="stat">103 raw lines</span>
     <span class="stat">0.24% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:15.534%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:84.466%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:100.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:0.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__lib__htmlEscape_mjs.html">htmlEscape.mjs</a> <a href="src__lib__htmlVars_mjs.html">htmlVars.mjs</a></div>
   <div class="links"><span>imported by:</span> <a href="src__components__PresentSlide_tsx.html">PresentSlide.tsx</a> <a href="src__components__SlideElementRenderer_tsx.html">SlideElementRenderer.tsx</a> <a href="src__components__SlideThumbnail_tsx.html">SlideThumbnail.tsx</a> <a href="src__lib__exportCore_mjs.html">exportCore.mjs</a> <a href="src__lib__printSlideHtml_ts.html">printSlideHtml.ts</a></div>
 </header>
@@ -58,17 +59,17 @@
 <tr class="nil"><td class="ln">41</td><td class="code">  // DOM (and the markup read back out of it) keeps the manifest + literal {{tokens}},</td></tr>
 <tr class="nil"><td class="ln">42</td><td class="code">  // instead of the derived, spliced body that would lose them.</td></tr>
 <tr class="cov"><td class="ln">43</td><td class="code">  const { html: body, rootCss } = opts &amp;&amp; opts.raw</td></tr>
-<tr class="nil"><td class="ln">44</td><td class="code">    ? { html: typeof rawHtml === &#x27;string&#x27; ? rawHtml : &#x27;&#x27;, rootCss: &#x27;&#x27; }</td></tr>
-<tr class="nil"><td class="ln">45</td><td class="code">    : spliceHtmlVars(rawHtml, vars, theme);</td></tr>
+<tr class="cov"><td class="ln">44</td><td class="code">    ? { html: typeof rawHtml === &#x27;string&#x27; ? rawHtml : &#x27;&#x27;, rootCss: &#x27;&#x27; }</td></tr>
+<tr class="cov"><td class="ln">45</td><td class="code">    : spliceHtmlVars(rawHtml, vars, theme);</td></tr>
 <tr class="cov"><td class="ln">46</td><td class="code">  const bg = background ? String(background).replace(/[&lt;&gt;&quot;]/g, &#x27;&#x27;) : &#x27;transparent&#x27;;</td></tr>
 <tr class="cov"><td class="ln">47</td><td class="code">  return &#x27;&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;&lt;meta charset=&quot;utf-8&quot;&gt;&#x27;</td></tr>
-<tr class="nil"><td class="ln">48</td><td class="code">    + `&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;${HTML_ELEMENT_CSP}&quot;&gt;`</td></tr>
+<tr class="cov"><td class="ln">48</td><td class="code">    + `&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;${HTML_ELEMENT_CSP}&quot;&gt;`</td></tr>
 <tr class="nil"><td class="ln">49</td><td class="code">    // print-color-adjust:exact so the iframe&#x27;s backgrounds/gradients/fills survive</td></tr>
 <tr class="nil"><td class="ln">50</td><td class="code">    // print/PDF — the parent&#x27;s print-color-adjust does NOT cascade into a sandboxed</td></tr>
 <tr class="nil"><td class="ln">51</td><td class="code">    // iframe, so without this the element loses its background + colours in print (#137).</td></tr>
-<tr class="nil"><td class="ln">52</td><td class="code">    + `&lt;style&gt;html,body{margin:0;padding:0;height:100%;background:${bg};box-sizing:border-box;`</td></tr>
-<tr class="nil"><td class="ln">53</td><td class="code">    + `-webkit-print-color-adjust:exact;print-color-adjust:exact;}*{box-sizing:border-box;}${rootCss}&lt;/style&gt;`</td></tr>
-<tr class="nil"><td class="ln">54</td><td class="code">    + `&lt;/head&gt;&lt;body&gt;${body}&lt;/body&gt;&lt;/html&gt;`;</td></tr>
+<tr class="cov"><td class="ln">52</td><td class="code">    + `&lt;style&gt;html,body{margin:0;padding:0;height:100%;background:${bg};box-sizing:border-box;`</td></tr>
+<tr class="cov"><td class="ln">53</td><td class="code">    + `-webkit-print-color-adjust:exact;print-color-adjust:exact;}*{box-sizing:border-box;}${rootCss}&lt;/style&gt;`</td></tr>
+<tr class="cov"><td class="ln">54</td><td class="code">    + `&lt;/head&gt;&lt;body&gt;${body}&lt;/body&gt;&lt;/html&gt;`;</td></tr>
 <tr class="nil"><td class="ln">55</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">56</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">57</td><td class="code">/** The `&lt;iframe&gt;` HTML string for string-render targets (HTML export, PDF inline).</td></tr>
@@ -86,10 +87,10 @@
 <tr class="cov"><td class="ln">69</td><td class="code">  const srcdoc = htmlEscapeForSrcdoc(htmlElementSrcdoc(el.html, el.background, el.vars, theme));</td></tr>
 <tr class="nil"><td class="ln">70</td><td class="code">  const iframeStyle =</td></tr>
 <tr class="cov"><td class="ln">71</td><td class="code">    `position:absolute;left:0;top:0;width:${L.designW}${unit};height:${L.designH}${unit};`</td></tr>
-<tr class="nil"><td class="ln">72</td><td class="code">    + &#x27;border:none;background:transparent;&#x27;</td></tr>
-<tr class="nil"><td class="ln">73</td><td class="code">    + `transform:translate(${L.offsetX}${unit},${L.offsetY}${unit}) scale(${L.scale});transform-origin:top left;`;</td></tr>
+<tr class="cov"><td class="ln">72</td><td class="code">    + &#x27;border:none;background:transparent;&#x27;</td></tr>
+<tr class="cov"><td class="ln">73</td><td class="code">    + `transform:translate(${L.offsetX}${unit},${L.offsetY}${unit}) scale(${L.scale});transform-origin:top left;`;</td></tr>
 <tr class="cov"><td class="ln">74</td><td class="code">  return `&lt;div style=&quot;${boxStyleStr};overflow:hidden;&quot;&gt;`</td></tr>
-<tr class="nil"><td class="ln">75</td><td class="code">    + `&lt;iframe srcdoc=&quot;${srcdoc}&quot; style=&quot;${iframeStyle}&quot; sandbox=&quot;${sandbox}&quot;&gt;&lt;/iframe&gt;&lt;/div&gt;`;</td></tr>
+<tr class="cov"><td class="ln">75</td><td class="code">    + `&lt;iframe srcdoc=&quot;${srcdoc}&quot; style=&quot;${iframeStyle}&quot; sandbox=&quot;${sandbox}&quot;&gt;&lt;/iframe&gt;&lt;/div&gt;`;</td></tr>
 <tr class="nil"><td class="ln">76</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">77</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">78</td><td class="code">/** Whether the element opts into contain-scaling (needs both the flag and a design</td></tr>
@@ -112,10 +113,10 @@
 <tr class="nil"><td class="ln">95</td><td class="code">  // Round for clean CSS output (avoid float noise like -3.5e-15px / 0.5499999…):</td></tr>
 <tr class="nil"><td class="ln">96</td><td class="code">  // offsets to whole px (sub-px centering is imperceptible), scale to 4 decimals.</td></tr>
 <tr class="cov"><td class="ln">97</td><td class="code">  return {</td></tr>
-<tr class="nil"><td class="ln">98</td><td class="code">    designW, designH,</td></tr>
-<tr class="nil"><td class="ln">99</td><td class="code">    scale: Math.round(scaleRaw * 1e4) / 1e4,</td></tr>
-<tr class="nil"><td class="ln">100</td><td class="code">    offsetX: Math.round((bw - designW * scaleRaw) / 2),</td></tr>
-<tr class="nil"><td class="ln">101</td><td class="code">    offsetY: Math.round((bh - designH * scaleRaw) / 2),</td></tr>
+<tr class="cov"><td class="ln">98</td><td class="code">    designW, designH,</td></tr>
+<tr class="cov"><td class="ln">99</td><td class="code">    scale: Math.round(scaleRaw * 1e4) / 1e4,</td></tr>
+<tr class="cov"><td class="ln">100</td><td class="code">    offsetX: Math.round((bw - designW * scaleRaw) / 2),</td></tr>
+<tr class="cov"><td class="ln">101</td><td class="code">    offsetY: Math.round((bh - designH * scaleRaw) / 2),</td></tr>
 <tr class="nil"><td class="ln">102</td><td class="code">  };</td></tr>
 <tr class="nil"><td class="ln">103</td><td class="code">}</td></tr></table>
 </body></html>

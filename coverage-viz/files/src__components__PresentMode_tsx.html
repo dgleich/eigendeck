@@ -5,13 +5,14 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/components/PresentMode.tsx </h1>
   <div class="stats">
-    <span class="stat"><b>50%</b> covered</span>
-    <span class="stat">149/298 executable</span>
-    <span class="stat unc-txt">149 uncovered</span>
+    <span class="stat"><b>58%</b> covered</span>
+    <span class="stat">135/232 statements</span>
+    <span class="stat unc-txt">97 uncovered</span>
     <span class="stat">532 raw lines</span>
     <span class="stat">1.24% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:28.008%"></span><span class="seg unc" style="width:28.008%"></span><span class="seg nil" style="width:43.985%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:58.190%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:41.810%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__components__PresentSlide_tsx.html">PresentSlide.tsx</a> <a href="src__components__SpeakerView_tsx.html">SpeakerView.tsx</a> <a href="src__lib__arrowGeometry_mjs.html">arrowGeometry.mjs</a> <a href="src__lib__clamp01_ts.html">clamp01.ts</a> <a href="src__lib__demoMount_ts.html">demoMount.ts</a> <a href="src__lib__footer_mjs.html">footer.mjs</a> <a href="src__lib__presentTransition_ts.html">presentTransition.ts</a> <a href="src__lib__textStyle_mjs.html">textStyle.mjs</a> <a href="src__lib__themes_ts.html">themes.ts</a> <a href="src__lib__useWakeLock_ts.html">useWakeLock.ts</a> <a href="src__store__presentation_ts.html">presentation.ts</a> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
   <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__presenter_tsx.html">presenter.tsx</a></div>
 </header>
@@ -32,209 +33,209 @@
 <tr class="nil"><td class="ln">15</td><td class="code">import { arrowGeometry, triPoints } from &#x27;../lib/arrowGeometry.mjs&#x27;;<a class="jump" href="src__lib__arrowGeometry_mjs.html" title="src/lib/arrowGeometry.mjs">→ arrowGeometry.mjs</a></td></tr>
 <tr class="cov"><td class="ln">16</td><td class="code">import { listen } from &#x27;@tauri-apps/api/event&#x27;;</td></tr>
 <tr class="nil"><td class="ln">17</td><td class="code">import { clamp01 } from &#x27;../lib/clamp01&#x27;;<a class="jump" href="src__lib__clamp01_ts.html" title="src/lib/clamp01.ts">→ clamp01.ts</a></td></tr>
-<tr class="cov"><td class="ln">18</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">19</td><td class="code">const TRANSITION_MS = 300;</td></tr>
-<tr class="cov"><td class="ln">20</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">21</td><td class="code">/**</td></tr>
-<tr class="cov"><td class="ln">22</td><td class="code"> * The single live presentation viewer — used by BOTH the single-window present</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code"> * The single live presentation viewer — used by BOTH the single-window present</td></tr>
 <tr class="nil"><td class="ln">23</td><td class="code"> * (main window, self-navigated) AND the projector window (src/presenter.tsx,</td></tr>
 <tr class="nil"><td class="ln">24</td><td class="code"> * navigated externally via `controlledIndex`). Same transitions, same</td></tr>
-<tr class="cov"><td class="ln">25</td><td class="code"> * rendering, no drift.</td></tr>
-<tr class="cov"><td class="ln">26</td><td class="code"> *</td></tr>
-<tr class="cov"><td class="ln">27</td><td class="code"> * - Uncontrolled (no `controlledIndex`): owns navigation + keyboard, Escape</td></tr>
-<tr class="cov"><td class="ln">28</td><td class="code"> *   exits present mode.</td></tr>
-<tr class="cov"><td class="ln">29</td><td class="code"> * - Controlled (`controlledIndex` set): index comes from the prop (the speaker</td></tr>
-<tr class="cov"><td class="ln">30</td><td class="code"> *   window&#x27;s events). Keyboard nav still WORKS here, but instead of moving a</td></tr>
-<tr class="cov"><td class="ln">31</td><td class="code"> *   local index it forwards the target slide to the owner via `onNavigate` (the</td></tr>
-<tr class="cov"><td class="ln">32</td><td class="code"> *   projector tells the speaker window, which navigates and echoes back) — so a</td></tr>
-<tr class="cov"><td class="ln">33</td><td class="code"> *   clicker/keyboard focused on the projector drives the deck too. Escape calls</td></tr>
-<tr class="cov"><td class="ln">34</td><td class="code"> *   `onExit` (close the projector window).</td></tr>
-<tr class="cov"><td class="ln">35</td><td class="code"> */</td></tr>
-<tr class="cov"><td class="ln">36</td><td class="code">export function PresentMode({ controlledIndex, onExit, onNavigate }: {</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code"> * rendering, no drift.</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code"> * - Uncontrolled (no `controlledIndex`): owns navigation + keyboard, Escape</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code"> *   exits present mode.</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code"> * - Controlled (`controlledIndex` set): index comes from the prop (the speaker</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code"> *   window&#x27;s events). Keyboard nav still WORKS here, but instead of moving a</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code"> *   local index it forwards the target slide to the owner via `onNavigate` (the</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code"> *   projector tells the speaker window, which navigates and echoes back) — so a</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code"> *   clicker/keyboard focused on the projector drives the deck too. Escape calls</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code"> *   `onExit` (close the projector window).</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code"> */</td></tr>
+<tr class="part"><td class="ln">36</td><td class="code">export function PresentMode({ controlledIndex, onExit, onNavigate }: {</td></tr>
 <tr class="cov"><td class="ln">37</td><td class="code">  controlledIndex?: number; onExit?: () =&gt; void; onNavigate?: (index: number) =&gt; void;</td></tr>
-<tr class="cov"><td class="ln">38</td><td class="code">} = {}) {</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">} = {}) {</td></tr>
 <tr class="cov"><td class="ln">39</td><td class="code">  const { presentation, setPresenting, selectSlide } =</td></tr>
 <tr class="cov"><td class="ln">40</td><td class="code">    usePresentationStore();</td></tr>
-<tr class="cov"><td class="ln">41</td><td class="code">  useDemoHost(); // relay + rAF pump — shared by the main present view AND the presenter window</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">  useDemoHost(); // relay + rAF pump — shared by the main present view AND the presenter window</td></tr>
 <tr class="cov"><td class="ln">42</td><td class="code">  useScreenWakeLock(true); // keep the display awake for the whole talk (#179)</td></tr>
 <tr class="cov"><td class="ln">43</td><td class="code">  const controlled = controlledIndex !== undefined;</td></tr>
-<tr class="unc"><td class="ln">44</td><td class="code">  const [localIndex, setLocalIndex] = useState(</td></tr>
-<tr class="cov"><td class="ln">45</td><td class="code">    usePresentationStore.getState().currentSlideIndex</td></tr>
-<tr class="cov"><td class="ln">46</td><td class="code">  );</td></tr>
-<tr class="cov"><td class="ln">47</td><td class="code">  const currentIndex = controlled ? controlledIndex! : localIndex;</td></tr>
-<tr class="cov"><td class="ln">48</td><td class="code">  const [showSpeaker, setShowSpeaker] = useState(false);</td></tr>
-<tr class="cov"><td class="ln">49</td><td class="code">  const viewportRef = useRef&lt;HTMLDivElement&gt;(null);</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">  const [localIndex, setLocalIndex] = useState(</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">    usePresentationStore.getState().currentSlideIndex</td></tr>
+<tr class="nil"><td class="ln">46</td><td class="code">  );</td></tr>
+<tr class="part"><td class="ln">47</td><td class="code">  const currentIndex = controlled ? controlledIndex! : localIndex;</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">  const [showSpeaker, setShowSpeaker] = useState(false);</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">  const viewportRef = useRef&lt;HTMLDivElement&gt;(null);</td></tr>
 <tr class="cov"><td class="ln">50</td><td class="code">  const [scale, setScale] = useState(1);</td></tr>
-<tr class="cov"><td class="ln">51</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">52</td><td class="code">  // Animation state</td></tr>
-<tr class="unc"><td class="ln">53</td><td class="code">  const [prevIndex, setPrevIndex] = useState&lt;number | null&gt;(null);</td></tr>
+<tr class="cov"><td class="ln">53</td><td class="code">  const [prevIndex, setPrevIndex] = useState&lt;number | null&gt;(null);</td></tr>
 <tr class="cov"><td class="ln">54</td><td class="code">  const [animating, setAnimating] = useState(false);</td></tr>
 <tr class="cov"><td class="ln">55</td><td class="code">  const animTimerRef = useRef&lt;number | null&gt;(null);</td></tr>
 <tr class="nil"><td class="ln">56</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">57</td><td class="code">  // Zoom-into-slide (#29): scale the slide wrapper around a focal point; the</td></tr>
-<tr class="cov"><td class="ln">58</td><td class="code">  // mouse pans while zoomed. `focus` is normalized [0,1] over the viewport.</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">  // Zoom-into-slide (#29): scale the slide wrapper around a focal point; the</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code">  // mouse pans while zoomed. `focus` is normalized [0,1] over the viewport.</td></tr>
 <tr class="cov"><td class="ln">59</td><td class="code">  const ZOOM_LEVEL = 2.2;</td></tr>
 <tr class="cov"><td class="ln">60</td><td class="code">  const [zoom, setZoom] = useState(1);</td></tr>
 <tr class="cov"><td class="ln">61</td><td class="code">  const [focus, setFocus] = useState({ x: 0.5, y: 0.5 });</td></tr>
 <tr class="cov"><td class="ln">62</td><td class="code">  const toggleZoom = useCallback(() =&gt; setZoom((z) =&gt; (z &gt; 1 ? 1 : ZOOM_LEVEL)), []);</td></tr>
 <tr class="cov"><td class="ln">63</td><td class="code">  const zoomOut = useCallback(() =&gt; setZoom(1), []);</td></tr>
 <tr class="cov"><td class="ln">64</td><td class="code">  const shownIndexRef = useRef(currentIndex);</td></tr>
-<tr class="cov"><td class="ln">65</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">65</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">66</td><td class="code">  const totalSlides = presentation.slides.length;</td></tr>
-<tr class="cov"><td class="ln">67</td><td class="code">  // Fall back to the canonical 1920×1080 when a deck carries no config (e.g. built</td></tr>
-<tr class="cov"><td class="ln">68</td><td class="code">  // via `import json` without a config block). Without this the stage collapses to</td></tr>
-<tr class="cov"><td class="ln">69</td><td class="code">  // 0×0 and every element overflows off-screen — present shows nothing (#137).</td></tr>
+<tr class="nil"><td class="ln">67</td><td class="code">  // Fall back to the canonical 1920×1080 when a deck carries no config (e.g. built</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code">  // via `import json` without a config block). Without this the stage collapses to</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code">  // 0×0 and every element overflows off-screen — present shows nothing (#137).</td></tr>
 <tr class="cov"><td class="ln">70</td><td class="code">  const slideW = presentation.config.width || 1920;</td></tr>
 <tr class="cov"><td class="ln">71</td><td class="code">  const slideH = presentation.config.height || 1080;</td></tr>
 <tr class="nil"><td class="ln">72</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">73</td><td class="code">  // Black out the page root + lock scroll while the present overlay is mounted, so</td></tr>
-<tr class="cov"><td class="ln">74</td><td class="code">  // no light editor UI can peek behind it (e.g. a bottom sliver when macOS overlay</td></tr>
+<tr class="nil"><td class="ln">74</td><td class="code">  // no light editor UI can peek behind it (e.g. a bottom sliver when macOS overlay</td></tr>
 <tr class="nil"><td class="ln">75</td><td class="code">  // scrollbars retract as the cursor leaves the window).</td></tr>
 <tr class="cov"><td class="ln">76</td><td class="code">  useEffect(() =&gt; {</td></tr>
-<tr class="unc"><td class="ln">77</td><td class="code">    document.body.classList.add(&#x27;presenting&#x27;);</td></tr>
-<tr class="cov"><td class="ln">78</td><td class="code">    return () =&gt; document.body.classList.remove(&#x27;presenting&#x27;);</td></tr>
-<tr class="cov"><td class="ln">79</td><td class="code">  }, []);</td></tr>
-<tr class="cov"><td class="ln">80</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">81</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">77</td><td class="code">    document.body.classList.add(&#x27;presenting&#x27;);</td></tr>
+<tr class="part"><td class="ln">78</td><td class="code">    return () =&gt; document.body.classList.remove(&#x27;presenting&#x27;);</td></tr>
+<tr class="nil"><td class="ln">79</td><td class="code">  }, []);</td></tr>
+<tr class="nil"><td class="ln">80</td><td class="code">&nbsp;</td></tr>
+<tr class="part"><td class="ln">81</td><td class="code">  useEffect(() =&gt; {</td></tr>
 <tr class="unc"><td class="ln">82</td><td class="code">    const el = viewportRef.current;</td></tr>
-<tr class="unc"><td class="ln">83</td><td class="code">    if (!el) return;</td></tr>
+<tr class="nil"><td class="ln">83</td><td class="code">    if (!el) return;</td></tr>
 <tr class="cov"><td class="ln">84</td><td class="code">    const observer = new ResizeObserver((entries) =&gt; {</td></tr>
 <tr class="cov"><td class="ln">85</td><td class="code">      for (const entry of entries) {</td></tr>
-<tr class="unc"><td class="ln">86</td><td class="code">        const { width, height } = entry.contentRect;</td></tr>
-<tr class="unc"><td class="ln">87</td><td class="code">        setScale(Math.min(width / slideW, height / slideH));</td></tr>
+<tr class="nil"><td class="ln">86</td><td class="code">        const { width, height } = entry.contentRect;</td></tr>
+<tr class="nil"><td class="ln">87</td><td class="code">        setScale(Math.min(width / slideW, height / slideH));</td></tr>
 <tr class="nil"><td class="ln">88</td><td class="code">      }</td></tr>
-<tr class="cov"><td class="ln">89</td><td class="code">    });</td></tr>
+<tr class="nil"><td class="ln">89</td><td class="code">    });</td></tr>
 <tr class="cov"><td class="ln">90</td><td class="code">    observer.observe(el);</td></tr>
-<tr class="cov"><td class="ln">91</td><td class="code">    return () =&gt; observer.disconnect();</td></tr>
-<tr class="cov"><td class="ln">92</td><td class="code">  }, [slideW, slideH]);</td></tr>
-<tr class="cov"><td class="ln">93</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">94</td><td class="code">  // Run the slide-change transition whenever the index changes — for LOCAL</td></tr>
-<tr class="unc"><td class="ln">95</td><td class="code">  // navigation AND for the controlled prop (projector), so both windows</td></tr>
-<tr class="unc"><td class="ln">96</td><td class="code">  // animate identically.</td></tr>
-<tr class="unc"><td class="ln">97</td><td class="code">  //</td></tr>
+<tr class="nil"><td class="ln">91</td><td class="code">    return () =&gt; observer.disconnect();</td></tr>
+<tr class="unc"><td class="ln">92</td><td class="code">  }, [slideW, slideH]);</td></tr>
+<tr class="nil"><td class="ln">93</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">94</td><td class="code">  // Run the slide-change transition whenever the index changes — for LOCAL</td></tr>
+<tr class="nil"><td class="ln">95</td><td class="code">  // navigation AND for the controlled prop (projector), so both windows</td></tr>
+<tr class="nil"><td class="ln">96</td><td class="code">  // animate identically.</td></tr>
+<tr class="nil"><td class="ln">97</td><td class="code">  //</td></tr>
 <tr class="nil"><td class="ln">98</td><td class="code">  // useLayoutEffect (NOT useEffect): it runs after render but BEFORE the</td></tr>
-<tr class="unc"><td class="ln">99</td><td class="code">  // browser paints. The render right after an index change still has the new</td></tr>
-<tr class="unc"><td class="ln">100</td><td class="code">  // elements at opacity 1 (prevIndex is null); if we set the &quot;entering&quot; state</td></tr>
-<tr class="unc"><td class="ln">101</td><td class="code">  // in a post-paint useEffect, that opacity-1 frame PAINTS first → the slide</td></tr>
-<tr class="unc"><td class="ln">102</td><td class="code">  // pops into view, then jumps to 0 and fades in. Setting prevIndex/animating</td></tr>
+<tr class="nil"><td class="ln">99</td><td class="code">  // browser paints. The render right after an index change still has the new</td></tr>
+<tr class="nil"><td class="ln">100</td><td class="code">  // elements at opacity 1 (prevIndex is null); if we set the &quot;entering&quot; state</td></tr>
+<tr class="nil"><td class="ln">101</td><td class="code">  // in a post-paint useEffect, that opacity-1 frame PAINTS first → the slide</td></tr>
+<tr class="nil"><td class="ln">102</td><td class="code">  // pops into view, then jumps to 0 and fades in. Setting prevIndex/animating</td></tr>
 <tr class="nil"><td class="ln">103</td><td class="code">  // here re-renders to opacity 0 before paint, so the first painted frame is</td></tr>
-<tr class="cov"><td class="ln">104</td><td class="code">  // already the start of the fade — no pop.</td></tr>
-<tr class="cov"><td class="ln">105</td><td class="code">  useLayoutEffect(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">104</td><td class="code">  // already the start of the fade — no pop.</td></tr>
+<tr class="part"><td class="ln">105</td><td class="code">  useLayoutEffect(() =&gt; {</td></tr>
 <tr class="cov"><td class="ln">106</td><td class="code">    const prev = shownIndexRef.current;</td></tr>
-<tr class="cov"><td class="ln">107</td><td class="code">    if (prev === currentIndex) return;</td></tr>
+<tr class="nil"><td class="ln">107</td><td class="code">    if (prev === currentIndex) return;</td></tr>
 <tr class="unc"><td class="ln">108</td><td class="code">    shownIndexRef.current = currentIndex;</td></tr>
-<tr class="unc"><td class="ln">109</td><td class="code">    // #29: a new slide always starts un-zoomed and re-centered — a focal point</td></tr>
+<tr class="nil"><td class="ln">109</td><td class="code">    // #29: a new slide always starts un-zoomed and re-centered — a focal point</td></tr>
 <tr class="nil"><td class="ln">110</td><td class="code">    // from the previous slide is meaningless on the next, and in controlled</td></tr>
-<tr class="cov"><td class="ln">111</td><td class="code">    // (projector) mode each window owns its zoom, so leaving it set desyncs the</td></tr>
-<tr class="cov"><td class="ln">112</td><td class="code">    // projector from the speaker view.</td></tr>
-<tr class="cov"><td class="ln">113</td><td class="code">    setZoom(1);</td></tr>
+<tr class="nil"><td class="ln">111</td><td class="code">    // (projector) mode each window owns its zoom, so leaving it set desyncs the</td></tr>
+<tr class="nil"><td class="ln">112</td><td class="code">    // projector from the speaker view.</td></tr>
+<tr class="part"><td class="ln">113</td><td class="code">    setZoom(1);</td></tr>
 <tr class="cov"><td class="ln">114</td><td class="code">    setFocus({ x: 0.5, y: 0.5 });</td></tr>
-<tr class="unc"><td class="ln">115</td><td class="code">    if (animTimerRef.current) clearTimeout(animTimerRef.current);</td></tr>
+<tr class="nil"><td class="ln">115</td><td class="code">    if (animTimerRef.current) clearTimeout(animTimerRef.current);</td></tr>
 <tr class="cov"><td class="ln">116</td><td class="code">    setPrevIndex(prev);</td></tr>
 <tr class="cov"><td class="ln">117</td><td class="code">    setAnimating(false);</td></tr>
-<tr class="cov"><td class="ln">118</td><td class="code">    const raf = requestAnimationFrame(() =&gt; {</td></tr>
-<tr class="cov"><td class="ln">119</td><td class="code">      setAnimating(true);</td></tr>
-<tr class="unc"><td class="ln">120</td><td class="code">      animTimerRef.current = window.setTimeout(() =&gt; {</td></tr>
-<tr class="unc"><td class="ln">121</td><td class="code">        setAnimating(false);</td></tr>
-<tr class="unc"><td class="ln">122</td><td class="code">        setPrevIndex(null);</td></tr>
-<tr class="unc"><td class="ln">123</td><td class="code">        animTimerRef.current = null;</td></tr>
+<tr class="part"><td class="ln">118</td><td class="code">    const raf = requestAnimationFrame(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">119</td><td class="code">      setAnimating(true);</td></tr>
+<tr class="nil"><td class="ln">120</td><td class="code">      animTimerRef.current = window.setTimeout(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">121</td><td class="code">        setAnimating(false);</td></tr>
+<tr class="nil"><td class="ln">122</td><td class="code">        setPrevIndex(null);</td></tr>
+<tr class="nil"><td class="ln">123</td><td class="code">        animTimerRef.current = null;</td></tr>
 <tr class="cov"><td class="ln">124</td><td class="code">      }, TRANSITION_MS);</td></tr>
-<tr class="cov"><td class="ln">125</td><td class="code">    });</td></tr>
+<tr class="nil"><td class="ln">125</td><td class="code">    });</td></tr>
 <tr class="cov"><td class="ln">126</td><td class="code">    return () =&gt; cancelAnimationFrame(raf);</td></tr>
 <tr class="nil"><td class="ln">127</td><td class="code">  }, [currentIndex]);</td></tr>
 <tr class="nil"><td class="ln">128</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">129</td><td class="code">  const goTo = useCallback(</td></tr>
+<tr class="nil"><td class="ln">129</td><td class="code">  const goTo = useCallback(</td></tr>
 <tr class="cov"><td class="ln">130</td><td class="code">    (index: number) =&gt; {</td></tr>
 <tr class="cov"><td class="ln">131</td><td class="code">      if (index &lt; 0 || index &gt;= totalSlides) return;</td></tr>
 <tr class="cov"><td class="ln">132</td><td class="code">      if (index === currentIndex) return;</td></tr>
-<tr class="unc"><td class="ln">133</td><td class="code">      if (controlled) {</td></tr>
+<tr class="nil"><td class="ln">133</td><td class="code">      if (controlled) {</td></tr>
 <tr class="nil"><td class="ln">134</td><td class="code">        // Projector window: we don&#x27;t own the index. Forward the request to the</td></tr>
-<tr class="unc"><td class="ln">135</td><td class="code">        // main (speaker) window, which navigates and echoes presenter:goto back.</td></tr>
+<tr class="nil"><td class="ln">135</td><td class="code">        // main (speaker) window, which navigates and echoes presenter:goto back.</td></tr>
 <tr class="unc"><td class="ln">136</td><td class="code">        onNavigate?.(index);</td></tr>
 <tr class="unc"><td class="ln">137</td><td class="code">        return;</td></tr>
 <tr class="nil"><td class="ln">138</td><td class="code">      }</td></tr>
 <tr class="unc"><td class="ln">139</td><td class="code">      setLocalIndex(index);</td></tr>
-<tr class="unc"><td class="ln">140</td><td class="code">      selectSlide(index);</td></tr>
+<tr class="nil"><td class="ln">140</td><td class="code">      selectSlide(index);</td></tr>
 <tr class="nil"><td class="ln">141</td><td class="code">    },</td></tr>
 <tr class="cov"><td class="ln">142</td><td class="code">    [controlled, currentIndex, totalSlides, selectSlide, onNavigate]</td></tr>
-<tr class="cov"><td class="ln">143</td><td class="code">  );</td></tr>
-<tr class="cov"><td class="ln">144</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">143</td><td class="code">  );</td></tr>
+<tr class="nil"><td class="ln">144</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">145</td><td class="code">  const goNext = useCallback(() =&gt; goTo(currentIndex + 1), [currentIndex, goTo]);</td></tr>
-<tr class="cov"><td class="ln">146</td><td class="code">  const goPrev = useCallback(() =&gt; goTo(currentIndex - 1), [currentIndex, goTo]);</td></tr>
-<tr class="cov"><td class="ln">147</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">146</td><td class="code">  const goPrev = useCallback(() =&gt; goTo(currentIndex - 1), [currentIndex, goTo]);</td></tr>
+<tr class="nil"><td class="ln">147</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">148</td><td class="code">  useEffect(() =&gt; {</td></tr>
 <tr class="cov"><td class="ln">149</td><td class="code">    const handleKeyDown = (e: KeyboardEvent) =&gt; {</td></tr>
 <tr class="nil"><td class="ln">150</td><td class="code">      // Escape: zoom out first if zoomed in (#29); else exit present / close the</td></tr>
-<tr class="cov"><td class="ln">151</td><td class="code">      // projector window. Functional update reads the live zoom without a dep.</td></tr>
+<tr class="nil"><td class="ln">151</td><td class="code">      // projector window. Functional update reads the live zoom without a dep.</td></tr>
 <tr class="cov"><td class="ln">152</td><td class="code">      if (e.key === &#x27;Escape&#x27;) {</td></tr>
 <tr class="cov"><td class="ln">153</td><td class="code">        let wasZoomed = false;</td></tr>
-<tr class="cov"><td class="ln">154</td><td class="code">        setZoom((z) =&gt; { wasZoomed = z &gt; 1; return 1; });</td></tr>
-<tr class="unc"><td class="ln">155</td><td class="code">        if (wasZoomed) return;</td></tr>
-<tr class="cov"><td class="ln">156</td><td class="code">        if (onExit) onExit(); else setPresenting(false); return;</td></tr>
-<tr class="cov"><td class="ln">157</td><td class="code">      }</td></tr>
-<tr class="cov"><td class="ln">158</td><td class="code">      // Cmd/Ctrl + . — the macOS &quot;cancel&quot; chord — is a robust ALTERNATE exit for</td></tr>
-<tr class="cov"><td class="ln">159</td><td class="code">      // input layers that can&#x27;t emit Escape into a native app (e.g. computer-use</td></tr>
+<tr class="nil"><td class="ln">154</td><td class="code">        setZoom((z) =&gt; { wasZoomed = z &gt; 1; return 1; });</td></tr>
+<tr class="nil"><td class="ln">155</td><td class="code">        if (wasZoomed) return;</td></tr>
+<tr class="nil"><td class="ln">156</td><td class="code">        if (onExit) onExit(); else setPresenting(false); return;</td></tr>
+<tr class="nil"><td class="ln">157</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">158</td><td class="code">      // Cmd/Ctrl + . — the macOS &quot;cancel&quot; chord — is a robust ALTERNATE exit for</td></tr>
+<tr class="nil"><td class="ln">159</td><td class="code">      // input layers that can&#x27;t emit Escape into a native app (e.g. computer-use</td></tr>
 <tr class="nil"><td class="ln">160</td><td class="code">      // agents; #180). It isn&#x27;t a text character, so it&#x27;s safe to handle here</td></tr>
 <tr class="nil"><td class="ln">161</td><td class="code">      // (before the text-entry guard) regardless of focus. Mirrors Escape.</td></tr>
-<tr class="unc"><td class="ln">162</td><td class="code">      if ((e.metaKey || e.ctrlKey) &amp;&amp; e.key === &#x27;.&#x27;) {</td></tr>
-<tr class="unc"><td class="ln">163</td><td class="code">        e.preventDefault();</td></tr>
+<tr class="part"><td class="ln">162</td><td class="code">      if ((e.metaKey || e.ctrlKey) &amp;&amp; e.key === &#x27;.&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">163</td><td class="code">        e.preventDefault();</td></tr>
 <tr class="cov"><td class="ln">164</td><td class="code">        let wasZoomed = false;</td></tr>
 <tr class="cov"><td class="ln">165</td><td class="code">        setZoom((z) =&gt; { wasZoomed = z &gt; 1; return 1; });</td></tr>
-<tr class="unc"><td class="ln">166</td><td class="code">        if (wasZoomed) return;</td></tr>
+<tr class="nil"><td class="ln">166</td><td class="code">        if (wasZoomed) return;</td></tr>
 <tr class="cov"><td class="ln">167</td><td class="code">        if (onExit) onExit(); else setPresenting(false); return;</td></tr>
 <tr class="nil"><td class="ln">168</td><td class="code">      }</td></tr>
-<tr class="cov"><td class="ln">169</td><td class="code">      // NOTE: controlled (projector) windows still navigate via the keyboard —</td></tr>
-<tr class="cov"><td class="ln">170</td><td class="code">      // goTo() forwards the target to the speaker window when controlled.</td></tr>
+<tr class="nil"><td class="ln">169</td><td class="code">      // NOTE: controlled (projector) windows still navigate via the keyboard —</td></tr>
+<tr class="nil"><td class="ln">170</td><td class="code">      // goTo() forwards the target to the speaker window when controlled.</td></tr>
 <tr class="nil"><td class="ln">171</td><td class="code">      // When focus is in a text-entry context (a notebook code cell&#x27;s</td></tr>
-<tr class="unc"><td class="ln">172</td><td class="code">      // CodeMirror editor, an input, etc.), let it handle the key —</td></tr>
-<tr class="unc"><td class="ln">173</td><td class="code">      // otherwise Space/arrows get hijacked for slide navigation and</td></tr>
+<tr class="nil"><td class="ln">172</td><td class="code">      // CodeMirror editor, an input, etc.), let it handle the key —</td></tr>
+<tr class="nil"><td class="ln">173</td><td class="code">      // otherwise Space/arrows get hijacked for slide navigation and</td></tr>
 <tr class="nil"><td class="ln">174</td><td class="code">      // the presenter can&#x27;t type a space into a live cell.</td></tr>
-<tr class="unc"><td class="ln">175</td><td class="code">      const t = e.target as HTMLElement | null;</td></tr>
+<tr class="part"><td class="ln">175</td><td class="code">      const t = e.target as HTMLElement | null;</td></tr>
 <tr class="unc"><td class="ln">176</td><td class="code">      const inEditor = !!t &amp;&amp; (</td></tr>
 <tr class="nil"><td class="ln">177</td><td class="code">        t.isContentEditable ||</td></tr>
 <tr class="nil"><td class="ln">178</td><td class="code">        t.tagName === &#x27;INPUT&#x27; || t.tagName === &#x27;TEXTAREA&#x27; || t.tagName === &#x27;SELECT&#x27; ||</td></tr>
 <tr class="cov"><td class="ln">179</td><td class="code">        !!t.closest?.(&#x27;.cm-editor&#x27;)</td></tr>
-<tr class="cov"><td class="ln">180</td><td class="code">      );</td></tr>
+<tr class="nil"><td class="ln">180</td><td class="code">      );</td></tr>
 <tr class="cov"><td class="ln">181</td><td class="code">      if (inEditor) return;</td></tr>
 <tr class="cov"><td class="ln">182</td><td class="code">      switch (e.key) {</td></tr>
 <tr class="cov"><td class="ln">183</td><td class="code">        case &#x27;ArrowRight&#x27;: case &#x27;ArrowDown&#x27;: case &#x27; &#x27;: case &#x27;PageDown&#x27;:</td></tr>
-<tr class="cov"><td class="ln">184</td><td class="code">          e.preventDefault(); goNext(); break;</td></tr>
+<tr class="nil"><td class="ln">184</td><td class="code">          e.preventDefault(); goNext(); break;</td></tr>
 <tr class="nil"><td class="ln">185</td><td class="code">        case &#x27;ArrowLeft&#x27;: case &#x27;ArrowUp&#x27;: case &#x27;PageUp&#x27;:</td></tr>
-<tr class="cov"><td class="ln">186</td><td class="code">          e.preventDefault(); goPrev(); break;</td></tr>
-<tr class="cov"><td class="ln">187</td><td class="code">        case &#x27;s&#x27;: case &#x27;S&#x27;:</td></tr>
-<tr class="cov"><td class="ln">188</td><td class="code">          // Inline speaker panel only makes sense in the single-window present.</td></tr>
+<tr class="nil"><td class="ln">186</td><td class="code">          e.preventDefault(); goPrev(); break;</td></tr>
+<tr class="nil"><td class="ln">187</td><td class="code">        case &#x27;s&#x27;: case &#x27;S&#x27;:</td></tr>
+<tr class="nil"><td class="ln">188</td><td class="code">          // Inline speaker panel only makes sense in the single-window present.</td></tr>
 <tr class="cov"><td class="ln">189</td><td class="code">          if (!controlled) { e.preventDefault(); setShowSpeaker((prev) =&gt; !prev); }</td></tr>
-<tr class="unc"><td class="ln">190</td><td class="code">          break;</td></tr>
-<tr class="cov"><td class="ln">191</td><td class="code">        case &#x27;z&#x27;: case &#x27;Z&#x27;: e.preventDefault(); toggleZoom(); break;   // #29: zoom into the slide</td></tr>
-<tr class="cov"><td class="ln">192</td><td class="code">        case &#x27;Home&#x27;: e.preventDefault(); goTo(0); break;</td></tr>
-<tr class="cov"><td class="ln">193</td><td class="code">        case &#x27;End&#x27;: e.preventDefault(); goTo(totalSlides - 1); break;</td></tr>
-<tr class="unc"><td class="ln">194</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">190</td><td class="code">          break;</td></tr>
+<tr class="nil"><td class="ln">191</td><td class="code">        case &#x27;z&#x27;: case &#x27;Z&#x27;: e.preventDefault(); toggleZoom(); break;   // #29: zoom into the slide</td></tr>
+<tr class="nil"><td class="ln">192</td><td class="code">        case &#x27;Home&#x27;: e.preventDefault(); goTo(0); break;</td></tr>
+<tr class="unc"><td class="ln">193</td><td class="code">        case &#x27;End&#x27;: e.preventDefault(); goTo(totalSlides - 1); break;</td></tr>
+<tr class="nil"><td class="ln">194</td><td class="code">      }</td></tr>
 <tr class="nil"><td class="ln">195</td><td class="code">    };</td></tr>
-<tr class="cov"><td class="ln">196</td><td class="code">    // A focused demo iframe swallows Space/arrows (its keydown fires in the</td></tr>
-<tr class="cov"><td class="ln">197</td><td class="code">    // opaque-origin iframe, never reaching this window listener). The injected</td></tr>
+<tr class="nil"><td class="ln">196</td><td class="code">    // A focused demo iframe swallows Space/arrows (its keydown fires in the</td></tr>
+<tr class="nil"><td class="ln">197</td><td class="code">    // opaque-origin iframe, never reaching this window listener). The injected</td></tr>
 <tr class="nil"><td class="ln">198</td><td class="code">    // demo bridge forwards unconsumed nav keys to us as a postMessage (#155);</td></tr>
 <tr class="nil"><td class="ln">199</td><td class="code">    // route them into the same navigation.</td></tr>
 <tr class="cov"><td class="ln">200</td><td class="code">    const handleNavMessage = (e: MessageEvent) =&gt; {</td></tr>
-<tr class="cov"><td class="ln">201</td><td class="code">      const d = e.data as { __eigendeck?: number; type?: string; key?: string } | null;</td></tr>
+<tr class="part"><td class="ln">201</td><td class="code">      const d = e.data as { __eigendeck?: number; type?: string; key?: string } | null;</td></tr>
 <tr class="cov"><td class="ln">202</td><td class="code">      if (!d || d.__eigendeck !== 1 || d.type !== &#x27;nav-key&#x27;) return;</td></tr>
 <tr class="cov"><td class="ln">203</td><td class="code">      switch (d.key) {</td></tr>
 <tr class="cov"><td class="ln">204</td><td class="code">        case &#x27;ArrowRight&#x27;: case &#x27;ArrowDown&#x27;: case &#x27; &#x27;: case &#x27;PageDown&#x27;: goNext(); break;</td></tr>
 <tr class="cov"><td class="ln">205</td><td class="code">        case &#x27;ArrowLeft&#x27;: case &#x27;ArrowUp&#x27;: case &#x27;PageUp&#x27;: goPrev(); break;</td></tr>
 <tr class="cov"><td class="ln">206</td><td class="code">        case &#x27;Home&#x27;: goTo(0); break;</td></tr>
-<tr class="cov"><td class="ln">207</td><td class="code">        case &#x27;End&#x27;: goTo(totalSlides - 1); break;</td></tr>
+<tr class="nil"><td class="ln">207</td><td class="code">        case &#x27;End&#x27;: goTo(totalSlides - 1); break;</td></tr>
 <tr class="nil"><td class="ln">208</td><td class="code">      }</td></tr>
 <tr class="nil"><td class="ln">209</td><td class="code">    };</td></tr>
-<tr class="unc"><td class="ln">210</td><td class="code">    window.addEventListener(&#x27;keydown&#x27;, handleKeyDown);</td></tr>
-<tr class="unc"><td class="ln">211</td><td class="code">    window.addEventListener(&#x27;message&#x27;, handleNavMessage);</td></tr>
-<tr class="unc"><td class="ln">212</td><td class="code">    return () =&gt; {</td></tr>
-<tr class="unc"><td class="ln">213</td><td class="code">      window.removeEventListener(&#x27;keydown&#x27;, handleKeyDown);</td></tr>
-<tr class="unc"><td class="ln">214</td><td class="code">      window.removeEventListener(&#x27;message&#x27;, handleNavMessage);</td></tr>
+<tr class="nil"><td class="ln">210</td><td class="code">    window.addEventListener(&#x27;keydown&#x27;, handleKeyDown);</td></tr>
+<tr class="nil"><td class="ln">211</td><td class="code">    window.addEventListener(&#x27;message&#x27;, handleNavMessage);</td></tr>
+<tr class="nil"><td class="ln">212</td><td class="code">    return () =&gt; {</td></tr>
+<tr class="nil"><td class="ln">213</td><td class="code">      window.removeEventListener(&#x27;keydown&#x27;, handleKeyDown);</td></tr>
+<tr class="nil"><td class="ln">214</td><td class="code">      window.removeEventListener(&#x27;message&#x27;, handleNavMessage);</td></tr>
 <tr class="nil"><td class="ln">215</td><td class="code">    };</td></tr>
 <tr class="nil"><td class="ln">216</td><td class="code">  }, [goNext, goPrev, goTo, totalSlides, setPresenting, controlled, onExit, toggleZoom]);</td></tr>
 <tr class="nil"><td class="ln">217</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">218</td><td class="code">  useEffect(() =&gt; {</td></tr>
-<tr class="unc"><td class="ln">219</td><td class="code">    return () =&gt; {</td></tr>
-<tr class="unc"><td class="ln">220</td><td class="code">      if (animTimerRef.current) clearTimeout(animTimerRef.current);</td></tr>
+<tr class="nil"><td class="ln">218</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">219</td><td class="code">    return () =&gt; {</td></tr>
+<tr class="nil"><td class="ln">220</td><td class="code">      if (animTimerRef.current) clearTimeout(animTimerRef.current);</td></tr>
 <tr class="nil"><td class="ln">221</td><td class="code">    };</td></tr>
 <tr class="nil"><td class="ln">222</td><td class="code">  }, []);</td></tr>
 <tr class="nil"><td class="ln">223</td><td class="code">&nbsp;</td></tr>
@@ -242,17 +243,17 @@
 <tr class="nil"><td class="ln">225</td><td class="code">  // it stays chrome-free (no zoom button) and applies whatever the speaker emits</td></tr>
 <tr class="nil"><td class="ln">226</td><td class="code">  // via `zoomPresenter`. Only the projector window receives this (emitTo targets</td></tr>
 <tr class="nil"><td class="ln">227</td><td class="code">  // the &#x27;presenter&#x27; label); the single-window present never sees it.</td></tr>
-<tr class="unc"><td class="ln">228</td><td class="code">  useEffect(() =&gt; {</td></tr>
-<tr class="unc"><td class="ln">229</td><td class="code">    const un = listen&lt;{ zoom: number; fx: number; fy: number }&gt;(&#x27;presenter:zoom&#x27;, (e) =&gt; {</td></tr>
-<tr class="unc"><td class="ln">230</td><td class="code">      setZoom(e.payload.zoom);</td></tr>
-<tr class="unc"><td class="ln">231</td><td class="code">      setFocus({ x: e.payload.fx, y: e.payload.fy });</td></tr>
+<tr class="nil"><td class="ln">228</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">229</td><td class="code">    const un = listen&lt;{ zoom: number; fx: number; fy: number }&gt;(&#x27;presenter:zoom&#x27;, (e) =&gt; {</td></tr>
+<tr class="nil"><td class="ln">230</td><td class="code">      setZoom(e.payload.zoom);</td></tr>
+<tr class="nil"><td class="ln">231</td><td class="code">      setFocus({ x: e.payload.fx, y: e.payload.fy });</td></tr>
 <tr class="nil"><td class="ln">232</td><td class="code">    });</td></tr>
-<tr class="cov"><td class="ln">233</td><td class="code">    return () =&gt; { un.then((fn) =&gt; fn()); };</td></tr>
+<tr class="nil"><td class="ln">233</td><td class="code">    return () =&gt; { un.then((fn) =&gt; fn()); };</td></tr>
 <tr class="nil"><td class="ln">234</td><td class="code">  }, []);</td></tr>
 <tr class="nil"><td class="ln">235</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">236</td><td class="code">  const slide = presentation.slides[currentIndex];</td></tr>
-<tr class="unc"><td class="ln">237</td><td class="code">  if (!slide) return null;</td></tr>
-<tr class="unc"><td class="ln">238</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">236</td><td class="code">  const slide = presentation.slides[currentIndex];</td></tr>
+<tr class="nil"><td class="ln">237</td><td class="code">  if (!slide) return null;</td></tr>
+<tr class="nil"><td class="ln">238</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">239</td><td class="code">  const prevSlide = prevIndex !== null ? presentation.slides[prevIndex] : null;</td></tr>
 <tr class="unc"><td class="ln">240</td><td class="code">  const { author, venue } = presentation.config;</td></tr>
 <tr class="unc"><td class="ln">241</td><td class="code">  const meta = [author, venue].filter(Boolean).join(&#x27; \u00B7 &#x27;);</td></tr>
@@ -265,78 +266,78 @@
 <tr class="nil"><td class="ln">248</td><td class="code">  // docs/presenter-architecture.md.</td></tr>
 <tr class="unc"><td class="ln">249</td><td class="code">  const plan = planPresentTransition(prevSlide, slide);</td></tr>
 <tr class="nil"><td class="ln">250</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">251</td><td class="code">  return (</td></tr>
-<tr class="cov"><td class="ln">252</td><td class="code">    &lt;div className={`present-mode ${showSpeaker ? &#x27;with-speaker&#x27; : &#x27;&#x27;}`}&gt;</td></tr>
+<tr class="nil"><td class="ln">251</td><td class="code">  return (</td></tr>
+<tr class="nil"><td class="ln">252</td><td class="code">    &lt;div className={`present-mode ${showSpeaker ? &#x27;with-speaker&#x27; : &#x27;&#x27;}`}&gt;</td></tr>
 <tr class="unc"><td class="ln">253</td><td class="code">      &lt;div</td></tr>
-<tr class="unc"><td class="ln">254</td><td class="code">        className=&quot;present-viewport&quot;</td></tr>
+<tr class="nil"><td class="ln">254</td><td class="code">        className=&quot;present-viewport&quot;</td></tr>
 <tr class="unc"><td class="ln">255</td><td class="code">        ref={viewportRef}</td></tr>
-<tr class="nil"><td class="ln">256</td><td class="code">        style={zoom &gt; 1 ? { position: &#x27;relative&#x27; } : undefined}</td></tr>
+<tr class="unc"><td class="ln">256</td><td class="code">        style={zoom &gt; 1 ? { position: &#x27;relative&#x27; } : undefined}</td></tr>
 <tr class="nil"><td class="ln">257</td><td class="code">      &gt;</td></tr>
-<tr class="nil"><td class="ln">258</td><td class="code">        &lt;div</td></tr>
-<tr class="nil"><td class="ln">259</td><td class="code">          className=&quot;present-slide-wrapper&quot;</td></tr>
-<tr class="nil"><td class="ln">260</td><td class="code">          style={{</td></tr>
-<tr class="nil"><td class="ln">261</td><td class="code">            width: slideW * scale, height: slideH * scale,</td></tr>
-<tr class="nil"><td class="ln">262</td><td class="code">            transform: zoom &gt; 1 ? `scale(${zoom})` : undefined,</td></tr>
-<tr class="nil"><td class="ln">263</td><td class="code">            transformOrigin: `${focus.x * 100}% ${focus.y * 100}%`,</td></tr>
-<tr class="nil"><td class="ln">264</td><td class="code">            transition: &#x27;transform 0.25s ease&#x27;,</td></tr>
+<tr class="unc"><td class="ln">258</td><td class="code">        &lt;div</td></tr>
+<tr class="unc"><td class="ln">259</td><td class="code">          className=&quot;present-slide-wrapper&quot;</td></tr>
+<tr class="unc"><td class="ln">260</td><td class="code">          style={{</td></tr>
+<tr class="unc"><td class="ln">261</td><td class="code">            width: slideW * scale, height: slideH * scale,</td></tr>
+<tr class="unc"><td class="ln">262</td><td class="code">            transform: zoom &gt; 1 ? `scale(${zoom})` : undefined,</td></tr>
+<tr class="unc"><td class="ln">263</td><td class="code">            transformOrigin: `${focus.x * 100}% ${focus.y * 100}%`,</td></tr>
+<tr class="unc"><td class="ln">264</td><td class="code">            transition: &#x27;transform 0.25s ease&#x27;,</td></tr>
 <tr class="nil"><td class="ln">265</td><td class="code">          }}</td></tr>
 <tr class="nil"><td class="ln">266</td><td class="code">        &gt;</td></tr>
 <tr class="nil"><td class="ln">267</td><td class="code">          &lt;div</td></tr>
 <tr class="unc"><td class="ln">268</td><td class="code">            className=&quot;present-slide&quot;</td></tr>
 <tr class="nil"><td class="ln">269</td><td class="code">            style={{ width: slideW, height: slideH, transform: `scale(${scale})`, transformOrigin: &#x27;top left&#x27;,</td></tr>
-<tr class="cov"><td class="ln">270</td><td class="code">              backgroundColor: resolveTheme(presentation.theme, slide.theme).background }}</td></tr>
-<tr class="unc"><td class="ln">271</td><td class="code">          &gt;</td></tr>
+<tr class="nil"><td class="ln">270</td><td class="code">              backgroundColor: resolveTheme(presentation.theme, slide.theme).background }}</td></tr>
+<tr class="nil"><td class="ln">271</td><td class="code">          &gt;</td></tr>
 <tr class="unc"><td class="ln">272</td><td class="code">            {/* Elements LEAVING (on the previous slide, linked but no match on</td></tr>
 <tr class="unc"><td class="ln">273</td><td class="code">                this one) — fade out. Transient; rendered separately because they</td></tr>
 <tr class="unc"><td class="ln">274</td><td class="code">                aren&#x27;t in the current slide&#x27;s element list. */}</td></tr>
-<tr class="nil"><td class="ln">275</td><td class="code">            {plan.fadeOut.map(({ element: el, z }) =&gt; (</td></tr>
+<tr class="unc"><td class="ln">275</td><td class="code">            {plan.fadeOut.map(({ element: el, z }) =&gt; (</td></tr>
 <tr class="unc"><td class="ln">276</td><td class="code">              &lt;PresentElement</td></tr>
-<tr class="nil"><td class="ln">277</td><td class="code">                key={`fadeout-${el.id}`}</td></tr>
-<tr class="nil"><td class="ln">278</td><td class="code">                element={el}</td></tr>
-<tr class="nil"><td class="ln">279</td><td class="code">                zIndex={z}</td></tr>
-<tr class="nil"><td class="ln">280</td><td class="code">                ctx={ctx}</td></tr>
-<tr class="nil"><td class="ln">281</td><td class="code">                style={{</td></tr>
-<tr class="nil"><td class="ln">282</td><td class="code">                  opacity: animating ? 0 : 1,</td></tr>
-<tr class="nil"><td class="ln">283</td><td class="code">                  transition: animating ? `opacity ${TRANSITION_MS}ms ease-in-out` : undefined,</td></tr>
+<tr class="unc"><td class="ln">277</td><td class="code">                key={`fadeout-${el.id}`}</td></tr>
+<tr class="unc"><td class="ln">278</td><td class="code">                element={el}</td></tr>
+<tr class="unc"><td class="ln">279</td><td class="code">                zIndex={z}</td></tr>
+<tr class="unc"><td class="ln">280</td><td class="code">                ctx={ctx}</td></tr>
+<tr class="unc"><td class="ln">281</td><td class="code">                style={{</td></tr>
+<tr class="unc"><td class="ln">282</td><td class="code">                  opacity: animating ? 0 : 1,</td></tr>
+<tr class="unc"><td class="ln">283</td><td class="code">                  transition: animating ? `opacity ${TRANSITION_MS}ms ease-in-out` : undefined,</td></tr>
 <tr class="nil"><td class="ln">284</td><td class="code">                }}</td></tr>
 <tr class="nil"><td class="ln">285</td><td class="code">              /&gt;</td></tr>
 <tr class="nil"><td class="ln">286</td><td class="code">            ))}</td></tr>
 <tr class="nil"><td class="ln">287</td><td class="code">&nbsp;</td></tr>
-<tr class="nil"><td class="ln">288</td><td class="code">            {/* ALL current-slide elements in ONE list, keyed by el.id in true</td></tr>
-<tr class="nil"><td class="ln">289</td><td class="code">                z-order. Critically, an element NEVER changes its key or its</td></tr>
+<tr class="unc"><td class="ln">288</td><td class="code">            {/* ALL current-slide elements in ONE list, keyed by el.id in true</td></tr>
+<tr class="unc"><td class="ln">289</td><td class="code">                z-order. Critically, an element NEVER changes its key or its</td></tr>
 <tr class="nil"><td class="ln">290</td><td class="code">                position in the tree across the transition (entering → settled),</td></tr>
 <tr class="cov"><td class="ln">291</td><td class="code">                so iframes (demo / video / notebook) are never unmounted and</td></tr>
-<tr class="nil"><td class="ln">292</td><td class="code">                re-created — that remount is what made HTML demos blank for one</td></tr>
-<tr class="nil"><td class="ln">293</td><td class="code">                frame as they finished fading (&quot;flash&quot;). The per-element style</td></tr>
-<tr class="nil"><td class="ln">294</td><td class="code">                encodes its transition role:</td></tr>
-<tr class="nil"><td class="ln">295</td><td class="code">                  • linked (matched partner on prev slide) → animate position</td></tr>
-<tr class="nil"><td class="ln">296</td><td class="code">                  • cover / synced-from-prev → static (instant, no fade)</td></tr>
-<tr class="nil"><td class="ln">297</td><td class="code">                  • genuinely new → fade in */}</td></tr>
-<tr class="nil"><td class="ln">298</td><td class="code">            {plan.items.map(({ element: el, z, role, from }) =&gt; {</td></tr>
+<tr class="cov"><td class="ln">292</td><td class="code">                re-created — that remount is what made HTML demos blank for one</td></tr>
+<tr class="cov"><td class="ln">293</td><td class="code">                frame as they finished fading (&quot;flash&quot;). The per-element style</td></tr>
+<tr class="cov"><td class="ln">294</td><td class="code">                encodes its transition role:</td></tr>
+<tr class="cov"><td class="ln">295</td><td class="code">                  • linked (matched partner on prev slide) → animate position</td></tr>
+<tr class="cov"><td class="ln">296</td><td class="code">                  • cover / synced-from-prev → static (instant, no fade)</td></tr>
+<tr class="cov"><td class="ln">297</td><td class="code">                  • genuinely new → fade in */}</td></tr>
+<tr class="cov"><td class="ln">298</td><td class="code">            {plan.items.map(({ element: el, z, role, from }) =&gt; {</td></tr>
 <tr class="nil"><td class="ln">299</td><td class="code">              // Linked arrow → interpolate its endpoints (or static if unmoved).</td></tr>
-<tr class="unc"><td class="ln">300</td><td class="code">              if (role === &#x27;linked&#x27; &amp;&amp; from &amp;&amp; el.type === &#x27;arrow&#x27; &amp;&amp; from.type === &#x27;arrow&#x27;) {</td></tr>
-<tr class="unc"><td class="ln">301</td><td class="code">                const moved = !(from.x1 === el.x1 &amp;&amp; from.y1 === el.y1 &amp;&amp;</td></tr>
-<tr class="nil"><td class="ln">302</td><td class="code">                  from.x2 === el.x2 &amp;&amp; from.y2 === el.y2 &amp;&amp;</td></tr>
-<tr class="nil"><td class="ln">303</td><td class="code">                  from.c1x === el.c1x &amp;&amp; from.c1y === el.c1y &amp;&amp;</td></tr>
+<tr class="cov"><td class="ln">300</td><td class="code">              if (role === &#x27;linked&#x27; &amp;&amp; from &amp;&amp; el.type === &#x27;arrow&#x27; &amp;&amp; from.type === &#x27;arrow&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">301</td><td class="code">                const moved = !(from.x1 === el.x1 &amp;&amp; from.y1 === el.y1 &amp;&amp;</td></tr>
+<tr class="cov"><td class="ln">302</td><td class="code">                  from.x2 === el.x2 &amp;&amp; from.y2 === el.y2 &amp;&amp;</td></tr>
+<tr class="cov"><td class="ln">303</td><td class="code">                  from.c1x === el.c1x &amp;&amp; from.c1y === el.c1y &amp;&amp;</td></tr>
 <tr class="nil"><td class="ln">304</td><td class="code">                  from.c2x === el.c2x &amp;&amp; from.c2y === el.c2y &amp;&amp;</td></tr>
 <tr class="nil"><td class="ln">305</td><td class="code">                  JSON.stringify(from.points) === JSON.stringify(el.points));</td></tr>
 <tr class="cov"><td class="ln">306</td><td class="code">                if (moved) {</td></tr>
-<tr class="cov"><td class="ln">307</td><td class="code">                  return (</td></tr>
+<tr class="nil"><td class="ln">307</td><td class="code">                  return (</td></tr>
 <tr class="cov"><td class="ln">308</td><td class="code">                    &lt;AnimatedArrow key={el.id} from={from} to={el} zIndex={z}</td></tr>
 <tr class="unc"><td class="ln">309</td><td class="code">                      theme={resolveTheme(presentation.theme, slide.theme)}</td></tr>
 <tr class="nil"><td class="ln">310</td><td class="code">                      animating={animating} hasPrev={prevIndex !== null} /&gt;</td></tr>
-<tr class="cov"><td class="ln">311</td><td class="code">                  );</td></tr>
+<tr class="nil"><td class="ln">311</td><td class="code">                  );</td></tr>
 <tr class="nil"><td class="ln">312</td><td class="code">                }</td></tr>
-<tr class="unc"><td class="ln">313</td><td class="code">                return &lt;PresentElement key={el.id} element={el} zIndex={z} ctx={ctx} /&gt;;</td></tr>
+<tr class="part"><td class="ln">313</td><td class="code">                return &lt;PresentElement key={el.id} element={el} zIndex={z} ctx={ctx} /&gt;;</td></tr>
 <tr class="nil"><td class="ln">314</td><td class="code">              }</td></tr>
 <tr class="nil"><td class="ln">315</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">316</td><td class="code">              // Linked (non-arrow) → animate position/size from the prev partner.</td></tr>
-<tr class="unc"><td class="ln">317</td><td class="code">              if (role === &#x27;linked&#x27; &amp;&amp; from) {</td></tr>
-<tr class="unc"><td class="ln">318</td><td class="code">                const fromPos = getElementBounds(from);</td></tr>
-<tr class="unc"><td class="ln">319</td><td class="code">                const toPos = getElementBounds(el);</td></tr>
-<tr class="unc"><td class="ln">320</td><td class="code">                const isStatic = fromPos.x === toPos.x &amp;&amp; fromPos.y === toPos.y &amp;&amp;</td></tr>
+<tr class="nil"><td class="ln">317</td><td class="code">              if (role === &#x27;linked&#x27; &amp;&amp; from) {</td></tr>
+<tr class="nil"><td class="ln">318</td><td class="code">                const fromPos = getElementBounds(from);</td></tr>
+<tr class="nil"><td class="ln">319</td><td class="code">                const toPos = getElementBounds(el);</td></tr>
+<tr class="nil"><td class="ln">320</td><td class="code">                const isStatic = fromPos.x === toPos.x &amp;&amp; fromPos.y === toPos.y &amp;&amp;</td></tr>
 <tr class="nil"><td class="ln">321</td><td class="code">                  fromPos.w === toPos.w &amp;&amp; fromPos.h === toPos.h;</td></tr>
-<tr class="unc"><td class="ln">322</td><td class="code">                return (</td></tr>
+<tr class="nil"><td class="ln">322</td><td class="code">                return (</td></tr>
 <tr class="nil"><td class="ln">323</td><td class="code">                  &lt;PresentElement</td></tr>
 <tr class="nil"><td class="ln">324</td><td class="code">                    key={el.id}</td></tr>
 <tr class="nil"><td class="ln">325</td><td class="code">                    element={el}</td></tr>
@@ -354,25 +355,25 @@
 <tr class="nil"><td class="ln">337</td><td class="code">              }</td></tr>
 <tr class="nil"><td class="ln">338</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">339</td><td class="code">              // role &#x27;static&#x27; (cover / carried-over) → instant; &#x27;fade&#x27; → fade in.</td></tr>
-<tr class="unc"><td class="ln">340</td><td class="code">              return (</td></tr>
+<tr class="nil"><td class="ln">340</td><td class="code">              return (</td></tr>
 <tr class="nil"><td class="ln">341</td><td class="code">                &lt;PresentElement</td></tr>
 <tr class="nil"><td class="ln">342</td><td class="code">                  key={el.id}</td></tr>
-<tr class="unc"><td class="ln">343</td><td class="code">                  element={el}</td></tr>
+<tr class="nil"><td class="ln">343</td><td class="code">                  element={el}</td></tr>
 <tr class="unc"><td class="ln">344</td><td class="code">                  zIndex={z}</td></tr>
 <tr class="unc"><td class="ln">345</td><td class="code">                  ctx={ctx}</td></tr>
 <tr class="unc"><td class="ln">346</td><td class="code">                  style={role === &#x27;static&#x27; ? { opacity: 1 } : {</td></tr>
-<tr class="nil"><td class="ln">347</td><td class="code">                    opacity: prevIndex !== null ? (animating ? 1 : 0) : 1,</td></tr>
-<tr class="nil"><td class="ln">348</td><td class="code">                    transition: animating ? `opacity ${TRANSITION_MS}ms ease-in-out` : undefined,</td></tr>
+<tr class="unc"><td class="ln">347</td><td class="code">                    opacity: prevIndex !== null ? (animating ? 1 : 0) : 1,</td></tr>
+<tr class="unc"><td class="ln">348</td><td class="code">                    transition: animating ? `opacity ${TRANSITION_MS}ms ease-in-out` : undefined,</td></tr>
 <tr class="nil"><td class="ln">349</td><td class="code">                  }}</td></tr>
 <tr class="nil"><td class="ln">350</td><td class="code">                /&gt;</td></tr>
 <tr class="nil"><td class="ln">351</td><td class="code">              );</td></tr>
 <tr class="nil"><td class="ln">352</td><td class="code">            })}</td></tr>
-<tr class="unc"><td class="ln">353</td><td class="code">&nbsp;</td></tr>
-<tr class="nil"><td class="ln">354</td><td class="code">            {/* Hidden controller iframes for demo-piece elements,</td></tr>
+<tr class="nil"><td class="ln">353</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">354</td><td class="code">            {/* Hidden controller iframes for demo-piece elements,</td></tr>
 <tr class="nil"><td class="ln">355</td><td class="code">                deduped by assetId. */}</td></tr>
-<tr class="unc"><td class="ln">356</td><td class="code">            {(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">356</td><td class="code">            {(() =&gt; {</td></tr>
 <tr class="unc"><td class="ln">357</td><td class="code">              const controllers = new Set&lt;string&gt;();</td></tr>
-<tr class="unc"><td class="ln">358</td><td class="code">              for (const el of slide.elements) {</td></tr>
+<tr class="nil"><td class="ln">358</td><td class="code">              for (const el of slide.elements) {</td></tr>
 <tr class="unc"><td class="ln">359</td><td class="code">                if (el.type !== &#x27;demo-piece&#x27;) continue;</td></tr>
 <tr class="unc"><td class="ln">360</td><td class="code">                controllers.add(el.assetId);</td></tr>
 <tr class="nil"><td class="ln">361</td><td class="code">              }</td></tr>
@@ -381,13 +382,13 @@
 <tr class="nil"><td class="ln">364</td><td class="code">              ));</td></tr>
 <tr class="nil"><td class="ln">365</td><td class="code">            })()}</td></tr>
 <tr class="nil"><td class="ln">366</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">367</td><td class="code">            {/* Footer */}</td></tr>
+<tr class="nil"><td class="ln">367</td><td class="code">            {/* Footer */}</td></tr>
 <tr class="unc"><td class="ln">368</td><td class="code">            {showFooter(slide) &amp;&amp; (</td></tr>
 <tr class="nil"><td class="ln">369</td><td class="code">              &lt;div className=&quot;slide-footer&quot; style={{ zIndex: 1000, fontFamily: footerFontFamily(presentation.config) }}&gt;</td></tr>
 <tr class="unc"><td class="ln">370</td><td class="code">                &lt;span className=&quot;slide-footer-meta&quot;&gt;{meta}&lt;/span&gt;</td></tr>
 <tr class="nil"><td class="ln">371</td><td class="code">                &lt;span className=&quot;slide-footer-number&quot;&gt;{getSlideNumber(presentation.slides, currentIndex)}&lt;/span&gt;</td></tr>
 <tr class="nil"><td class="ln">372</td><td class="code">              &lt;/div&gt;</td></tr>
-<tr class="unc"><td class="ln">373</td><td class="code">            )}</td></tr>
+<tr class="nil"><td class="ln">373</td><td class="code">            )}</td></tr>
 <tr class="unc"><td class="ln">374</td><td class="code">          &lt;/div&gt;</td></tr>
 <tr class="nil"><td class="ln">375</td><td class="code">        &lt;/div&gt;</td></tr>
 <tr class="nil"><td class="ln">376</td><td class="code">        {/* #29 — while zoomed, a transparent overlay above ALL slide content</td></tr>
@@ -399,45 +400,45 @@
 <tr class="unc"><td class="ln">382</td><td class="code">        {zoom &gt; 1 &amp;&amp; (</td></tr>
 <tr class="unc"><td class="ln">383</td><td class="code">          &lt;div</td></tr>
 <tr class="unc"><td class="ln">384</td><td class="code">            className=&quot;present-zoom-pan&quot;</td></tr>
-<tr class="unc"><td class="ln">385</td><td class="code">            style={{ position: &#x27;absolute&#x27;, inset: 0, cursor: &#x27;zoom-out&#x27;, zIndex: 1500 }}</td></tr>
-<tr class="unc"><td class="ln">386</td><td class="code">            onClick={() =&gt; zoomOut()}</td></tr>
+<tr class="nil"><td class="ln">385</td><td class="code">            style={{ position: &#x27;absolute&#x27;, inset: 0, cursor: &#x27;zoom-out&#x27;, zIndex: 1500 }}</td></tr>
+<tr class="nil"><td class="ln">386</td><td class="code">            onClick={() =&gt; zoomOut()}</td></tr>
 <tr class="unc"><td class="ln">387</td><td class="code">            onMouseMove={(e) =&gt; {</td></tr>
-<tr class="unc"><td class="ln">388</td><td class="code">              // Map the cursor into the WRAPPER&#x27;s centered layout box (not the raw</td></tr>
+<tr class="nil"><td class="ln">388</td><td class="code">              // Map the cursor into the WRAPPER&#x27;s centered layout box (not the raw</td></tr>
 <tr class="nil"><td class="ln">389</td><td class="code">              // viewport) so the focal point is letterbox-correct — transform-origin %</td></tr>
-<tr class="unc"><td class="ln">390</td><td class="code">              // is relative to the wrapper, and the viewport flex-centers it, so a</td></tr>
-<tr class="unc"><td class="ln">391</td><td class="code">              // window whose aspect ≠ the slide&#x27;s has bars we must subtract. (#29)</td></tr>
+<tr class="nil"><td class="ln">390</td><td class="code">              // is relative to the wrapper, and the viewport flex-centers it, so a</td></tr>
+<tr class="nil"><td class="ln">391</td><td class="code">              // window whose aspect ≠ the slide&#x27;s has bars we must subtract. (#29)</td></tr>
 <tr class="unc"><td class="ln">392</td><td class="code">              const r = (e.currentTarget as HTMLElement).getBoundingClientRect();</td></tr>
 <tr class="unc"><td class="ln">393</td><td class="code">              const ww = slideW * scale, wh = slideH * scale;</td></tr>
 <tr class="unc"><td class="ln">394</td><td class="code">              const ox = (r.width - ww) / 2, oy = (r.height - wh) / 2;   // letterbox offset</td></tr>
 <tr class="unc"><td class="ln">395</td><td class="code">              setFocus({ x: clamp01((e.clientX - r.left - ox) / ww), y: clamp01((e.clientY - r.top - oy) / wh) });</td></tr>
-<tr class="unc"><td class="ln">396</td><td class="code">            }}</td></tr>
+<tr class="nil"><td class="ln">396</td><td class="code">            }}</td></tr>
 <tr class="nil"><td class="ln">397</td><td class="code">          /&gt;</td></tr>
 <tr class="nil"><td class="ln">398</td><td class="code">        )}</td></tr>
-<tr class="nil"><td class="ln">399</td><td class="code">      &lt;/div&gt;</td></tr>
-<tr class="nil"><td class="ln">400</td><td class="code">      {showSpeaker &amp;&amp; &lt;SpeakerPanel /&gt;}</td></tr>
-<tr class="nil"><td class="ln">401</td><td class="code">      {/* #29 — no on-slide zoom button: the audience slide stays chrome-free.</td></tr>
-<tr class="nil"><td class="ln">402</td><td class="code">          Zoom is driven by the speaker view (dual-monitor) via &#x27;presenter:zoom&#x27;,</td></tr>
-<tr class="nil"><td class="ln">403</td><td class="code">          or the &#x27;z&#x27; key in single-window present. */}</td></tr>
-<tr class="nil"><td class="ln">404</td><td class="code">    &lt;/div&gt;</td></tr>
+<tr class="unc"><td class="ln">399</td><td class="code">      &lt;/div&gt;</td></tr>
+<tr class="unc"><td class="ln">400</td><td class="code">      {showSpeaker &amp;&amp; &lt;SpeakerPanel /&gt;}</td></tr>
+<tr class="unc"><td class="ln">401</td><td class="code">      {/* #29 — no on-slide zoom button: the audience slide stays chrome-free.</td></tr>
+<tr class="unc"><td class="ln">402</td><td class="code">          Zoom is driven by the speaker view (dual-monitor) via &#x27;presenter:zoom&#x27;,</td></tr>
+<tr class="unc"><td class="ln">403</td><td class="code">          or the &#x27;z&#x27; key in single-window present. */}</td></tr>
+<tr class="unc"><td class="ln">404</td><td class="code">    &lt;/div&gt;</td></tr>
 <tr class="nil"><td class="ln">405</td><td class="code">  );</td></tr>
 <tr class="nil"><td class="ln">406</td><td class="code">}</td></tr>
-<tr class="unc"><td class="ln">407</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">408</td><td class="code">// ============================================</td></tr>
+<tr class="nil"><td class="ln">407</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">408</td><td class="code">// ============================================</td></tr>
 <tr class="nil"><td class="ln">409</td><td class="code">// Compute linked object transitions</td></tr>
 <tr class="nil"><td class="ln">410</td><td class="code">// ============================================</td></tr>
-<tr class="unc"><td class="ln">411</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">411</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">412</td><td class="code">function getElementBounds(el: SlideElement): { x: number; y: number; w: number; h: number } {</td></tr>
-<tr class="unc"><td class="ln">413</td><td class="code">  if (el.type === &#x27;arrow&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">413</td><td class="code">  if (el.type === &#x27;arrow&#x27;) {</td></tr>
 <tr class="unc"><td class="ln">414</td><td class="code">    const { x1, y1, x2, y2 } = el;</td></tr>
-<tr class="unc"><td class="ln">415</td><td class="code">    const pad = 30;</td></tr>
-<tr class="unc"><td class="ln">416</td><td class="code">    return {</td></tr>
+<tr class="nil"><td class="ln">415</td><td class="code">    const pad = 30;</td></tr>
+<tr class="nil"><td class="ln">416</td><td class="code">    return {</td></tr>
 <tr class="nil"><td class="ln">417</td><td class="code">      x: Math.min(x1, x2) - pad,</td></tr>
 <tr class="nil"><td class="ln">418</td><td class="code">      y: Math.min(y1, y2) - pad,</td></tr>
 <tr class="nil"><td class="ln">419</td><td class="code">      w: Math.abs(x2 - x1) + pad * 2,</td></tr>
 <tr class="nil"><td class="ln">420</td><td class="code">      h: Math.abs(y2 - y1) + pad * 2,</td></tr>
 <tr class="nil"><td class="ln">421</td><td class="code">    };</td></tr>
 <tr class="nil"><td class="ln">422</td><td class="code">  }</td></tr>
-<tr class="unc"><td class="ln">423</td><td class="code">  return { x: el.position.x, y: el.position.y, w: el.position.width, h: el.position.height };</td></tr>
+<tr class="nil"><td class="ln">423</td><td class="code">  return { x: el.position.x, y: el.position.y, w: el.position.width, h: el.position.height };</td></tr>
 <tr class="nil"><td class="ln">424</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">425</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">426</td><td class="code">// ============================================</td></tr>
@@ -445,7 +446,7 @@
 <tr class="nil"><td class="ln">428</td><td class="code">// ============================================</td></tr>
 <tr class="nil"><td class="ln">429</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">430</td><td class="code">function easeInOut(t: number): number {</td></tr>
-<tr class="unc"><td class="ln">431</td><td class="code">  return t &lt; 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;</td></tr>
+<tr class="nil"><td class="ln">431</td><td class="code">  return t &lt; 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;</td></tr>
 <tr class="nil"><td class="ln">432</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">433</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">434</td><td class="code">type ArrowEl = Extract&lt;SlideElement, { type: &#x27;arrow&#x27; }&gt;;</td></tr>
@@ -454,48 +455,48 @@
 <tr class="nil"><td class="ln">437</td><td class="code">// on the chord when absent — so a straight↔curved transition interpolates smoothly</td></tr>
 <tr class="nil"><td class="ln">438</td><td class="code">// (a straight arrow&#x27;s implicit controls sit on the line).</td></tr>
 <tr class="unc"><td class="ln">439</td><td class="code">export function effControls(s: ArrowEl) {</td></tr>
-<tr class="cov"><td class="ln">440</td><td class="code">  return {</td></tr>
+<tr class="unc"><td class="ln">440</td><td class="code">  return {</td></tr>
 <tr class="unc"><td class="ln">441</td><td class="code">    c1x: s.c1x ?? s.x1 + (s.x2 - s.x1) / 3, c1y: s.c1y ?? s.y1 + (s.y2 - s.y1) / 3,</td></tr>
 <tr class="unc"><td class="ln">442</td><td class="code">    c2x: s.c2x ?? s.x1 + 2 * (s.x2 - s.x1) / 3, c2y: s.c2y ?? s.y1 + 2 * (s.y2 - s.y1) / 3,</td></tr>
-<tr class="unc"><td class="ln">443</td><td class="code">  };</td></tr>
-<tr class="unc"><td class="ln">444</td><td class="code">}</td></tr>
-<tr class="unc"><td class="ln">445</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">443</td><td class="code">  };</td></tr>
+<tr class="nil"><td class="ln">444</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">445</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">446</td><td class="code">// Interpolate interior waypoints: lerp point-for-point when the counts match</td></tr>
 <tr class="nil"><td class="ln">447</td><td class="code">// (the common linked-arrow case); otherwise snap to the target set (a count change</td></tr>
 <tr class="nil"><td class="ln">448</td><td class="code">// can&#x27;t be tweened smoothly).</td></tr>
-<tr class="nil"><td class="ln">449</td><td class="code">function lerpPoints(a: ArrowEl[&#x27;points&#x27;], b: ArrowEl[&#x27;points&#x27;], e: number): ArrowEl[&#x27;points&#x27;] {</td></tr>
-<tr class="unc"><td class="ln">450</td><td class="code">  if (a &amp;&amp; b &amp;&amp; a.length === b.length) {</td></tr>
-<tr class="unc"><td class="ln">451</td><td class="code">    return a.map((p, i) =&gt; ({ x: p.x + (b[i].x - p.x) * e, y: p.y + (b[i].y - p.y) * e }));</td></tr>
+<tr class="unc"><td class="ln">449</td><td class="code">function lerpPoints(a: ArrowEl[&#x27;points&#x27;], b: ArrowEl[&#x27;points&#x27;], e: number): ArrowEl[&#x27;points&#x27;] {</td></tr>
+<tr class="nil"><td class="ln">450</td><td class="code">  if (a &amp;&amp; b &amp;&amp; a.length === b.length) {</td></tr>
+<tr class="nil"><td class="ln">451</td><td class="code">    return a.map((p, i) =&gt; ({ x: p.x + (b[i].x - p.x) * e, y: p.y + (b[i].y - p.y) * e }));</td></tr>
 <tr class="nil"><td class="ln">452</td><td class="code">  }</td></tr>
-<tr class="unc"><td class="ln">453</td><td class="code">  return b ?? a;</td></tr>
+<tr class="nil"><td class="ln">453</td><td class="code">  return b ?? a;</td></tr>
 <tr class="nil"><td class="ln">454</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">455</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">456</td><td class="code">export function AnimatedArrow({ from, to, zIndex, animating, hasPrev, theme }: {</td></tr>
 <tr class="nil"><td class="ln">457</td><td class="code">  from: ArrowEl; to: ArrowEl; zIndex: number; animating: boolean; hasPrev: boolean;</td></tr>
 <tr class="nil"><td class="ln">458</td><td class="code">  theme?: ThemeColors;</td></tr>
 <tr class="nil"><td class="ln">459</td><td class="code">}) {</td></tr>
-<tr class="cov"><td class="ln">460</td><td class="code">  const fc = effControls(from), tc = effControls(to);</td></tr>
-<tr class="cov"><td class="ln">461</td><td class="code">  const atStart = (s: ArrowEl, c: ReturnType&lt;typeof effControls&gt;) =&gt; ({</td></tr>
+<tr class="nil"><td class="ln">460</td><td class="code">  const fc = effControls(from), tc = effControls(to);</td></tr>
+<tr class="nil"><td class="ln">461</td><td class="code">  const atStart = (s: ArrowEl, c: ReturnType&lt;typeof effControls&gt;) =&gt; ({</td></tr>
 <tr class="nil"><td class="ln">462</td><td class="code">    x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2, ...c, points: s.points,</td></tr>
 <tr class="nil"><td class="ln">463</td><td class="code">  });</td></tr>
-<tr class="cov"><td class="ln">464</td><td class="code">  const [coords, setCoords] = useState(hasPrev ? atStart(from, fc) : atStart(to, tc));</td></tr>
-<tr class="cov"><td class="ln">465</td><td class="code">  const animRef = useRef&lt;number | null&gt;(null);</td></tr>
-<tr class="cov"><td class="ln">466</td><td class="code">  const startTime = useRef(0);</td></tr>
+<tr class="nil"><td class="ln">464</td><td class="code">  const [coords, setCoords] = useState(hasPrev ? atStart(from, fc) : atStart(to, tc));</td></tr>
+<tr class="nil"><td class="ln">465</td><td class="code">  const animRef = useRef&lt;number | null&gt;(null);</td></tr>
+<tr class="nil"><td class="ln">466</td><td class="code">  const startTime = useRef(0);</td></tr>
 <tr class="nil"><td class="ln">467</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">468</td><td class="code">  useEffect(() =&gt; {</td></tr>
-<tr class="cov"><td class="ln">469</td><td class="code">    if (!animating || !hasPrev) {</td></tr>
-<tr class="cov"><td class="ln">470</td><td class="code">      setCoords(atStart(to, tc));</td></tr>
-<tr class="cov"><td class="ln">471</td><td class="code">      return;</td></tr>
+<tr class="nil"><td class="ln">468</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">469</td><td class="code">    if (!animating || !hasPrev) {</td></tr>
+<tr class="nil"><td class="ln">470</td><td class="code">      setCoords(atStart(to, tc));</td></tr>
+<tr class="nil"><td class="ln">471</td><td class="code">      return;</td></tr>
 <tr class="nil"><td class="ln">472</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">473</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">474</td><td class="code">    startTime.current = performance.now();</td></tr>
-<tr class="unc"><td class="ln">475</td><td class="code">    const lerp = (a: number, b: number, e: number) =&gt; a + (b - a) * e;</td></tr>
-<tr class="unc"><td class="ln">476</td><td class="code">    const animate = (now: number) =&gt; {</td></tr>
-<tr class="unc"><td class="ln">477</td><td class="code">      const elapsed = now - startTime.current;</td></tr>
-<tr class="unc"><td class="ln">478</td><td class="code">      const t = Math.min(elapsed / TRANSITION_MS, 1);</td></tr>
-<tr class="unc"><td class="ln">479</td><td class="code">      const e = easeInOut(t);</td></tr>
+<tr class="nil"><td class="ln">474</td><td class="code">    startTime.current = performance.now();</td></tr>
+<tr class="nil"><td class="ln">475</td><td class="code">    const lerp = (a: number, b: number, e: number) =&gt; a + (b - a) * e;</td></tr>
+<tr class="nil"><td class="ln">476</td><td class="code">    const animate = (now: number) =&gt; {</td></tr>
+<tr class="nil"><td class="ln">477</td><td class="code">      const elapsed = now - startTime.current;</td></tr>
+<tr class="nil"><td class="ln">478</td><td class="code">      const t = Math.min(elapsed / TRANSITION_MS, 1);</td></tr>
+<tr class="nil"><td class="ln">479</td><td class="code">      const e = easeInOut(t);</td></tr>
 <tr class="nil"><td class="ln">480</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">481</td><td class="code">      setCoords({</td></tr>
+<tr class="nil"><td class="ln">481</td><td class="code">      setCoords({</td></tr>
 <tr class="nil"><td class="ln">482</td><td class="code">        x1: lerp(from.x1, to.x1, e), y1: lerp(from.y1, to.y1, e),</td></tr>
 <tr class="nil"><td class="ln">483</td><td class="code">        x2: lerp(from.x2, to.x2, e), y2: lerp(from.y2, to.y2, e),</td></tr>
 <tr class="nil"><td class="ln">484</td><td class="code">        c1x: lerp(fc.c1x, tc.c1x, e), c1y: lerp(fc.c1y, tc.c1y, e),</td></tr>
@@ -503,37 +504,37 @@
 <tr class="nil"><td class="ln">486</td><td class="code">        points: lerpPoints(from.points, to.points, e),</td></tr>
 <tr class="nil"><td class="ln">487</td><td class="code">      });</td></tr>
 <tr class="nil"><td class="ln">488</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">489</td><td class="code">      if (t &lt; 1) {</td></tr>
-<tr class="unc"><td class="ln">490</td><td class="code">        animRef.current = requestAnimationFrame(animate);</td></tr>
+<tr class="nil"><td class="ln">489</td><td class="code">      if (t &lt; 1) {</td></tr>
+<tr class="nil"><td class="ln">490</td><td class="code">        animRef.current = requestAnimationFrame(animate);</td></tr>
 <tr class="nil"><td class="ln">491</td><td class="code">      }</td></tr>
 <tr class="nil"><td class="ln">492</td><td class="code">    };</td></tr>
 <tr class="nil"><td class="ln">493</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">494</td><td class="code">    // Start from the &#x27;from&#x27; position</td></tr>
-<tr class="unc"><td class="ln">495</td><td class="code">    setCoords(atStart(from, fc));</td></tr>
-<tr class="unc"><td class="ln">496</td><td class="code">    animRef.current = requestAnimationFrame(animate);</td></tr>
+<tr class="nil"><td class="ln">495</td><td class="code">    setCoords(atStart(from, fc));</td></tr>
+<tr class="nil"><td class="ln">496</td><td class="code">    animRef.current = requestAnimationFrame(animate);</td></tr>
 <tr class="nil"><td class="ln">497</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">498</td><td class="code">    return () =&gt; {</td></tr>
-<tr class="unc"><td class="ln">499</td><td class="code">      if (animRef.current) cancelAnimationFrame(animRef.current);</td></tr>
+<tr class="nil"><td class="ln">498</td><td class="code">    return () =&gt; {</td></tr>
+<tr class="nil"><td class="ln">499</td><td class="code">      if (animRef.current) cancelAnimationFrame(animRef.current);</td></tr>
 <tr class="nil"><td class="ln">500</td><td class="code">    };</td></tr>
 <tr class="nil"><td class="ln">501</td><td class="code">  }, [animating, hasPrev, from.x1, from.y1, from.x2, from.y2, to.x1, to.y1, to.x2, to.y2,</td></tr>
 <tr class="nil"><td class="ln">502</td><td class="code">    fc.c1x, fc.c1y, fc.c2x, fc.c2y, tc.c1x, tc.c1y, tc.c2x, tc.c2y,</td></tr>
 <tr class="nil"><td class="ln">503</td><td class="code">    // eslint-disable-next-line react-hooks/exhaustive-deps</td></tr>
 <tr class="nil"><td class="ln">504</td><td class="code">    JSON.stringify(from.points), JSON.stringify(to.points)]);</td></tr>
 <tr class="nil"><td class="ln">505</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">506</td><td class="code">  const { x1, y1, x2, y2 } = coords;</td></tr>
+<tr class="nil"><td class="ln">506</td><td class="code">  const { x1, y1, x2, y2 } = coords;</td></tr>
 <tr class="nil"><td class="ln">507</td><td class="code">  // Resolve like every other path (describeArrow): &#x27;accent&#x27; → theme accent, default</td></tr>
 <tr class="nil"><td class="ln">508</td><td class="code">  // #2563eb — not the stale #e53e3e that made a linked accent arrow vanish (#132).</td></tr>
-<tr class="cov"><td class="ln">509</td><td class="code">  const color = resolveColor(to.color, theme, &#x27;#2563eb&#x27;);</td></tr>
-<tr class="cov"><td class="ln">510</td><td class="code">  const strokeWidth = to.strokeWidth || 4;</td></tr>
-<tr class="cov"><td class="ln">511</td><td class="code">  const headSize = to.headSize || 16;</td></tr>
+<tr class="nil"><td class="ln">509</td><td class="code">  const color = resolveColor(to.color, theme, &#x27;#2563eb&#x27;);</td></tr>
+<tr class="nil"><td class="ln">510</td><td class="code">  const strokeWidth = to.strokeWidth || 4;</td></tr>
+<tr class="nil"><td class="ln">511</td><td class="code">  const headSize = to.headSize || 16;</td></tr>
 <tr class="nil"><td class="ln">512</td><td class="code">  // Curved only if the target arrow is curved; then use the interpolated controls +</td></tr>
 <tr class="nil"><td class="ln">513</td><td class="code">  // interior waypoints so a curved-with-points arrow keeps its shape (#129).</td></tr>
-<tr class="cov"><td class="ln">514</td><td class="code">  const curved = to.c1x != null &amp;&amp; to.c1y != null &amp;&amp; to.c2x != null &amp;&amp; to.c2y != null;</td></tr>
-<tr class="cov"><td class="ln">515</td><td class="code">  const geo = curved</td></tr>
+<tr class="nil"><td class="ln">514</td><td class="code">  const curved = to.c1x != null &amp;&amp; to.c1y != null &amp;&amp; to.c2x != null &amp;&amp; to.c2y != null;</td></tr>
+<tr class="nil"><td class="ln">515</td><td class="code">  const geo = curved</td></tr>
 <tr class="nil"><td class="ln">516</td><td class="code">    ? arrowGeometry(x1, y1, x2, y2, headSize, to.heads, coords.c1x, coords.c1y, coords.c2x, coords.c2y, coords.points)</td></tr>
 <tr class="nil"><td class="ln">517</td><td class="code">    : arrowGeometry(x1, y1, x2, y2, headSize, to.heads);</td></tr>
 <tr class="nil"><td class="ln">518</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">519</td><td class="code">  return (</td></tr>
+<tr class="nil"><td class="ln">519</td><td class="code">  return (</td></tr>
 <tr class="nil"><td class="ln">520</td><td class="code">    &lt;svg style={{</td></tr>
 <tr class="nil"><td class="ln">521</td><td class="code">      position: &#x27;absolute&#x27;, top: 0, left: 0, width: &#x27;100%&#x27;, height: &#x27;100%&#x27;,</td></tr>
 <tr class="nil"><td class="ln">522</td><td class="code">      pointerEvents: &#x27;none&#x27;, overflow: &#x27;visible&#x27;, zIndex,</td></tr>
@@ -542,7 +543,7 @@
 <tr class="nil"><td class="ln">525</td><td class="code">        {geo.curved</td></tr>
 <tr class="nil"><td class="ln">526</td><td class="code">          ? &lt;path d={geo.path} fill=&quot;none&quot; stroke={color} strokeWidth={strokeWidth} /&gt;</td></tr>
 <tr class="nil"><td class="ln">527</td><td class="code">          : &lt;line x1={geo.line!.x1} y1={geo.line!.y1} x2={geo.line!.x2} y2={geo.line!.y2} stroke={color} strokeWidth={strokeWidth} /&gt;}</td></tr>
-<tr class="cov"><td class="ln">528</td><td class="code">        {geo.triangles.map((t, i) =&gt; &lt;polygon key={i} points={triPoints(t)} fill={color} /&gt;)}</td></tr>
+<tr class="nil"><td class="ln">528</td><td class="code">        {geo.triangles.map((t, i) =&gt; &lt;polygon key={i} points={triPoints(t)} fill={color} /&gt;)}</td></tr>
 <tr class="nil"><td class="ln">529</td><td class="code">      &lt;/g&gt;</td></tr>
 <tr class="nil"><td class="ln">530</td><td class="code">    &lt;/svg&gt;</td></tr>
 <tr class="nil"><td class="ln">531</td><td class="code">  );</td></tr>

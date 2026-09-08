@@ -5,13 +5,14 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/debug/DebugMenu.tsx </h1>
   <div class="stats">
-    <span class="stat"><b>19%</b> covered</span>
-    <span class="stat">5/27 executable</span>
-    <span class="stat unc-txt">22 uncovered</span>
+    <span class="stat"><b>26%</b> covered</span>
+    <span class="stat">7/27 statements</span>
+    <span class="stat unc-txt">20 uncovered</span>
     <span class="stat">40 raw lines</span>
     <span class="stat">0.09% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:12.500%"></span><span class="seg unc" style="width:55.000%"></span><span class="seg nil" style="width:32.500%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:25.926%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:74.074%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__debug__batchCacheAudit_ts.html">batchCacheAudit.ts</a> <a href="src__debug__batchExportHtml_ts.html">batchExportHtml.ts</a> <a href="src__debug__batchRoundtrip_ts.html">batchRoundtrip.ts</a> <a href="src__debug__batchStripHistory_ts.html">batchStripHistory.ts</a> <a href="src__debug__batchWarmCache_ts.html">batchWarmCache.ts</a></div>
   <div class="links"><span>imported by:</span> <a href="src__debug__index_ts.html">index.ts</a></div>
 </header>
@@ -25,34 +26,34 @@
 <tr class="nil"><td class="ln">8</td><td class="code">import { listen, type UnlistenFn } from &#x27;@tauri-apps/api/event&#x27;;</td></tr>
 <tr class="nil"><td class="ln">9</td><td class="code">import { runBatchExportHtml } from &#x27;./batchExportHtml&#x27;;<a class="jump" href="src__debug__batchExportHtml_ts.html" title="src/debug/batchExportHtml.ts">→ batchExportHtml.ts</a></td></tr>
 <tr class="cov"><td class="ln">10</td><td class="code">import { runBatchRoundtrip } from &#x27;./batchRoundtrip&#x27;;<a class="jump" href="src__debug__batchRoundtrip_ts.html" title="src/debug/batchRoundtrip.ts">→ batchRoundtrip.ts</a></td></tr>
-<tr class="cov"><td class="ln">11</td><td class="code">import { runBatchCacheAudit } from &#x27;./batchCacheAudit&#x27;;<a class="jump" href="src__debug__batchCacheAudit_ts.html" title="src/debug/batchCacheAudit.ts">→ batchCacheAudit.ts</a></td></tr>
-<tr class="cov"><td class="ln">12</td><td class="code">import { runBatchWarmCache } from &#x27;./batchWarmCache&#x27;;<a class="jump" href="src__debug__batchWarmCache_ts.html" title="src/debug/batchWarmCache.ts">→ batchWarmCache.ts</a></td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">import { runBatchCacheAudit } from &#x27;./batchCacheAudit&#x27;;<a class="jump" href="src__debug__batchCacheAudit_ts.html" title="src/debug/batchCacheAudit.ts">→ batchCacheAudit.ts</a></td></tr>
+<tr class="part"><td class="ln">12</td><td class="code">import { runBatchWarmCache } from &#x27;./batchWarmCache&#x27;;<a class="jump" href="src__debug__batchWarmCache_ts.html" title="src/debug/batchWarmCache.ts">→ batchWarmCache.ts</a></td></tr>
 <tr class="nil"><td class="ln">13</td><td class="code">import { runBatchStripHistory } from &#x27;./batchStripHistory&#x27;;<a class="jump" href="src__debug__batchStripHistory_ts.html" title="src/debug/batchStripHistory.ts">→ batchStripHistory.ts</a></td></tr>
-<tr class="cov"><td class="ln">14</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">15</td><td class="code">export function DebugMenu(): null {</td></tr>
-<tr class="unc"><td class="ln">16</td><td class="code">  const [enabled, setEnabled] = useState(false);</td></tr>
-<tr class="unc"><td class="ln">17</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">  const [enabled, setEnabled] = useState(false);</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">18</td><td class="code">  useEffect(() =&gt; {</td></tr>
 <tr class="unc"><td class="ln">19</td><td class="code">    invoke&lt;boolean&gt;(&#x27;debug_enabled&#x27;).then(setEnabled).catch(() =&gt; setEnabled(false));</td></tr>
-<tr class="unc"><td class="ln">20</td><td class="code">  }, []);</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">  }, []);</td></tr>
 <tr class="nil"><td class="ln">21</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">22</td><td class="code">  useEffect(() =&gt; {</td></tr>
 <tr class="unc"><td class="ln">23</td><td class="code">    if (!enabled) return;</td></tr>
 <tr class="nil"><td class="ln">24</td><td class="code">    let unlisten: UnlistenFn | undefined;</td></tr>
 <tr class="unc"><td class="ln">25</td><td class="code">    listen&lt;string&gt;(&#x27;menu-event&#x27;, (event) =&gt; {</td></tr>
 <tr class="unc"><td class="ln">26</td><td class="code">      const id = event.payload;</td></tr>
-<tr class="unc"><td class="ln">27</td><td class="code">      if (!id.startsWith(&#x27;debug-&#x27;)) return;</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">      if (!id.startsWith(&#x27;debug-&#x27;)) return;</td></tr>
 <tr class="unc"><td class="ln">28</td><td class="code">      switch (id) {</td></tr>
 <tr class="unc"><td class="ln">29</td><td class="code">        case &#x27;debug-batch-html&#x27;:           void runBatchExportHtml(); break;</td></tr>
-<tr class="unc"><td class="ln">30</td><td class="code">        case &#x27;debug-batch-roundtrip&#x27;:      void runBatchRoundtrip(); break;</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">        case &#x27;debug-batch-roundtrip&#x27;:      void runBatchRoundtrip(); break;</td></tr>
 <tr class="unc"><td class="ln">31</td><td class="code">        case &#x27;debug-batch-cache-audit&#x27;:    void runBatchCacheAudit(); break;</td></tr>
 <tr class="unc"><td class="ln">32</td><td class="code">        case &#x27;debug-batch-warm-cache&#x27;:     void runBatchWarmCache(); break;</td></tr>
-<tr class="unc"><td class="ln">33</td><td class="code">        case &#x27;debug-batch-strip-history&#x27;:  void runBatchStripHistory(); break;</td></tr>
-<tr class="unc"><td class="ln">34</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">        case &#x27;debug-batch-strip-history&#x27;:  void runBatchStripHistory(); break;</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">      }</td></tr>
 <tr class="unc"><td class="ln">35</td><td class="code">    }).then((fn) =&gt; { unlisten = fn; });</td></tr>
-<tr class="unc"><td class="ln">36</td><td class="code">    return () =&gt; { if (unlisten) unlisten(); };</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">    return () =&gt; { if (unlisten) unlisten(); };</td></tr>
 <tr class="nil"><td class="ln">37</td><td class="code">  }, [enabled]);</td></tr>
-<tr class="unc"><td class="ln">38</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">39</td><td class="code">  return null;</td></tr>
-<tr class="unc"><td class="ln">40</td><td class="code">}</td></tr></table>
+<tr class="nil"><td class="ln">40</td><td class="code">}</td></tr></table>
 </body></html>

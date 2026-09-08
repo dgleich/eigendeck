@@ -6,12 +6,13 @@
   <h1>src/lib/textSizes.mjs </h1>
   <div class="stats">
     <span class="stat"><b>100%</b> covered</span>
-    <span class="stat">8/8 executable</span>
+    <span class="stat">11/11 statements</span>
     <span class="stat unc-txt">0 uncovered</span>
     <span class="stat">51 raw lines</span>
     <span class="stat">0.12% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:15.686%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:84.314%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:100.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:0.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src__lib__exportCore_mjs.html">exportCore.mjs</a> <a href="src__lib__textPresets_mjs.html">textPresets.mjs</a> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
 </header>
@@ -29,22 +30,22 @@
 <tr class="nil"><td class="ln">12</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">13</td><td class="code">/** Built-in defaults for the type scale (px). */</td></tr>
 <tr class="cov"><td class="ln">14</td><td class="code">export const DEFAULT_TEXT_SIZES = {</td></tr>
-<tr class="nil"><td class="ln">15</td><td class="code">  footnote: 24,</td></tr>
-<tr class="nil"><td class="ln">16</td><td class="code">  note:     32,</td></tr>
-<tr class="nil"><td class="ln">17</td><td class="code">  body:     48,</td></tr>
-<tr class="nil"><td class="ln">18</td><td class="code">  title:    72,</td></tr>
-<tr class="nil"><td class="ln">19</td><td class="code">  hype:     48,</td></tr>
+<tr class="cov"><td class="ln">15</td><td class="code">  footnote: 24,</td></tr>
+<tr class="cov"><td class="ln">16</td><td class="code">  note:     32,</td></tr>
+<tr class="cov"><td class="ln">17</td><td class="code">  body:     48,</td></tr>
+<tr class="cov"><td class="ln">18</td><td class="code">  title:    72,</td></tr>
+<tr class="cov"><td class="ln">19</td><td class="code">  hype:     48,</td></tr>
 <tr class="nil"><td class="ln">20</td><td class="code">};</td></tr>
 <tr class="nil"><td class="ln">21</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">22</td><td class="code">/** Text preset → its named size in the type scale. Mirrors the `sizeName` field</td></tr>
 <tr class="nil"><td class="ln">23</td><td class="code"> *  of TEXT_PRESET_STYLES (guard-tested to stay in sync). */</td></tr>
 <tr class="cov"><td class="ln">24</td><td class="code">export const PRESET_SIZE_NAME = {</td></tr>
-<tr class="nil"><td class="ln">25</td><td class="code">  title: &#x27;title&#x27;,</td></tr>
-<tr class="nil"><td class="ln">26</td><td class="code">  body: &#x27;body&#x27;,</td></tr>
-<tr class="nil"><td class="ln">27</td><td class="code">  textbox: &#x27;body&#x27;,</td></tr>
-<tr class="nil"><td class="ln">28</td><td class="code">  annotation: &#x27;note&#x27;,</td></tr>
-<tr class="nil"><td class="ln">29</td><td class="code">  footnote: &#x27;footnote&#x27;,</td></tr>
-<tr class="nil"><td class="ln">30</td><td class="code">  hype: &#x27;hype&#x27;,</td></tr>
+<tr class="cov"><td class="ln">25</td><td class="code">  title: &#x27;title&#x27;,</td></tr>
+<tr class="cov"><td class="ln">26</td><td class="code">  body: &#x27;body&#x27;,</td></tr>
+<tr class="cov"><td class="ln">27</td><td class="code">  textbox: &#x27;body&#x27;,</td></tr>
+<tr class="cov"><td class="ln">28</td><td class="code">  annotation: &#x27;note&#x27;,</td></tr>
+<tr class="cov"><td class="ln">29</td><td class="code">  footnote: &#x27;footnote&#x27;,</td></tr>
+<tr class="cov"><td class="ln">30</td><td class="code">  hype: &#x27;hype&#x27;,</td></tr>
 <tr class="nil"><td class="ln">31</td><td class="code">};</td></tr>
 <tr class="nil"><td class="ln">32</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">33</td><td class="code">/** Resolve a named size against the deck override + defaults. */</td></tr>

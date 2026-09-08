@@ -2,9 +2,16 @@
 """
 Generate an interlinked HTML coverage visualization of the WHOLE source tree.
 
-Inputs (line-level coverage in lcov format):
-  - coverage-e2e/lcov.info        frontend (unified vitest + e2e), SF paths repo-relative (src/...)
-  - $HOME/rust-lcov.info (or arg) Rust unit `cargo llvm-cov --lib` output
+Inputs:
+  - coverage-e2e-only/coverage-final.json   frontend e2e Istanbul map (statementMap
+      + counts). Build it clean (no vitest fold, which would double the map) with:
+      COV_REPORT_DIR=coverage-e2e-only node e2e/coverage-merge.mjs
+  - coverage/coverage-final.json            frontend vitest (jsdom) Istanbul map.
+      Per file we color from whichever of the two covers it more (coherent, not
+      unioned — their statement maps differ).
+  - $HOME/rust-lcov.info (or argv[1])       Rust lcov INCLUDING the CLI binary.
+      Produce it with:  bash e2e/cli-coverage.sh   (lib + cli.rs; --lib alone
+      misses the binary, which is why cli.rs otherwise reads 0%).
 
 Output (default: coverage-viz/):
   - index.html          overview: totals, a treemap sized by executable lines &
@@ -162,43 +169,186 @@ def extract_imports(path, lines):
 def mangle(path):
     return path.replace("/", "__").replace(".", "_") + ".html"
 
-def classify(path, cov_map):
-    full = os.path.join(REPO, path)
+def read_src(path):
     try:
-        with open(full, errors="replace") as f:
+        with open(os.path.join(REPO, path), errors="replace") as f:
             src = f.read().split("\n")
     except OSError:
         src = []
     if src and src[-1] == "":
-        src = src[:-1]  # drop trailing empty from final newline
-    dam = cov_map.get(path)
-    instrumented = dam is not None
-    kinds = []   # per line: 'cov' | 'unc' | 'nil'
-    covered = uncov = execu = 0
+        src = src[:-1]   # drop trailing empty from the final newline
+    return src
+
+def snap_to_code(line1, src):
+    """The instrumented build remaps statement positions through a line-granular
+    source map, so a statement's recorded start often lands on the comment/blank
+    line just ABOVE the real code (observed offset +1..+4). Snap forward (then a
+    little back) to the nearest code-ish line so coverage colors code, not comments."""
+    n = len(src)
+    if 1 <= line1 <= n and is_codeish(src[line1 - 1]):
+        return line1
+    for j in range(line1 + 1, line1 + 6):
+        if 1 <= j <= n and is_codeish(src[j - 1]):
+            return j
+    for j in range(line1 - 1, line1 - 4, -1):
+        if 1 <= j <= n and is_codeish(src[j - 1]):
+            return j
+    return line1
+
+def _mark(status, ln, covered):
+    prev = status.get(ln)
+    if prev == "cov":            # already fully covered wins
+        return
+    if covered:
+        # a covered hit upgrades unc/part/None -> but if it was unc, it's partial
+        status[ln] = "part" if prev in ("unc", "part") else "cov"
+    else:
+        status[ln] = "part" if prev == "cov" else ("part" if prev == "part" else "unc")
+
+def _span(loc, src, n):
+    st = (loc or {}).get("start", {}); en = (loc or {}).get("end", {})
+    l0 = st.get("line")
+    if l0 is None:
+        return None
+    l0 = snap_to_code(l0, src)
+    l1 = en.get("line")
+    if l1 is None or l1 < l0:
+        l1 = l0
+    return [l0, min(max(l1, l0), n or l0)]
+
+def classify_frontend(path, entry):
+    """Color from the Istanbul statementMap/branchMap. Positions are snapped to the
+    nearest code line (the build remaps through a line-granular source map), only
+    LEAF statements are painted (a statement containing no other — so a covered
+    function/block body doesn't paint its whole span green), and comments/blanks
+    are gated to grey. A line touched by both a covered and an uncovered unit is
+    'partial'."""
+    src = read_src(path); n = len(src)
+    sm = entry.get("statementMap", {}); s = entry.get("s", {})
+    spans = []   # [l0, l1, covered]
+    ids = list(sm.keys())
+    for sid in ids:
+        sp = _span(sm[sid], src, n)
+        if sp:
+            spans.append([sp[0], sp[1], s.get(sid, 0) > 0])
+    # leaf = contains no other statement strictly inside it
+    m = len(spans)
+    leaves = []
+    if m <= 4000:
+        for i in range(m):
+            a = spans[i]; leaf = True
+            for j in range(m):
+                if i != j:
+                    b0, b1, _ = spans[j]
+                    if a[0] <= b0 and b1 <= a[1] and (a[0] < b0 or b1 < a[1]):
+                        leaf = False; break
+            if leaf:
+                leaves.append(a)
+    else:
+        leaves = spans
+    cov_set = set(); unc_set = set()
+    for l0, l1, covd in leaves:
+        tgt = cov_set if covd else unc_set
+        for ln in range(l0, l1 + 1):
+            tgt.add(ln)
+    kinds = []
     for i, line in enumerate(src, 1):
-        if instrumented:
-            if i in dam:
-                if dam[i] > 0:
-                    kinds.append("cov"); covered += 1; execu += 1
-                else:
-                    kinds.append("unc"); uncov += 1; execu += 1
-            else:
-                kinds.append("nil")
+        incov = i in cov_set; inunc = i in unc_set
+        if (not (incov or inunc)) or not is_codeish(line):   # gate comments/blanks
+            kinds.append("nil")
+        elif incov and inunc:
+            kinds.append("part")
+        elif incov:
+            kinds.append("cov")
         else:
-            if is_codeish(line):
-                kinds.append("unc"); uncov += 1; execu += 1
+            kinds.append("unc")
+    # The NUMBER is the true Istanbul statement coverage (matches vitest/nyc); the
+    # line coloring above is illustrative (leaf spans, positions snapped ±lines).
+    stmt_tot = sum(1 for sid in sm if sm[sid].get("start", {}).get("line") is not None)
+    stmt_cov = sum(1 for sid in sm if s.get(sid, 0) > 0
+                   and sm[sid].get("start", {}).get("line") is not None)
+    return src, kinds, dict(raw=len(src), execu=stmt_tot, covered=stmt_cov, partial=0,
+                            uncov=stmt_tot - stmt_cov, instrumented=True, metric="statements")
+
+def classify_rust(path, dam):
+    """Rust llvm-cov line counts are region-precise, so use them directly. A line
+    like `)?;` reading 0 means the `?` error path was never taken — real info."""
+    src = read_src(path)
+    instrumented = dam is not None
+    kinds = []; cov = unc = 0
+    for i, line in enumerate(src, 1):
+        code = is_codeish(line)
+        if instrumented and i in dam and code:   # gate: never color a comment/blank
+            if dam[i] > 0:
+                kinds.append("cov"); cov += 1
             else:
-                kinds.append("nil")
-    return src, kinds, dict(raw=len(src), execu=execu, covered=covered,
-                            uncov=uncov, instrumented=instrumented)
+                kinds.append("unc"); unc += 1
+        elif instrumented:
+            kinds.append("nil")
+        elif code:
+            kinds.append("unc"); unc += 1     # not instrumented at all -> all code red
+        else:
+            kinds.append("nil")
+    execu = cov + unc
+    return src, kinds, dict(raw=len(src), execu=execu, covered=cov, partial=0,
+                            uncov=unc, instrumented=instrumented, metric="line")
+
+def classify(path, ist, rust_da):
+    if lang_of(path) == "rust":
+        return classify_rust(path, rust_da.get(path))
+    entry = ist.get(path)
+    if entry is not None:
+        return classify_frontend(path, entry)
+    # frontend file never loaded by any test: heuristic all-red
+    src = read_src(path)
+    kinds = []; unc = 0
+    for line in src:
+        if is_codeish(line):
+            kinds.append("unc"); unc += 1
+        else:
+            kinds.append("nil")
+    return src, kinds, dict(raw=len(src), execu=unc, covered=0, partial=0,
+                            uncov=unc, instrumented=False, metric="line")
+
+def _load_ist_json(relpath):
+    import json as _json
+    p = os.path.join(REPO, relpath)
+    if not os.path.exists(p):
+        return {}
+    raw = _json.load(open(p, errors="replace"))
+    out = {}
+    for k, v in raw.items():
+        rk = k[len(REPO) + 1:] if k.startswith(REPO + "/") else k
+        out[rk] = v
+    return out
+
+def _ncov(entry):
+    s = entry.get("s", {})
+    return sum(1 for i in s if s[i] > 0)
+
+def load_istanbul():
+    """Per file, pick the more-covering of two COHERENT single-instrumentation maps:
+    the e2e run (coverage-e2e-only, all 169 page maps share one statement map, so
+    they sum cleanly) and the vitest unit run. We must NOT union them at the
+    statement level — their statement maps differ, so istanbul concatenates rather
+    than sums, doubling the map and smearing vitest's ~0%-covered app statements
+    over everything. App/render files win from e2e; pure-logic utils from vitest."""
+    e2e = _load_ist_json(os.path.join("coverage-e2e-only", "coverage-final.json"))
+    vit = _load_ist_json(os.path.join("coverage", "coverage-final.json"))
+    out = {}
+    for k in set(e2e) | set(vit):
+        a, b = e2e.get(k), vit.get(k)
+        if a and b:
+            out[k] = a if _ncov(a) >= _ncov(b) else b
+        else:
+            out[k] = a or b
+    return out
 
 def main():
-    cov = {}
-    cov.update(parse_lcov(FRONT_LCOV, rust=False))
-    cov.update(parse_lcov(RUST_LCOV, rust=True))
+    ist = load_istanbul()                        # frontend statement maps (exact)
+    rust_da = parse_lcov(RUST_LCOV, rust=True)    # rust llvm-cov line counts (precise)
     sources = list_sources()
-    # include any lcov file that exists on disk but wasn't walked (safety)
-    for p in cov:
+    for p in list(ist) + list(rust_da):
         if os.path.isfile(os.path.join(REPO, p)) and p not in sources:
             sources.append(p)
     sources = sorted(set(sources))
@@ -207,7 +357,7 @@ def main():
     files = {}
     imported_by = defaultdict(set)
     for p in sources:
-        src, kinds, st = classify(p, cov)
+        src, kinds, st = classify(p, ist, rust_da)
         per_line, targets = extract_imports(p, src)
         for t in targets:
             imported_by[t].add(p)
@@ -241,13 +391,14 @@ def color_for(frac):
     return f"rgb({r},{g},{b})"
 
 def bar_html(st):
-    raw = st["raw"] or 1
-    cov = st["covered"]; unc = st["uncov"]; nil = raw - cov - unc
-    def w(n): return f"{100.0*n/raw:.3f}%"
+    # Bar is a pure coverage ratio over executable units (matches the %).
+    ex = st["execu"] or 1
+    cov = st["covered"]; part = st.get("partial", 0); unc = ex - cov - part
+    def w(n): return f"{100.0*n/ex:.3f}%"
     return (f'<span class="bar">'
             f'<span class="seg cov" style="width:{w(cov)}"></span>'
-            f'<span class="seg unc" style="width:{w(unc)}"></span>'
-            f'<span class="seg nil" style="width:{w(nil)}"></span></span>')
+            f'<span class="seg part" style="width:{w(part)}"></span>'
+            f'<span class="seg unc" style="width:{w(unc)}"></span></span>')
 
 def write_file_page(path, f, imported_by, files, total_raw):
     st = f["st"]
@@ -281,12 +432,13 @@ def write_file_page(path, f, imported_by, files, total_raw):
   <h1>{p_html} {badge}</h1>
   <div class="stats">
     <span class="stat"><b>{covpct:.0f}%</b> covered</span>
-    <span class="stat">{st['covered']}/{st['execu']} executable</span>
+    <span class="stat">{st['covered']}/{st['execu']} {st.get('metric','units')}</span>
     <span class="stat unc-txt">{st['uncov']} uncovered</span>
     <span class="stat">{st['raw']} raw lines</span>
     <span class="stat">{share:.2f}% of codebase</span>
   </div>
   {bar_html(st)}
+  <div class="metricnote">{'Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.' if st.get('metric')=='statements' else 'llvm-cov <b>line</b> coverage (region-precise). A red <code>)?;</code> = the <code>?</code> error path was never taken.'}</div>
   <div class="links"><span>imports:</span> {outs_html}</div>
   <div class="links"><span>imported by:</span> {ins_html}</div>
 </header>
@@ -355,17 +507,24 @@ def write_index(files, imported_by, total_raw, total_exec, total_cov):
 <header class="ihead">
   <h1>Eigendeck source coverage</h1>
   <p class="sub">Every source line classified: <span class="key cov">covered</span>,
-    <span class="key unc">uncovered</span>, <span class="key nil">non-executable</span>.
-    Coverage % is over executable lines only.</p>
+    <span class="key part">partial</span>, <span class="key unc">uncovered</span>,
+    <span class="key nil">non-executable</span>. Coverage % is over executable lines only.</p>
+  <p class="sub">Frontend lines are colored from the Istanbul <b>statement map</b>
+    (exact counts; positions snapped to the nearest code line, since the instrumented
+    build remaps through a line-granular source map). Rust lines are llvm-cov
+    region-precise — a red <code>)?;</code> means the <code>?</code> error path was
+    never taken. The per-file % is exact; individual line positions on the frontend
+    are approximate.</p>
   <div class="cards">
     <div class="card big"><div class="pctbig" style="color:{color_for(overall/100)}">{overall:.1f}%</div>
-      <div class="lbl">executable lines covered</div>
-      <div class="sub2">{total_cov:,} / {total_exec:,} executable · {total_raw:,} raw LOC</div></div>
-    <div class="card"><div class="pct">{pct(fe_cv,fe_ex):.1f}%</div><div class="lbl">frontend (TS/TSX)</div>
-      <div class="sub2">{fe_cv:,}/{fe_ex:,} exec · {fe_raw:,} LOC</div></div>
-    <div class="card"><div class="pct">{pct(rs_cv,rs_ex):.1f}%</div><div class="lbl">Rust</div>
-      <div class="sub2">{rs_cv:,}/{rs_ex:,} exec · {rs_raw:,} LOC</div></div>
-    <div class="card"><div class="pct unc-txt">{total_exec-total_cov:,}</div><div class="lbl">uncovered exec lines</div>
+      <div class="lbl">executable units covered</div>
+      <div class="sub2">{total_cov:,} / {total_exec:,} units · {total_raw:,} raw LOC<br>
+        <span class="tiny">frontend = statements, Rust = lines</span></div></div>
+    <div class="card"><div class="pct">{pct(fe_cv,fe_ex):.1f}%</div><div class="lbl">frontend statements</div>
+      <div class="sub2">{fe_cv:,}/{fe_ex:,} stmts · {fe_raw:,} LOC</div></div>
+    <div class="card"><div class="pct">{pct(rs_cv,rs_ex):.1f}%</div><div class="lbl">Rust lines</div>
+      <div class="sub2">{rs_cv:,}/{rs_ex:,} lines · {rs_raw:,} LOC</div></div>
+    <div class="card"><div class="pct unc-txt">{total_exec-total_cov:,}</div><div class="lbl">uncovered units</div>
       <div class="sub2">the red mass below</div></div>
   </div>
 </header>
@@ -402,7 +561,8 @@ def write_index(files, imported_by, total_raw, total_exec, total_cov):
 def write_css():
     css = """
 :root{--bg:#0f1116;--panel:#171a21;--ink:#d6dae2;--mut:#8b93a1;--line:#232833;
-  --cov:#2f9e44;--unc:#e03131;--nil:#2b303b;--covbg:#12331d;--uncbg:#3a1414;}
+  --cov:#2f9e44;--unc:#e03131;--part:#d9a520;--nil:#2b303b;
+  --covbg:#12331d;--uncbg:#3a1414;--partbg:#37300f;}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
 a{color:#74b1ff;text-decoration:none}a:hover{text-decoration:underline}
@@ -421,7 +581,7 @@ h1{font-size:18px;margin:0 0 6px}h2{font-size:15px;margin:26px 0 10px;font-weigh
 .sub2{color:var(--mut);font-size:11.5px;margin-top:6px}
 .key{padding:1px 7px;border-radius:5px;font-size:12px}
 .key.cov{background:var(--covbg);color:#69db7c}.key.unc{background:var(--uncbg);color:#ff8787}
-.key.nil{background:var(--nil);color:var(--mut)}
+.key.part{background:var(--partbg);color:#f2c94c}.key.nil{background:var(--nil);color:var(--mut)}
 #treemap{position:relative;width:100%;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#0b0d12}
 .cell{position:absolute;overflow:hidden;border:1px solid rgba(0,0,0,.35);color:#0b0d12;font-size:10.5px;
   display:flex;align-items:flex-start;padding:2px 3px}
@@ -440,7 +600,7 @@ h1{font-size:18px;margin:0 0 6px}h2{font-size:15px;margin:26px 0 10px;font-weigh
 .sortbar button.on{border-color:#74b1ff;color:#cfe0ff}
 .barcell{width:200px}
 .bar{display:inline-flex;width:100%;height:11px;border-radius:3px;overflow:hidden;background:var(--nil);vertical-align:middle}
-.seg{display:inline-block;height:100%}.seg.cov{background:var(--cov)}.seg.unc{background:var(--unc)}.seg.nil{background:transparent}
+.seg{display:inline-block;height:100%}.seg.cov{background:var(--cov)}.seg.part{background:var(--part)}.seg.unc{background:var(--unc)}.seg.nil{background:transparent}
 /* file page */
 .fhead{padding:16px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5}
 .crumb{font-size:12px;margin-bottom:6px}
@@ -448,6 +608,9 @@ h1{font-size:18px;margin:0 0 6px}h2{font-size:15px;margin:26px 0 10px;font-weigh
 .badge.warn{background:#3a2a10;color:#ffb861}
 .stats{display:flex;gap:16px;flex-wrap:wrap;color:var(--mut);font-size:12.5px;margin:8px 0}
 .stat b{color:var(--ink);font-size:14px}
+.metricnote{color:var(--mut);font-size:11.5px;margin:6px 0 2px}
+.metricnote code{background:#20242e;padding:0 4px;border-radius:3px}
+.tiny{font-size:10.5px;color:var(--mut)}
 .fhead .bar{max-width:520px;margin:4px 0 10px}
 .links{font-size:12px;color:var(--mut);margin-top:3px}.links span{display:inline-block;min-width:92px;color:var(--mut)}
 .links a{margin-right:8px}
@@ -456,8 +619,10 @@ table.src td.ln{width:1%;text-align:right;color:#5a6272;padding:0 12px 0 14px;us
 table.src td.code{padding:0 12px;white-space:pre-wrap;word-break:break-word}
 table.src tr.cov td.code{background:var(--covbg)}
 table.src tr.unc td.code{background:var(--uncbg)}
+table.src tr.part td.code{background:var(--partbg)}
 table.src tr.cov td.ln{background:rgba(47,158,68,.15)}
 table.src tr.unc td.ln{background:rgba(224,49,49,.16);color:#ff8787}
+table.src tr.part td.ln{background:rgba(217,165,32,.16);color:#f2c94c}
 table.src tr.nil td.code{color:#7b8494}
 .jump{margin-left:14px;font-size:11px;color:#9aa4ff;background:#1b2030;padding:0 6px;border-radius:4px}
 """
@@ -519,7 +684,7 @@ function drawTreemap(){
     if(d.w<0.5||d.h<0.5) continue;
     var a=document.createElement('a');
     a.href=d.href; a.className='cell';
-    a.title=d.p+'\n'+(d.cov*100).toFixed(0)+'% covered · '+d.unc+' uncovered · '+d.v+' exec lines';
+    a.title=d.p+'\n'+(d.cov*100).toFixed(0)+'% covered · '+d.unc+' uncovered · '+d.v+' units';
     a.style.cssText='left:'+d.x+'px;top:'+d.y+'px;width:'+d.w+'px;height:'+d.h+'px;background:'+colorFor(d.cov);
     if(d.w>46&&d.h>16){ var s=document.createElement('span'); s.textContent=d.p.split('/').pop(); a.appendChild(s); }
     el.appendChild(a);

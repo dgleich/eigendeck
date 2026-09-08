@@ -5,45 +5,46 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/mathjaxRenderer.ts </h1>
   <div class="stats">
-    <span class="stat"><b>72%</b> covered</span>
-    <span class="stat">232/323 executable</span>
-    <span class="stat unc-txt">91 uncovered</span>
+    <span class="stat"><b>71%</b> covered</span>
+    <span class="stat">162/229 statements</span>
+    <span class="stat unc-txt">67 uncovered</span>
     <span class="stat">479 raw lines</span>
     <span class="stat">1.12% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:48.434%"></span><span class="seg unc" style="width:18.998%"></span><span class="seg nil" style="width:32.568%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:70.742%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:29.258%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__lib__fonts_ts.html">fonts.ts</a> <a href="src__lib__sanitizeHtml_ts.html">sanitizeHtml.ts</a></div>
   <div class="links"><span>imported by:</span> <a href="src__debug__batchExportHtml_ts.html">batchExportHtml.ts</a> <a href="src__debug__batchWarmCache_ts.html">batchWarmCache.ts</a> <a href="src__export-cli_ts.html">export-cli.ts</a> <a href="src__lib__elementClipboard_ts.html">elementClipboard.ts</a> <a href="src__lib__mathjax_ts.html">mathjax.ts</a> <a href="src__lib__printLayer_ts.html">printLayer.ts</a> <a href="src__presenter_tsx.html">presenter.tsx</a> <a href="src__store__presentation_ts.html">presentation.ts</a></div>
 </header>
 <table class="src"><tr class="nil"><td class="ln">1</td><td class="code">/**</td></tr>
 <tr class="nil"><td class="ln">2</td><td class="code"> * Multi-bundle MathJax renderer using hidden iframes.</td></tr>
 <tr class="nil"><td class="ln">3</td><td class="code"> *</td></tr>
-<tr class="cov"><td class="ln">4</td><td class="code"> * Each font package&#x27;s MathJax bundle is loaded in its own iframe. The iframe</td></tr>
-<tr class="cov"><td class="ln">5</td><td class="code"> * has its own window.MathJax (no singleton conflict). The main page sends</td></tr>
-<tr class="cov"><td class="ln">6</td><td class="code"> * {tex, bundle} via postMessage; the iframe replies with the rendered SVG.</td></tr>
-<tr class="cov"><td class="ln">7</td><td class="code"> *</td></tr>
-<tr class="cov"><td class="ln">8</td><td class="code"> * This sidesteps the &quot;only one window.MathJax at a time&quot; limitation in</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code"> * Each font package&#x27;s MathJax bundle is loaded in its own iframe. The iframe</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code"> * has its own window.MathJax (no singleton conflict). The main page sends</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code"> * {tex, bundle} via postMessage; the iframe replies with the rendered SVG.</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code"> * This sidesteps the &quot;only one window.MathJax at a time&quot; limitation in</td></tr>
 <tr class="nil"><td class="ln">9</td><td class="code"> * src/lib/mathjax.ts, allowing different math fonts in different elements</td></tr>
-<tr class="cov"><td class="ln">10</td><td class="code"> * on the same slide.</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code"> * on the same slide.</td></tr>
 <tr class="nil"><td class="ln">11</td><td class="code"> *</td></tr>
-<tr class="cov"><td class="ln">12</td><td class="code"> * Each tex render is cached by (bundle, tex, display) so repeated renders</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code"> * Each tex render is cached by (bundle, tex, display) so repeated renders</td></tr>
 <tr class="nil"><td class="ln">13</td><td class="code"> * are ~free. First load of each bundle takes ~1-2s.</td></tr>
-<tr class="cov"><td class="ln">14</td><td class="code"> *</td></tr>
-<tr class="cov"><td class="ln">15</td><td class="code"> * # Debugging</td></tr>
-<tr class="cov"><td class="ln">16</td><td class="code"> *</td></tr>
-<tr class="cov"><td class="ln">17</td><td class="code"> * The iframe (public/mathjax-renderer.html) has a dbg(msg) function that</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code"> * # Debugging</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code"> * The iframe (public/mathjax-renderer.html) has a dbg(msg) function that</td></tr>
 <tr class="nil"><td class="ln">18</td><td class="code"> * routes log lines back to the parent via postMessage {type:&#x27;log&#x27;}. We</td></tr>
-<tr class="unc"><td class="ln">19</td><td class="code"> * surface those here as console.warn entries prefixed</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code"> * surface those here as console.warn entries prefixed</td></tr>
 <tr class="nil"><td class="ln">20</td><td class="code"> * `[mathjaxRenderer/iframe &lt;bundle&gt;]` — so iframe-side issues are visible</td></tr>
-<tr class="cov"><td class="ln">21</td><td class="code"> * in the main page&#x27;s devtools without context-switching.</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code"> * in the main page&#x27;s devtools without context-switching.</td></tr>
 <tr class="nil"><td class="ln">22</td><td class="code"> *</td></tr>
 <tr class="nil"><td class="ln">23</td><td class="code"> * Currently dbg() is only invoked for unexpected events (errors, missing</td></tr>
-<tr class="cov"><td class="ln">24</td><td class="code"> * SVG, preamble failures). When debugging a regression, temporarily add</td></tr>
-<tr class="cov"><td class="ln">25</td><td class="code"> * dbg() calls in the success paths inside mathjax-renderer.html (look for</td></tr>
-<tr class="cov"><td class="ln">26</td><td class="code"> * the comments next to the existing calls).</td></tr>
-<tr class="cov"><td class="ln">27</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code"> * SVG, preamble failures). When debugging a regression, temporarily add</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code"> * dbg() calls in the success paths inside mathjax-renderer.html (look for</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code"> * the comments next to the existing calls).</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code"> */</td></tr>
 <tr class="nil"><td class="ln">28</td><td class="code">&nbsp;</td></tr>
-<tr class="nil"><td class="ln">29</td><td class="code">import { resolveFontPackage } from &#x27;./fonts&#x27;;<a class="jump" href="src__lib__fonts_ts.html" title="src/lib/fonts.ts">→ fonts.ts</a></td></tr>
+<tr class="part"><td class="ln">29</td><td class="code">import { resolveFontPackage } from &#x27;./fonts&#x27;;<a class="jump" href="src__lib__fonts_ts.html" title="src/lib/fonts.ts">→ fonts.ts</a></td></tr>
 <tr class="nil"><td class="ln">30</td><td class="code">import { sanitizeSvg } from &#x27;./sanitizeHtml&#x27;;<a class="jump" href="src__lib__sanitizeHtml_ts.html" title="src/lib/sanitizeHtml.ts">→ sanitizeHtml.ts</a></td></tr>
 <tr class="nil"><td class="ln">31</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">32</td><td class="code">/**</td></tr>
@@ -54,278 +55,278 @@
 <tr class="nil"><td class="ln">37</td><td class="code">export function mathCacheKey(tex: string, bundle: string, display: boolean, preamble: string): string {</td></tr>
 <tr class="nil"><td class="ln">38</td><td class="code">  // FNV-1a hash — small, deterministic, good enough for cache keys (collisions</td></tr>
 <tr class="nil"><td class="ln">39</td><td class="code">  // are functionally fine because we&#x27;d just re-render).</td></tr>
-<tr class="cov"><td class="ln">40</td><td class="code">  let h = 0x811c9dc5;</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">  let h = 0x811c9dc5;</td></tr>
 <tr class="cov"><td class="ln">41</td><td class="code">  const s = `${bundle}\x1f${display ? &#x27;d&#x27; : &#x27;i&#x27;}\x1f${preamble}\x1f${tex}`;</td></tr>
-<tr class="cov"><td class="ln">42</td><td class="code">  for (let i = 0; i &lt; s.length; i++) {</td></tr>
-<tr class="cov"><td class="ln">43</td><td class="code">    h ^= s.charCodeAt(i);</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">  for (let i = 0; i &lt; s.length; i++) {</td></tr>
+<tr class="part"><td class="ln">43</td><td class="code">    h ^= s.charCodeAt(i);</td></tr>
 <tr class="cov"><td class="ln">44</td><td class="code">    h = Math.imul(h, 0x01000193);</td></tr>
-<tr class="cov"><td class="ln">45</td><td class="code">  }</td></tr>
-<tr class="cov"><td class="ln">46</td><td class="code">  return (h &gt;&gt;&gt; 0).toString(16).padStart(8, &#x27;0&#x27;);</td></tr>
-<tr class="cov"><td class="ln">47</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">48</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">  }</td></tr>
+<tr class="part"><td class="ln">46</td><td class="code">  return (h &gt;&gt;&gt; 0).toString(16).padStart(8, &#x27;0&#x27;);</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">49</td><td class="code">// Tauri invoke is dynamically imported so this module also runs in non-Tauri</td></tr>
 <tr class="nil"><td class="ln">50</td><td class="code">// test/CLI contexts. Persistence is best-effort — failures are silenced so</td></tr>
-<tr class="cov"><td class="ln">51</td><td class="code">// they don&#x27;t break rendering.</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">// they don&#x27;t break rendering.</td></tr>
 <tr class="cov"><td class="ln">52</td><td class="code">type InvokeFn = &lt;T&gt;(cmd: string, args?: Record&lt;string, unknown&gt;) =&gt; Promise&lt;T&gt;;</td></tr>
 <tr class="cov"><td class="ln">53</td><td class="code">let _invoke: InvokeFn | null | undefined = undefined;</td></tr>
-<tr class="nil"><td class="ln">54</td><td class="code">async function getInvoke(): Promise&lt;InvokeFn | null&gt; {</td></tr>
+<tr class="cov"><td class="ln">54</td><td class="code">async function getInvoke(): Promise&lt;InvokeFn | null&gt; {</td></tr>
 <tr class="cov"><td class="ln">55</td><td class="code">  if (_invoke !== undefined) return _invoke;</td></tr>
 <tr class="cov"><td class="ln">56</td><td class="code">  try {</td></tr>
 <tr class="cov"><td class="ln">57</td><td class="code">    const mod = await import(&#x27;@tauri-apps/api/core&#x27;);</td></tr>
 <tr class="cov"><td class="ln">58</td><td class="code">    _invoke = mod.invoke as InvokeFn;</td></tr>
-<tr class="cov"><td class="ln">59</td><td class="code">  } catch { _invoke = null; }</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code">  } catch { _invoke = null; }</td></tr>
 <tr class="cov"><td class="ln">60</td><td class="code">  return _invoke;</td></tr>
 <tr class="nil"><td class="ln">61</td><td class="code">}</td></tr>
-<tr class="unc"><td class="ln">62</td><td class="code">&nbsp;</td></tr>
-<tr class="nil"><td class="ln">63</td><td class="code">async function persistToSqlite(key: string, tex: string, bundle: string, display: boolean, preamble: string, r: RenderResult) {</td></tr>
-<tr class="cov"><td class="ln">64</td><td class="code">  const invoke = await getInvoke();</td></tr>
-<tr class="cov"><td class="ln">65</td><td class="code">  if (!invoke) return;</td></tr>
+<tr class="nil"><td class="ln">62</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">63</td><td class="code">async function persistToSqlite(key: string, tex: string, bundle: string, display: boolean, preamble: string, r: RenderResult) {</td></tr>
+<tr class="nil"><td class="ln">64</td><td class="code">  const invoke = await getInvoke();</td></tr>
+<tr class="nil"><td class="ln">65</td><td class="code">  if (!invoke) return;</td></tr>
 <tr class="cov"><td class="ln">66</td><td class="code">  try {</td></tr>
 <tr class="cov"><td class="ln">67</td><td class="code">    await invoke(&#x27;db_put_math_svg&#x27;, {</td></tr>
 <tr class="nil"><td class="ln">68</td><td class="code">      key, tex, bundle, display, preamble,</td></tr>
 <tr class="cov"><td class="ln">69</td><td class="code">      svg: r.svg, width: r.width || null, height: r.height || null, valign: r.valign || null,</td></tr>
-<tr class="cov"><td class="ln">70</td><td class="code">    });</td></tr>
+<tr class="nil"><td class="ln">70</td><td class="code">    });</td></tr>
 <tr class="cov"><td class="ln">71</td><td class="code">  } catch { /* cache write failure shouldn&#x27;t break rendering */ }</td></tr>
 <tr class="nil"><td class="ln">72</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">73</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">74</td><td class="code">/** One-time best-effort: load all cached SVGs from SQLite into the in-memory pool caches. */</td></tr>
+<tr class="nil"><td class="ln">73</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">74</td><td class="code">/** One-time best-effort: load all cached SVGs from SQLite into the in-memory pool caches. */</td></tr>
 <tr class="cov"><td class="ln">75</td><td class="code">let warmCacheLoaded = false;</td></tr>
 <tr class="cov"><td class="ln">76</td><td class="code">export async function warmMathCacheFromSqlite(): Promise&lt;number&gt; {</td></tr>
-<tr class="cov"><td class="ln">77</td><td class="code">  if (warmCacheLoaded) return 0;</td></tr>
-<tr class="cov"><td class="ln">78</td><td class="code">  warmCacheLoaded = true;</td></tr>
-<tr class="cov"><td class="ln">79</td><td class="code">  const invoke = await getInvoke();</td></tr>
-<tr class="cov"><td class="ln">80</td><td class="code">  if (!invoke) return 0;</td></tr>
-<tr class="cov"><td class="ln">81</td><td class="code">  try {</td></tr>
-<tr class="cov"><td class="ln">82</td><td class="code">    const rows = await invoke&lt;Array&lt;{ key: string; tex: string; bundle: string; display: boolean; preamble: string; svg: string; width: string | null; height: string | null; valign: string | null }&gt;&gt;(</td></tr>
-<tr class="nil"><td class="ln">83</td><td class="code">      &#x27;db_load_math_cache&#x27;</td></tr>
-<tr class="cov"><td class="ln">84</td><td class="code">    );</td></tr>
-<tr class="cov"><td class="ln">85</td><td class="code">    // SVG from the deck&#x27;s math_cache is UNTRUSTED (a crafted .eigendeck can poison</td></tr>
-<tr class="cov"><td class="ln">86</td><td class="code">    // a row with &lt;script&gt;/foreignObject); sanitize at this DB→memory edge so every</td></tr>
-<tr class="cov"><td class="ln">87</td><td class="code">    // downstream splice into slide text is clean (audit C-4). Fresh renders (from</td></tr>
-<tr class="cov"><td class="ln">88</td><td class="code">    // the MathJax iframe) skip this — they&#x27;re app-generated. Sanitize in parallel</td></tr>
-<tr class="cov"><td class="ln">89</td><td class="code">    // (DOMPurify is loaded once) so the warm-up isn&#x27;t serialized per row.</td></tr>
-<tr class="cov"><td class="ln">90</td><td class="code">    await Promise.all(rows.map(async (row) =&gt; {</td></tr>
+<tr class="part"><td class="ln">77</td><td class="code">  if (warmCacheLoaded) return 0;</td></tr>
+<tr class="nil"><td class="ln">78</td><td class="code">  warmCacheLoaded = true;</td></tr>
+<tr class="unc"><td class="ln">79</td><td class="code">  const invoke = await getInvoke();</td></tr>
+<tr class="unc"><td class="ln">80</td><td class="code">  if (!invoke) return 0;</td></tr>
+<tr class="unc"><td class="ln">81</td><td class="code">  try {</td></tr>
+<tr class="unc"><td class="ln">82</td><td class="code">    const rows = await invoke&lt;Array&lt;{ key: string; tex: string; bundle: string; display: boolean; preamble: string; svg: string; width: string | null; height: string | null; valign: string | null }&gt;&gt;(</td></tr>
+<tr class="cov"><td class="ln">83</td><td class="code">      &#x27;db_load_math_cache&#x27;</td></tr>
+<tr class="nil"><td class="ln">84</td><td class="code">    );</td></tr>
+<tr class="nil"><td class="ln">85</td><td class="code">    // SVG from the deck&#x27;s math_cache is UNTRUSTED (a crafted .eigendeck can poison</td></tr>
+<tr class="nil"><td class="ln">86</td><td class="code">    // a row with &lt;script&gt;/foreignObject); sanitize at this DB→memory edge so every</td></tr>
+<tr class="nil"><td class="ln">87</td><td class="code">    // downstream splice into slide text is clean (audit C-4). Fresh renders (from</td></tr>
+<tr class="nil"><td class="ln">88</td><td class="code">    // the MathJax iframe) skip this — they&#x27;re app-generated. Sanitize in parallel</td></tr>
+<tr class="nil"><td class="ln">89</td><td class="code">    // (DOMPurify is loaded once) so the warm-up isn&#x27;t serialized per row.</td></tr>
+<tr class="part"><td class="ln">90</td><td class="code">    await Promise.all(rows.map(async (row) =&gt; {</td></tr>
 <tr class="cov"><td class="ln">91</td><td class="code">      const pool = getOrCreatePool(row.bundle);</td></tr>
-<tr class="cov"><td class="ln">92</td><td class="code">      pool.cache.set(row.key, {</td></tr>
+<tr class="nil"><td class="ln">92</td><td class="code">      pool.cache.set(row.key, {</td></tr>
 <tr class="cov"><td class="ln">93</td><td class="code">        svg: await sanitizeSvg(row.svg),</td></tr>
-<tr class="nil"><td class="ln">94</td><td class="code">        width: row.width || &#x27;&#x27;,</td></tr>
-<tr class="nil"><td class="ln">95</td><td class="code">        height: row.height || &#x27;&#x27;,</td></tr>
-<tr class="nil"><td class="ln">96</td><td class="code">        valign: row.valign || &#x27;&#x27;,</td></tr>
+<tr class="cov"><td class="ln">94</td><td class="code">        width: row.width || &#x27;&#x27;,</td></tr>
+<tr class="cov"><td class="ln">95</td><td class="code">        height: row.height || &#x27;&#x27;,</td></tr>
+<tr class="cov"><td class="ln">96</td><td class="code">        valign: row.valign || &#x27;&#x27;,</td></tr>
 <tr class="nil"><td class="ln">97</td><td class="code">      });</td></tr>
 <tr class="nil"><td class="ln">98</td><td class="code">    }));</td></tr>
-<tr class="cov"><td class="ln">99</td><td class="code">    return rows.length;</td></tr>
-<tr class="cov"><td class="ln">100</td><td class="code">  } catch { return 0; }</td></tr>
+<tr class="nil"><td class="ln">99</td><td class="code">    return rows.length;</td></tr>
+<tr class="unc"><td class="ln">100</td><td class="code">  } catch { return 0; }</td></tr>
 <tr class="nil"><td class="ln">101</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">102</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">102</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">103</td><td class="code">/** Reset the warm-cache flag — call after opening a different .eigendeck file. */</td></tr>
-<tr class="nil"><td class="ln">104</td><td class="code">export function resetMathCacheWarmupFlag(): void {</td></tr>
-<tr class="cov"><td class="ln">105</td><td class="code">  warmCacheLoaded = false;</td></tr>
+<tr class="cov"><td class="ln">104</td><td class="code">export function resetMathCacheWarmupFlag(): void {</td></tr>
+<tr class="nil"><td class="ln">105</td><td class="code">  warmCacheLoaded = false;</td></tr>
 <tr class="nil"><td class="ln">106</td><td class="code">  // Also clear in-memory pool caches so they don&#x27;t bleed across files.</td></tr>
 <tr class="cov"><td class="ln">107</td><td class="code">  for (const pool of pools.values()) pool.cache.clear();</td></tr>
-<tr class="cov"><td class="ln">108</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">109</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">108</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">109</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">110</td><td class="code">interface PendingRequest {</td></tr>
 <tr class="cov"><td class="ln">111</td><td class="code">  resolve: (svg: RenderResult) =&gt; void;</td></tr>
 <tr class="cov"><td class="ln">112</td><td class="code">  reject: (err: Error) =&gt; void;</td></tr>
-<tr class="cov"><td class="ln">113</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">114</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">113</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">114</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">115</td><td class="code">export interface RenderResult {</td></tr>
-<tr class="cov"><td class="ln">116</td><td class="code">  svg: string;     // outer HTML of &lt;svg&gt;...</td></tr>
-<tr class="cov"><td class="ln">117</td><td class="code">  width: string;   // e.g. &quot;1.234ex&quot;</td></tr>
+<tr class="nil"><td class="ln">116</td><td class="code">  svg: string;     // outer HTML of &lt;svg&gt;...</td></tr>
+<tr class="nil"><td class="ln">117</td><td class="code">  width: string;   // e.g. &quot;1.234ex&quot;</td></tr>
 <tr class="cov"><td class="ln">118</td><td class="code">  height: string;</td></tr>
-<tr class="cov"><td class="ln">119</td><td class="code">  valign: string;  // e.g. &quot;-0.025ex&quot;</td></tr>
-<tr class="cov"><td class="ln">120</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">121</td><td class="code">&nbsp;</td></tr>
+<tr class="part"><td class="ln">119</td><td class="code">  valign: string;  // e.g. &quot;-0.025ex&quot;</td></tr>
+<tr class="nil"><td class="ln">120</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">121</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">122</td><td class="code">interface Pool {</td></tr>
 <tr class="cov"><td class="ln">123</td><td class="code">  iframe: HTMLIFrameElement;</td></tr>
-<tr class="unc"><td class="ln">124</td><td class="code">  ready: Promise&lt;void&gt;;</td></tr>
+<tr class="nil"><td class="ln">124</td><td class="code">  ready: Promise&lt;void&gt;;</td></tr>
 <tr class="unc"><td class="ln">125</td><td class="code">  pending: Map&lt;string, PendingRequest&gt;;</td></tr>
 <tr class="unc"><td class="ln">126</td><td class="code">  cache: Map&lt;string, RenderResult&gt;;  // key = `${display}:${tex}`</td></tr>
 <tr class="unc"><td class="ln">127</td><td class="code">  appliedPreamble: string;           // last preamble we sent to this iframe</td></tr>
 <tr class="nil"><td class="ln">128</td><td class="code">  preambleReady?: Promise&lt;void&gt;;     // resolves when appliedPreamble is REGISTERED in the iframe</td></tr>
 <tr class="nil"><td class="ln">129</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">130</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">130</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">131</td><td class="code">const pools = new Map&lt;string, Pool&gt;();</td></tr>
-<tr class="cov"><td class="ln">132</td><td class="code">let nextRequestId = 0;</td></tr>
-<tr class="cov"><td class="ln">133</td><td class="code">let messageListenerInstalled = false;</td></tr>
-<tr class="cov"><td class="ln">134</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">132</td><td class="code">let nextRequestId = 0;</td></tr>
+<tr class="nil"><td class="ln">133</td><td class="code">let messageListenerInstalled = false;</td></tr>
+<tr class="nil"><td class="ln">134</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">135</td><td class="code">function installMessageListener() {</td></tr>
-<tr class="cov"><td class="ln">136</td><td class="code">  if (messageListenerInstalled) return;</td></tr>
-<tr class="cov"><td class="ln">137</td><td class="code">  messageListenerInstalled = true;</td></tr>
-<tr class="cov"><td class="ln">138</td><td class="code">  window.addEventListener(&#x27;message&#x27;, (ev) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">136</td><td class="code">  if (messageListenerInstalled) return;</td></tr>
+<tr class="nil"><td class="ln">137</td><td class="code">  messageListenerInstalled = true;</td></tr>
+<tr class="nil"><td class="ln">138</td><td class="code">  window.addEventListener(&#x27;message&#x27;, (ev) =&gt; {</td></tr>
 <tr class="cov"><td class="ln">139</td><td class="code">    const msg = ev.data;</td></tr>
 <tr class="cov"><td class="ln">140</td><td class="code">    if (!msg || typeof msg !== &#x27;object&#x27;) return;</td></tr>
 <tr class="cov"><td class="ln">141</td><td class="code">    if (msg.type === &#x27;log&#x27;) {</td></tr>
-<tr class="cov"><td class="ln">142</td><td class="code">      // Demo/notebook frames are intentionally script-capable and can post to</td></tr>
+<tr class="nil"><td class="ln">142</td><td class="code">      // Demo/notebook frames are intentionally script-capable and can post to</td></tr>
 <tr class="nil"><td class="ln">143</td><td class="code">      // their parent. Treat the claimed bundle as data: only the actual hidden</td></tr>
 <tr class="nil"><td class="ln">144</td><td class="code">      // renderer iframe for that bundle may speak the renderer protocol.</td></tr>
 <tr class="cov"><td class="ln">145</td><td class="code">      const sourcePool = typeof msg.bundle === &#x27;string&#x27; ? pools.get(msg.bundle) : undefined;</td></tr>
 <tr class="cov"><td class="ln">146</td><td class="code">      if (!sourcePool || ev.source !== sourcePool.iframe.contentWindow) return;</td></tr>
-<tr class="cov"><td class="ln">147</td><td class="code">      // Echo iframe-side dbg() messages. Iframe only sends these for</td></tr>
-<tr class="cov"><td class="ln">148</td><td class="code">      // unexpected events (errors, missing SVG, preamble failures); they</td></tr>
-<tr class="cov"><td class="ln">149</td><td class="code">      // surface here as console warnings so they&#x27;re visible without opening</td></tr>
-<tr class="cov"><td class="ln">150</td><td class="code">      // the iframe context in devtools.</td></tr>
+<tr class="nil"><td class="ln">147</td><td class="code">      // Echo iframe-side dbg() messages. Iframe only sends these for</td></tr>
+<tr class="nil"><td class="ln">148</td><td class="code">      // unexpected events (errors, missing SVG, preamble failures); they</td></tr>
+<tr class="nil"><td class="ln">149</td><td class="code">      // surface here as console warnings so they&#x27;re visible without opening</td></tr>
+<tr class="nil"><td class="ln">150</td><td class="code">      // the iframe context in devtools.</td></tr>
 <tr class="cov"><td class="ln">151</td><td class="code">      console.warn(`[mathjaxRenderer/iframe ${msg.bundle}]`, msg.msg);</td></tr>
 <tr class="cov"><td class="ln">152</td><td class="code">      return;</td></tr>
-<tr class="cov"><td class="ln">153</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">153</td><td class="code">    }</td></tr>
 <tr class="cov"><td class="ln">154</td><td class="code">    if (msg.type !== &#x27;rendered&#x27; &amp;&amp; msg.type !== &#x27;error&#x27;) return;</td></tr>
 <tr class="cov"><td class="ln">155</td><td class="code">    const id = msg.id as string | undefined;</td></tr>
 <tr class="cov"><td class="ln">156</td><td class="code">    if (!id) return;</td></tr>
 <tr class="nil"><td class="ln">157</td><td class="code">    // Find which pool owns this request id</td></tr>
-<tr class="cov"><td class="ln">158</td><td class="code">    for (const pool of pools.values()) {</td></tr>
+<tr class="nil"><td class="ln">158</td><td class="code">    for (const pool of pools.values()) {</td></tr>
 <tr class="cov"><td class="ln">159</td><td class="code">      const pending = pool.pending.get(id);</td></tr>
 <tr class="cov"><td class="ln">160</td><td class="code">      if (!pending) continue;</td></tr>
-<tr class="cov"><td class="ln">161</td><td class="code">      // A request id is not an authentication token (ids are deliberately small</td></tr>
-<tr class="cov"><td class="ln">162</td><td class="code">      // and predictable). Bind the reply to the window that owns the request so</td></tr>
+<tr class="nil"><td class="ln">161</td><td class="code">      // A request id is not an authentication token (ids are deliberately small</td></tr>
+<tr class="nil"><td class="ln">162</td><td class="code">      // and predictable). Bind the reply to the window that owns the request so</td></tr>
 <tr class="nil"><td class="ln">163</td><td class="code">      // a sandboxed demo cannot forge a MathJax result into the privileged DOM.</td></tr>
 <tr class="cov"><td class="ln">164</td><td class="code">      if (ev.source !== pool.iframe.contentWindow) continue;</td></tr>
-<tr class="cov"><td class="ln">165</td><td class="code">      pool.pending.delete(id);</td></tr>
-<tr class="cov"><td class="ln">166</td><td class="code">      if (msg.type === &#x27;rendered&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">165</td><td class="code">      pool.pending.delete(id);</td></tr>
+<tr class="nil"><td class="ln">166</td><td class="code">      if (msg.type === &#x27;rendered&#x27;) {</td></tr>
 <tr class="cov"><td class="ln">167</td><td class="code">        pending.resolve({</td></tr>
 <tr class="cov"><td class="ln">168</td><td class="code">          svg: msg.svg, width: msg.width || &#x27;&#x27;, height: msg.height || &#x27;&#x27;, valign: msg.valign || &#x27;&#x27;,</td></tr>
 <tr class="nil"><td class="ln">169</td><td class="code">        });</td></tr>
 <tr class="nil"><td class="ln">170</td><td class="code">      } else {</td></tr>
 <tr class="cov"><td class="ln">171</td><td class="code">        pending.reject(new Error(msg.message || &#x27;render failed&#x27;));</td></tr>
-<tr class="cov"><td class="ln">172</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">172</td><td class="code">      }</td></tr>
 <tr class="cov"><td class="ln">173</td><td class="code">      return;</td></tr>
 <tr class="nil"><td class="ln">174</td><td class="code">    }</td></tr>
-<tr class="cov"><td class="ln">175</td><td class="code">  });</td></tr>
-<tr class="cov"><td class="ln">176</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">177</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">178</td><td class="code">/**</td></tr>
-<tr class="cov"><td class="ln">179</td><td class="code"> * Lazy-create a renderer iframe for a given bundle id.</td></tr>
-<tr class="cov"><td class="ln">180</td><td class="code"> * Returns a Pool with a ready promise that resolves when the bundle is</td></tr>
-<tr class="cov"><td class="ln">181</td><td class="code"> * loaded and ready to accept render requests.</td></tr>
-<tr class="cov"><td class="ln">182</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">175</td><td class="code">  });</td></tr>
+<tr class="nil"><td class="ln">176</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">177</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">178</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">179</td><td class="code"> * Lazy-create a renderer iframe for a given bundle id.</td></tr>
+<tr class="nil"><td class="ln">180</td><td class="code"> * Returns a Pool with a ready promise that resolves when the bundle is</td></tr>
+<tr class="nil"><td class="ln">181</td><td class="code"> * loaded and ready to accept render requests.</td></tr>
+<tr class="nil"><td class="ln">182</td><td class="code"> */</td></tr>
 <tr class="cov"><td class="ln">183</td><td class="code">function getOrCreatePool(bundleId: string): Pool {</td></tr>
-<tr class="cov"><td class="ln">184</td><td class="code">  let pool = pools.get(bundleId);</td></tr>
-<tr class="cov"><td class="ln">185</td><td class="code">  if (pool) return pool;</td></tr>
-<tr class="unc"><td class="ln">186</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">187</td><td class="code">  installMessageListener();</td></tr>
+<tr class="nil"><td class="ln">184</td><td class="code">  let pool = pools.get(bundleId);</td></tr>
+<tr class="nil"><td class="ln">185</td><td class="code">  if (pool) return pool;</td></tr>
+<tr class="nil"><td class="ln">186</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">187</td><td class="code">  installMessageListener();</td></tr>
 <tr class="nil"><td class="ln">188</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">189</td><td class="code">  const pkg = resolveFontPackage(bundleId);</td></tr>
-<tr class="cov"><td class="ln">190</td><td class="code">  const iframe = document.createElement(&#x27;iframe&#x27;);</td></tr>
+<tr class="nil"><td class="ln">189</td><td class="code">  const pkg = resolveFontPackage(bundleId);</td></tr>
+<tr class="nil"><td class="ln">190</td><td class="code">  const iframe = document.createElement(&#x27;iframe&#x27;);</td></tr>
 <tr class="cov"><td class="ln">191</td><td class="code">  iframe.src = `/mathjax-renderer.html?bundle=${encodeURIComponent(bundleId)}&amp;file=${encodeURIComponent(pkg.mathjaxBundle)}`;</td></tr>
 <tr class="cov"><td class="ln">192</td><td class="code">  iframe.style.cssText = &#x27;position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;border:0;visibility:hidden;&#x27;;</td></tr>
 <tr class="cov"><td class="ln">193</td><td class="code">  iframe.setAttribute(&#x27;aria-hidden&#x27;, &#x27;true&#x27;);</td></tr>
-<tr class="cov"><td class="ln">194</td><td class="code">  iframe.setAttribute(&#x27;data-mathjax-bundle&#x27;, bundleId);</td></tr>
+<tr class="nil"><td class="ln">194</td><td class="code">  iframe.setAttribute(&#x27;data-mathjax-bundle&#x27;, bundleId);</td></tr>
 <tr class="nil"><td class="ln">195</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">196</td><td class="code">  const ready = new Promise&lt;void&gt;((resolve, reject) =&gt; {</td></tr>
-<tr class="cov"><td class="ln">197</td><td class="code">    const readyHandler = (ev: MessageEvent) =&gt; {</td></tr>
-<tr class="cov"><td class="ln">198</td><td class="code">      const msg = ev.data;</td></tr>
+<tr class="nil"><td class="ln">197</td><td class="code">    const readyHandler = (ev: MessageEvent) =&gt; {</td></tr>
+<tr class="nil"><td class="ln">198</td><td class="code">      const msg = ev.data;</td></tr>
 <tr class="cov"><td class="ln">199</td><td class="code">      if (!msg || typeof msg !== &#x27;object&#x27;) return;</td></tr>
-<tr class="cov"><td class="ln">200</td><td class="code">      if (ev.source !== iframe.contentWindow) return;</td></tr>
-<tr class="cov"><td class="ln">201</td><td class="code">      if (msg.type === &#x27;ready&#x27; &amp;&amp; msg.bundle === bundleId) {</td></tr>
-<tr class="cov"><td class="ln">202</td><td class="code">        window.removeEventListener(&#x27;message&#x27;, readyHandler);</td></tr>
-<tr class="cov"><td class="ln">203</td><td class="code">        resolve();</td></tr>
+<tr class="nil"><td class="ln">200</td><td class="code">      if (ev.source !== iframe.contentWindow) return;</td></tr>
+<tr class="nil"><td class="ln">201</td><td class="code">      if (msg.type === &#x27;ready&#x27; &amp;&amp; msg.bundle === bundleId) {</td></tr>
+<tr class="unc"><td class="ln">202</td><td class="code">        window.removeEventListener(&#x27;message&#x27;, readyHandler);</td></tr>
+<tr class="unc"><td class="ln">203</td><td class="code">        resolve();</td></tr>
 <tr class="unc"><td class="ln">204</td><td class="code">      } else if (msg.type === &#x27;error&#x27; &amp;&amp; !msg.id) {</td></tr>
 <tr class="unc"><td class="ln">205</td><td class="code">        console.warn(&#x27;[mathjaxRenderer] bundle load failed:&#x27;, bundleId, msg.message);</td></tr>
-<tr class="unc"><td class="ln">206</td><td class="code">        window.removeEventListener(&#x27;message&#x27;, readyHandler);</td></tr>
-<tr class="unc"><td class="ln">207</td><td class="code">        reject(new Error(msg.message || &#x27;bundle load failed&#x27;));</td></tr>
-<tr class="cov"><td class="ln">208</td><td class="code">      }</td></tr>
-<tr class="cov"><td class="ln">209</td><td class="code">    };</td></tr>
+<tr class="nil"><td class="ln">206</td><td class="code">        window.removeEventListener(&#x27;message&#x27;, readyHandler);</td></tr>
+<tr class="nil"><td class="ln">207</td><td class="code">        reject(new Error(msg.message || &#x27;bundle load failed&#x27;));</td></tr>
+<tr class="nil"><td class="ln">208</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">209</td><td class="code">    };</td></tr>
 <tr class="cov"><td class="ln">210</td><td class="code">    window.addEventListener(&#x27;message&#x27;, readyHandler);</td></tr>
 <tr class="cov"><td class="ln">211</td><td class="code">    iframe.addEventListener(&#x27;error&#x27;, (e) =&gt; {</td></tr>
-<tr class="unc"><td class="ln">212</td><td class="code">      console.warn(&#x27;[mathjaxRenderer] iframe load error:&#x27;, bundleId, e);</td></tr>
-<tr class="unc"><td class="ln">213</td><td class="code">    });</td></tr>
-<tr class="cov"><td class="ln">214</td><td class="code">    setTimeout(() =&gt; {</td></tr>
-<tr class="unc"><td class="ln">215</td><td class="code">      window.removeEventListener(&#x27;message&#x27;, readyHandler);</td></tr>
+<tr class="nil"><td class="ln">212</td><td class="code">      console.warn(&#x27;[mathjaxRenderer] iframe load error:&#x27;, bundleId, e);</td></tr>
+<tr class="nil"><td class="ln">213</td><td class="code">    });</td></tr>
+<tr class="unc"><td class="ln">214</td><td class="code">    setTimeout(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">215</td><td class="code">      window.removeEventListener(&#x27;message&#x27;, readyHandler);</td></tr>
 <tr class="cov"><td class="ln">216</td><td class="code">      reject(new Error(`MathJax bundle &#x27;${bundleId}&#x27; load timed out`));</td></tr>
 <tr class="cov"><td class="ln">217</td><td class="code">    }, 30000);</td></tr>
-<tr class="cov"><td class="ln">218</td><td class="code">  });</td></tr>
-<tr class="cov"><td class="ln">219</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">218</td><td class="code">  });</td></tr>
+<tr class="nil"><td class="ln">219</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">220</td><td class="code">  pool = { iframe, ready, pending: new Map(), cache: new Map(), appliedPreamble: &#x27;&#x27; };</td></tr>
-<tr class="cov"><td class="ln">221</td><td class="code">  pools.set(bundleId, pool);</td></tr>
+<tr class="nil"><td class="ln">221</td><td class="code">  pools.set(bundleId, pool);</td></tr>
 <tr class="cov"><td class="ln">222</td><td class="code">  document.body.appendChild(iframe);</td></tr>
 <tr class="cov"><td class="ln">223</td><td class="code">  return pool;</td></tr>
-<tr class="cov"><td class="ln">224</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">224</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">225</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">226</td><td class="code">/**</td></tr>
-<tr class="cov"><td class="ln">227</td><td class="code"> * Render a tex string with the given bundle. Returns the SVG markup.</td></tr>
-<tr class="cov"><td class="ln">228</td><td class="code"> * Cached by (bundle, tex, display).</td></tr>
-<tr class="cov"><td class="ln">229</td><td class="code"> */</td></tr>
-<tr class="cov"><td class="ln">230</td><td class="code">/**</td></tr>
-<tr class="cov"><td class="ln">231</td><td class="code"> * Set the math preamble for a bundle&#x27;s iframe. Idempotent — only forwards</td></tr>
-<tr class="cov"><td class="ln">232</td><td class="code"> * if it differs from what was last applied.</td></tr>
-<tr class="cov"><td class="ln">233</td><td class="code"> */</td></tr>
-<tr class="nil"><td class="ln">234</td><td class="code">export async function setMathPreamble(preamble: string, bundleId: string): Promise&lt;void&gt; {</td></tr>
+<tr class="nil"><td class="ln">227</td><td class="code"> * Render a tex string with the given bundle. Returns the SVG markup.</td></tr>
+<tr class="nil"><td class="ln">228</td><td class="code"> * Cached by (bundle, tex, display).</td></tr>
+<tr class="nil"><td class="ln">229</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">230</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">231</td><td class="code"> * Set the math preamble for a bundle&#x27;s iframe. Idempotent — only forwards</td></tr>
+<tr class="nil"><td class="ln">232</td><td class="code"> * if it differs from what was last applied.</td></tr>
+<tr class="nil"><td class="ln">233</td><td class="code"> */</td></tr>
+<tr class="cov"><td class="ln">234</td><td class="code">export async function setMathPreamble(preamble: string, bundleId: string): Promise&lt;void&gt; {</td></tr>
 <tr class="unc"><td class="ln">235</td><td class="code">  const pool = getOrCreatePool(bundleId);</td></tr>
-<tr class="unc"><td class="ln">236</td><td class="code">  // Already applied (or in-flight) for this exact preamble: reuse the same</td></tr>
+<tr class="nil"><td class="ln">236</td><td class="code">  // Already applied (or in-flight) for this exact preamble: reuse the same</td></tr>
 <tr class="nil"><td class="ln">237</td><td class="code">  // readiness promise so every caller waits for the SAME registration.</td></tr>
-<tr class="cov"><td class="ln">238</td><td class="code">  if (pool.appliedPreamble === preamble &amp;&amp; pool.preambleReady) return pool.preambleReady;</td></tr>
+<tr class="part"><td class="ln">238</td><td class="code">  if (pool.appliedPreamble === preamble &amp;&amp; pool.preambleReady) return pool.preambleReady;</td></tr>
 <tr class="cov"><td class="ln">239</td><td class="code">  pool.appliedPreamble = preamble;</td></tr>
-<tr class="unc"><td class="ln">240</td><td class="code">  const p = (async () =&gt; {</td></tr>
-<tr class="unc"><td class="ln">241</td><td class="code">    await pool.ready;</td></tr>
-<tr class="cov"><td class="ln">242</td><td class="code">    // Wait for the iframe to ACK that the preamble is registered. Without this,</td></tr>
-<tr class="cov"><td class="ln">243</td><td class="code">    // renders fire before the macros exist (a fresh present/projector window) →</td></tr>
-<tr class="cov"><td class="ln">244</td><td class="code">    // undefined control sequence → raw-LaTeX cruft. A safety timeout keeps a</td></tr>
-<tr class="cov"><td class="ln">245</td><td class="code">    // missed ack from hanging renders forever.</td></tr>
+<tr class="nil"><td class="ln">240</td><td class="code">  const p = (async () =&gt; {</td></tr>
+<tr class="nil"><td class="ln">241</td><td class="code">    await pool.ready;</td></tr>
+<tr class="nil"><td class="ln">242</td><td class="code">    // Wait for the iframe to ACK that the preamble is registered. Without this,</td></tr>
+<tr class="nil"><td class="ln">243</td><td class="code">    // renders fire before the macros exist (a fresh present/projector window) →</td></tr>
+<tr class="nil"><td class="ln">244</td><td class="code">    // undefined control sequence → raw-LaTeX cruft. A safety timeout keeps a</td></tr>
+<tr class="nil"><td class="ln">245</td><td class="code">    // missed ack from hanging renders forever.</td></tr>
 <tr class="cov"><td class="ln">246</td><td class="code">    await new Promise&lt;void&gt;((resolve) =&gt; {</td></tr>
 <tr class="cov"><td class="ln">247</td><td class="code">      const handler = (ev: MessageEvent) =&gt; {</td></tr>
 <tr class="cov"><td class="ln">248</td><td class="code">        const m = ev.data;</td></tr>
 <tr class="cov"><td class="ln">249</td><td class="code">        if (ev.source !== pool.iframe.contentWindow) return;</td></tr>
-<tr class="unc"><td class="ln">250</td><td class="code">        if (m &amp;&amp; m.type === &#x27;preamble-applied&#x27; &amp;&amp; m.bundle === bundleId) {</td></tr>
-<tr class="unc"><td class="ln">251</td><td class="code">          window.removeEventListener(&#x27;message&#x27;, handler);</td></tr>
-<tr class="unc"><td class="ln">252</td><td class="code">          resolve();</td></tr>
-<tr class="cov"><td class="ln">253</td><td class="code">        }</td></tr>
+<tr class="cov"><td class="ln">250</td><td class="code">        if (m &amp;&amp; m.type === &#x27;preamble-applied&#x27; &amp;&amp; m.bundle === bundleId) {</td></tr>
+<tr class="cov"><td class="ln">251</td><td class="code">          window.removeEventListener(&#x27;message&#x27;, handler);</td></tr>
+<tr class="cov"><td class="ln">252</td><td class="code">          resolve();</td></tr>
+<tr class="nil"><td class="ln">253</td><td class="code">        }</td></tr>
 <tr class="nil"><td class="ln">254</td><td class="code">      };</td></tr>
-<tr class="unc"><td class="ln">255</td><td class="code">      window.addEventListener(&#x27;message&#x27;, handler);</td></tr>
-<tr class="cov"><td class="ln">256</td><td class="code">      setTimeout(() =&gt; { window.removeEventListener(&#x27;message&#x27;, handler); resolve(); }, 6000);</td></tr>
-<tr class="unc"><td class="ln">257</td><td class="code">      pool.iframe.contentWindow?.postMessage({ type: &#x27;preamble&#x27;, tex: preamble }, &#x27;*&#x27;);</td></tr>
-<tr class="cov"><td class="ln">258</td><td class="code">    });</td></tr>
-<tr class="cov"><td class="ln">259</td><td class="code">  })();</td></tr>
-<tr class="unc"><td class="ln">260</td><td class="code">  pool.preambleReady = p;</td></tr>
-<tr class="unc"><td class="ln">261</td><td class="code">  return p;</td></tr>
-<tr class="cov"><td class="ln">262</td><td class="code">  // NOTE: we do NOT clear pool.cache here. The cache key already includes the</td></tr>
-<tr class="cov"><td class="ln">263</td><td class="code">  // preamble (mathCacheKey(tex, bundle, display, preamble)), so entries are</td></tr>
+<tr class="part"><td class="ln">255</td><td class="code">      window.addEventListener(&#x27;message&#x27;, handler);</td></tr>
+<tr class="unc"><td class="ln">256</td><td class="code">      setTimeout(() =&gt; { window.removeEventListener(&#x27;message&#x27;, handler); resolve(); }, 6000);</td></tr>
+<tr class="nil"><td class="ln">257</td><td class="code">      pool.iframe.contentWindow?.postMessage({ type: &#x27;preamble&#x27;, tex: preamble }, &#x27;*&#x27;);</td></tr>
+<tr class="nil"><td class="ln">258</td><td class="code">    });</td></tr>
+<tr class="nil"><td class="ln">259</td><td class="code">  })();</td></tr>
+<tr class="cov"><td class="ln">260</td><td class="code">  pool.preambleReady = p;</td></tr>
+<tr class="nil"><td class="ln">261</td><td class="code">  return p;</td></tr>
+<tr class="nil"><td class="ln">262</td><td class="code">  // NOTE: we do NOT clear pool.cache here. The cache key already includes the</td></tr>
+<tr class="nil"><td class="ln">263</td><td class="code">  // preamble (mathCacheKey(tex, bundle, display, preamble)), so entries are</td></tr>
 <tr class="nil"><td class="ln">264</td><td class="code">  // namespaced by preamble and can never be served for a different one.</td></tr>
-<tr class="cov"><td class="ln">265</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">265</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">266</td><td class="code">&nbsp;</td></tr>
-<tr class="nil"><td class="ln">267</td><td class="code">export async function renderMath(</td></tr>
-<tr class="cov"><td class="ln">268</td><td class="code">  tex: string,</td></tr>
+<tr class="cov"><td class="ln">267</td><td class="code">export async function renderMath(</td></tr>
+<tr class="part"><td class="ln">268</td><td class="code">  tex: string,</td></tr>
 <tr class="cov"><td class="ln">269</td><td class="code">  bundleId: string,</td></tr>
 <tr class="cov"><td class="ln">270</td><td class="code">  display: boolean = false,</td></tr>
 <tr class="unc"><td class="ln">271</td><td class="code">  preamble?: string,</td></tr>
 <tr class="unc"><td class="ln">272</td><td class="code">): Promise&lt;RenderResult&gt; {</td></tr>
-<tr class="cov"><td class="ln">273</td><td class="code">  const pool = getOrCreatePool(bundleId);</td></tr>
-<tr class="unc"><td class="ln">274</td><td class="code">  // Apply preamble AND wait for the iframe to register it before rendering.</td></tr>
-<tr class="unc"><td class="ln">275</td><td class="code">  // Idempotent: returns immediately once registered for this preamble.</td></tr>
-<tr class="cov"><td class="ln">276</td><td class="code">  if (preamble) {</td></tr>
-<tr class="unc"><td class="ln">277</td><td class="code">    await setMathPreamble(preamble, bundleId);</td></tr>
-<tr class="unc"><td class="ln">278</td><td class="code">  }</td></tr>
-<tr class="cov"><td class="ln">279</td><td class="code">  const effectivePreamble = preamble || &#x27;&#x27;;</td></tr>
-<tr class="cov"><td class="ln">280</td><td class="code">  const cacheKey = mathCacheKey(tex, bundleId, display, effectivePreamble);</td></tr>
-<tr class="cov"><td class="ln">281</td><td class="code">  const hit = pool.cache.get(cacheKey);</td></tr>
-<tr class="cov"><td class="ln">282</td><td class="code">  if (hit) return hit;</td></tr>
-<tr class="unc"><td class="ln">283</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">284</td><td class="code">  await pool.ready;</td></tr>
-<tr class="unc"><td class="ln">285</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">286</td><td class="code">  const id = `r${++nextRequestId}`;</td></tr>
-<tr class="cov"><td class="ln">287</td><td class="code">  const result = await new Promise&lt;RenderResult&gt;((resolve, reject) =&gt; {</td></tr>
-<tr class="cov"><td class="ln">288</td><td class="code">    pool.pending.set(id, { resolve, reject });</td></tr>
-<tr class="cov"><td class="ln">289</td><td class="code">    pool.iframe.contentWindow?.postMessage({ id, type: &#x27;render&#x27;, tex, display }, &#x27;*&#x27;);</td></tr>
-<tr class="cov"><td class="ln">290</td><td class="code">    setTimeout(() =&gt; {</td></tr>
-<tr class="unc"><td class="ln">291</td><td class="code">      if (pool.pending.has(id)) {</td></tr>
-<tr class="unc"><td class="ln">292</td><td class="code">        pool.pending.delete(id);</td></tr>
-<tr class="unc"><td class="ln">293</td><td class="code">        reject(new Error(`render timeout (${bundleId}): ${tex.slice(0, 40)}`));</td></tr>
-<tr class="unc"><td class="ln">294</td><td class="code">      }</td></tr>
+<tr class="unc"><td class="ln">273</td><td class="code">  const pool = getOrCreatePool(bundleId);</td></tr>
+<tr class="nil"><td class="ln">274</td><td class="code">  // Apply preamble AND wait for the iframe to register it before rendering.</td></tr>
+<tr class="nil"><td class="ln">275</td><td class="code">  // Idempotent: returns immediately once registered for this preamble.</td></tr>
+<tr class="unc"><td class="ln">276</td><td class="code">  if (preamble) {</td></tr>
+<tr class="nil"><td class="ln">277</td><td class="code">    await setMathPreamble(preamble, bundleId);</td></tr>
+<tr class="nil"><td class="ln">278</td><td class="code">  }</td></tr>
+<tr class="unc"><td class="ln">279</td><td class="code">  const effectivePreamble = preamble || &#x27;&#x27;;</td></tr>
+<tr class="unc"><td class="ln">280</td><td class="code">  const cacheKey = mathCacheKey(tex, bundleId, display, effectivePreamble);</td></tr>
+<tr class="nil"><td class="ln">281</td><td class="code">  const hit = pool.cache.get(cacheKey);</td></tr>
+<tr class="nil"><td class="ln">282</td><td class="code">  if (hit) return hit;</td></tr>
+<tr class="nil"><td class="ln">283</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">284</td><td class="code">  await pool.ready;</td></tr>
+<tr class="nil"><td class="ln">285</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">286</td><td class="code">  const id = `r${++nextRequestId}`;</td></tr>
+<tr class="unc"><td class="ln">287</td><td class="code">  const result = await new Promise&lt;RenderResult&gt;((resolve, reject) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">288</td><td class="code">    pool.pending.set(id, { resolve, reject });</td></tr>
+<tr class="unc"><td class="ln">289</td><td class="code">    pool.iframe.contentWindow?.postMessage({ id, type: &#x27;render&#x27;, tex, display }, &#x27;*&#x27;);</td></tr>
+<tr class="unc"><td class="ln">290</td><td class="code">    setTimeout(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">291</td><td class="code">      if (pool.pending.has(id)) {</td></tr>
+<tr class="nil"><td class="ln">292</td><td class="code">        pool.pending.delete(id);</td></tr>
+<tr class="nil"><td class="ln">293</td><td class="code">        reject(new Error(`render timeout (${bundleId}): ${tex.slice(0, 40)}`));</td></tr>
+<tr class="nil"><td class="ln">294</td><td class="code">      }</td></tr>
 <tr class="unc"><td class="ln">295</td><td class="code">    }, 5000);</td></tr>
-<tr class="unc"><td class="ln">296</td><td class="code">  });</td></tr>
-<tr class="unc"><td class="ln">297</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">298</td><td class="code">  pool.cache.set(cacheKey, result);</td></tr>
-<tr class="unc"><td class="ln">299</td><td class="code">  // Write-through to SQLite so headless tools (CLI export) can find it.</td></tr>
-<tr class="cov"><td class="ln">300</td><td class="code">  void persistToSqlite(cacheKey, tex, bundleId, display, effectivePreamble, result);</td></tr>
-<tr class="cov"><td class="ln">301</td><td class="code">  return result;</td></tr>
-<tr class="unc"><td class="ln">302</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">296</td><td class="code">  });</td></tr>
+<tr class="nil"><td class="ln">297</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">298</td><td class="code">  pool.cache.set(cacheKey, result);</td></tr>
+<tr class="nil"><td class="ln">299</td><td class="code">  // Write-through to SQLite so headless tools (CLI export) can find it.</td></tr>
+<tr class="unc"><td class="ln">300</td><td class="code">  void persistToSqlite(cacheKey, tex, bundleId, display, effectivePreamble, result);</td></tr>
+<tr class="nil"><td class="ln">301</td><td class="code">  return result;</td></tr>
+<tr class="nil"><td class="ln">302</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">303</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">304</td><td class="code">/** Returns true if any non-trivial math marker is present. */</td></tr>
+<tr class="nil"><td class="ln">304</td><td class="code">/** Returns true if any non-trivial math marker is present. */</td></tr>
 <tr class="unc"><td class="ln">305</td><td class="code">export function containsMath(text: string): boolean {</td></tr>
-<tr class="cov"><td class="ln">306</td><td class="code">  return /\$\$[\s\S]+?\$\$|\$[^\$\n]+?\$/.test(text);</td></tr>
+<tr class="unc"><td class="ln">306</td><td class="code">  return /\$\$[\s\S]+?\$\$|\$[^\$\n]+?\$/.test(text);</td></tr>
 <tr class="nil"><td class="ln">307</td><td class="code">}</td></tr>
-<tr class="unc"><td class="ln">308</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">309</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">308</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">309</td><td class="code">/**</td></tr>
 <tr class="nil"><td class="ln">310</td><td class="code"> * Turn the raw HTML slice between `$…$` delimiters into clean LaTeX.</td></tr>
-<tr class="unc"><td class="ln">311</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">311</td><td class="code"> *</td></tr>
 <tr class="nil"><td class="ln">312</td><td class="code"> * Math is authored as plain text inside the element&#x27;s HTML, but two things</td></tr>
 <tr class="nil"><td class="ln">313</td><td class="code"> * pollute that slice:</td></tr>
 <tr class="nil"><td class="ln">314</td><td class="code"> *   1. Formatting the surrounding text — e.g. applying a colour across part of</td></tr>
@@ -341,7 +342,7 @@
 <tr class="nil"><td class="ln">324</td><td class="code"> * Pure tex (`\lambda_1`, `\sum_{i=1}^n`) passes through unchanged.</td></tr>
 <tr class="nil"><td class="ln">325</td><td class="code"> */</td></tr>
 <tr class="nil"><td class="ln">326</td><td class="code">export function texFromHtml(raw: string): string {</td></tr>
-<tr class="cov"><td class="ln">327</td><td class="code">  return raw</td></tr>
+<tr class="nil"><td class="ln">327</td><td class="code">  return raw</td></tr>
 <tr class="nil"><td class="ln">328</td><td class="code">    .replace(/&lt;[^&gt;]*&gt;/g, &#x27;&#x27;)</td></tr>
 <tr class="nil"><td class="ln">329</td><td class="code">    .replace(/&amp;nbsp;/g, &#x27; &#x27;)</td></tr>
 <tr class="nil"><td class="ln">330</td><td class="code">    .replace(/ /g, &#x27; &#x27;)</td></tr>
@@ -361,10 +362,10 @@
 <tr class="nil"><td class="ln">344</td><td class="code"> * `block` picks a block wrapper for display math vs inline for inline math.</td></tr>
 <tr class="nil"><td class="ln">345</td><td class="code"> */</td></tr>
 <tr class="nil"><td class="ln">346</td><td class="code">function failedMathFallback(raw: string, block: boolean): string {</td></tr>
-<tr class="unc"><td class="ln">347</td><td class="code">  const tag = block ? &#x27;div&#x27; : &#x27;span&#x27;;</td></tr>
-<tr class="unc"><td class="ln">348</td><td class="code">  const disp = block ? &#x27;block&#x27; : &#x27;inline-block&#x27;;</td></tr>
-<tr class="unc"><td class="ln">349</td><td class="code">  const safe = raw.replace(/&lt;/g, &#x27;&amp;lt;&#x27;).replace(/&gt;/g, &#x27;&amp;gt;&#x27;);</td></tr>
-<tr class="unc"><td class="ln">350</td><td class="code">  return `&lt;${tag} style=&quot;display:${disp};max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;vertical-align:bottom;color:#c0392b;&quot; title=&quot;This math failed to render — check the expression and the deck&#x27;s LaTeX preamble.&quot;&gt;${safe}&lt;/${tag}&gt;`;</td></tr>
+<tr class="nil"><td class="ln">347</td><td class="code">  const tag = block ? &#x27;div&#x27; : &#x27;span&#x27;;</td></tr>
+<tr class="nil"><td class="ln">348</td><td class="code">  const disp = block ? &#x27;block&#x27; : &#x27;inline-block&#x27;;</td></tr>
+<tr class="nil"><td class="ln">349</td><td class="code">  const safe = raw.replace(/&lt;/g, &#x27;&amp;lt;&#x27;).replace(/&gt;/g, &#x27;&amp;gt;&#x27;);</td></tr>
+<tr class="nil"><td class="ln">350</td><td class="code">  return `&lt;${tag} style=&quot;display:${disp};max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;vertical-align:bottom;color:#c0392b;&quot; title=&quot;This math failed to render — check the expression and the deck&#x27;s LaTeX preamble.&quot;&gt;${safe}&lt;/${tag}&gt;`;</td></tr>
 <tr class="nil"><td class="ln">351</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">352</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">353</td><td class="code">/**</td></tr>
@@ -373,75 +374,75 @@
 <tr class="nil"><td class="ln">356</td><td class="code"> * Skips inside HTML tags (matching renderMathInHtml in src/lib/mathjax.ts).</td></tr>
 <tr class="nil"><td class="ln">357</td><td class="code"> */</td></tr>
 <tr class="nil"><td class="ln">358</td><td class="code">export async function renderMathInHtml(html: string, bundleId: string, preamble?: string): Promise&lt;string&gt; {</td></tr>
-<tr class="unc"><td class="ln">359</td><td class="code">  if (!containsMath(html)) return html;</td></tr>
-<tr class="unc"><td class="ln">360</td><td class="code">  if (preamble) {</td></tr>
-<tr class="unc"><td class="ln">361</td><td class="code">    try { await setMathPreamble(preamble, bundleId); } catch (e) { console.warn(&#x27;preamble apply failed:&#x27;, e); }</td></tr>
+<tr class="nil"><td class="ln">359</td><td class="code">  if (!containsMath(html)) return html;</td></tr>
+<tr class="nil"><td class="ln">360</td><td class="code">  if (preamble) {</td></tr>
+<tr class="nil"><td class="ln">361</td><td class="code">    try { await setMathPreamble(preamble, bundleId); } catch (e) { console.warn(&#x27;preamble apply failed:&#x27;, e); }</td></tr>
 <tr class="nil"><td class="ln">362</td><td class="code">  }</td></tr>
 <tr class="nil"><td class="ln">363</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">364</td><td class="code">  const parts: string[] = [];</td></tr>
-<tr class="unc"><td class="ln">365</td><td class="code">  let i = 0;</td></tr>
-<tr class="unc"><td class="ln">366</td><td class="code">  while (i &lt; html.length) {</td></tr>
-<tr class="unc"><td class="ln">367</td><td class="code">    if (html[i] === &#x27;&lt;&#x27;) {</td></tr>
-<tr class="unc"><td class="ln">368</td><td class="code">      const tagEnd = html.indexOf(&#x27;&gt;&#x27;, i);</td></tr>
-<tr class="unc"><td class="ln">369</td><td class="code">      if (tagEnd !== -1) {</td></tr>
-<tr class="unc"><td class="ln">370</td><td class="code">        parts.push(html.slice(i, tagEnd + 1));</td></tr>
-<tr class="unc"><td class="ln">371</td><td class="code">        i = tagEnd + 1;</td></tr>
-<tr class="unc"><td class="ln">372</td><td class="code">        continue;</td></tr>
+<tr class="nil"><td class="ln">364</td><td class="code">  const parts: string[] = [];</td></tr>
+<tr class="nil"><td class="ln">365</td><td class="code">  let i = 0;</td></tr>
+<tr class="nil"><td class="ln">366</td><td class="code">  while (i &lt; html.length) {</td></tr>
+<tr class="nil"><td class="ln">367</td><td class="code">    if (html[i] === &#x27;&lt;&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">368</td><td class="code">      const tagEnd = html.indexOf(&#x27;&gt;&#x27;, i);</td></tr>
+<tr class="nil"><td class="ln">369</td><td class="code">      if (tagEnd !== -1) {</td></tr>
+<tr class="nil"><td class="ln">370</td><td class="code">        parts.push(html.slice(i, tagEnd + 1));</td></tr>
+<tr class="nil"><td class="ln">371</td><td class="code">        i = tagEnd + 1;</td></tr>
+<tr class="nil"><td class="ln">372</td><td class="code">        continue;</td></tr>
 <tr class="nil"><td class="ln">373</td><td class="code">      }</td></tr>
 <tr class="nil"><td class="ln">374</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">375</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">376</td><td class="code">    // Display math $$..$$</td></tr>
-<tr class="unc"><td class="ln">377</td><td class="code">    if (html[i] === &#x27;$&#x27; &amp;&amp; html[i + 1] === &#x27;$&#x27;) {</td></tr>
-<tr class="unc"><td class="ln">378</td><td class="code">      const end = html.indexOf(&#x27;$$&#x27;, i + 2);</td></tr>
-<tr class="unc"><td class="ln">379</td><td class="code">      if (end !== -1) {</td></tr>
-<tr class="unc"><td class="ln">380</td><td class="code">        const tex = texFromHtml(html.slice(i + 2, end));</td></tr>
-<tr class="unc"><td class="ln">381</td><td class="code">        try {</td></tr>
+<tr class="nil"><td class="ln">377</td><td class="code">    if (html[i] === &#x27;$&#x27; &amp;&amp; html[i + 1] === &#x27;$&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">378</td><td class="code">      const end = html.indexOf(&#x27;$$&#x27;, i + 2);</td></tr>
+<tr class="nil"><td class="ln">379</td><td class="code">      if (end !== -1) {</td></tr>
+<tr class="nil"><td class="ln">380</td><td class="code">        const tex = texFromHtml(html.slice(i + 2, end));</td></tr>
+<tr class="nil"><td class="ln">381</td><td class="code">        try {</td></tr>
 <tr class="nil"><td class="ln">382</td><td class="code">          // Pass `preamble` so the cache is keyed by the SAME preamble the read</td></tr>
 <tr class="nil"><td class="ln">383</td><td class="code">          // path (renderMathInHtmlSync / warm-from-SQLite) uses. Without it the</td></tr>
 <tr class="nil"><td class="ln">384</td><td class="code">          // write keyed under &quot;&quot; and every present-mode lookup missed → endless</td></tr>
 <tr class="nil"><td class="ln">385</td><td class="code">          // live re-rendering of already-cached math.</td></tr>
-<tr class="unc"><td class="ln">386</td><td class="code">          const { svg } = await renderMath(tex, bundleId, true, preamble);</td></tr>
-<tr class="unc"><td class="ln">387</td><td class="code">          parts.push(`&lt;div style=&quot;text-align:center;&quot;&gt;${svg}&lt;/div&gt;`);</td></tr>
+<tr class="nil"><td class="ln">386</td><td class="code">          const { svg } = await renderMath(tex, bundleId, true, preamble);</td></tr>
+<tr class="nil"><td class="ln">387</td><td class="code">          parts.push(`&lt;div style=&quot;text-align:center;&quot;&gt;${svg}&lt;/div&gt;`);</td></tr>
 <tr class="nil"><td class="ln">388</td><td class="code">        } catch (e) {</td></tr>
-<tr class="unc"><td class="ln">389</td><td class="code">          console.warn(&#x27;Display math render failed:&#x27;, e);</td></tr>
-<tr class="unc"><td class="ln">390</td><td class="code">          parts.push(failedMathFallback(`$$${tex}$$`, true));</td></tr>
+<tr class="nil"><td class="ln">389</td><td class="code">          console.warn(&#x27;Display math render failed:&#x27;, e);</td></tr>
+<tr class="nil"><td class="ln">390</td><td class="code">          parts.push(failedMathFallback(`$$${tex}$$`, true));</td></tr>
 <tr class="nil"><td class="ln">391</td><td class="code">        }</td></tr>
-<tr class="unc"><td class="ln">392</td><td class="code">        i = end + 2;</td></tr>
-<tr class="unc"><td class="ln">393</td><td class="code">        continue;</td></tr>
+<tr class="nil"><td class="ln">392</td><td class="code">        i = end + 2;</td></tr>
+<tr class="nil"><td class="ln">393</td><td class="code">        continue;</td></tr>
 <tr class="nil"><td class="ln">394</td><td class="code">      }</td></tr>
 <tr class="nil"><td class="ln">395</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">396</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">397</td><td class="code">    // Inline math $..$</td></tr>
-<tr class="unc"><td class="ln">398</td><td class="code">    if (html[i] === &#x27;$&#x27;) {</td></tr>
-<tr class="unc"><td class="ln">399</td><td class="code">      const end = html.indexOf(&#x27;$&#x27;, i + 1);</td></tr>
-<tr class="unc"><td class="ln">400</td><td class="code">      if (end !== -1 &amp;&amp; !html.slice(i + 1, end).includes(&#x27;\n&#x27;)) {</td></tr>
-<tr class="unc"><td class="ln">401</td><td class="code">        const tex = texFromHtml(html.slice(i + 1, end));</td></tr>
-<tr class="unc"><td class="ln">402</td><td class="code">        try {</td></tr>
-<tr class="unc"><td class="ln">403</td><td class="code">          const r = await renderMath(tex, bundleId, false, preamble);</td></tr>
+<tr class="nil"><td class="ln">398</td><td class="code">    if (html[i] === &#x27;$&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">399</td><td class="code">      const end = html.indexOf(&#x27;$&#x27;, i + 1);</td></tr>
+<tr class="nil"><td class="ln">400</td><td class="code">      if (end !== -1 &amp;&amp; !html.slice(i + 1, end).includes(&#x27;\n&#x27;)) {</td></tr>
+<tr class="nil"><td class="ln">401</td><td class="code">        const tex = texFromHtml(html.slice(i + 1, end));</td></tr>
+<tr class="nil"><td class="ln">402</td><td class="code">        try {</td></tr>
+<tr class="nil"><td class="ln">403</td><td class="code">          const r = await renderMath(tex, bundleId, false, preamble);</td></tr>
 <tr class="nil"><td class="ln">404</td><td class="code">          // Match the inline-math styling from the existing renderer</td></tr>
 <tr class="nil"><td class="ln">405</td><td class="code">          // (vertical-align baseline tweak so it sits on the text line)</td></tr>
-<tr class="unc"><td class="ln">406</td><td class="code">          const valign = r.valign || &#x27;-0.025ex&#x27;;</td></tr>
+<tr class="nil"><td class="ln">406</td><td class="code">          const valign = r.valign || &#x27;-0.025ex&#x27;;</td></tr>
 <tr class="nil"><td class="ln">407</td><td class="code">          // Inject inline display styles + overflow=&quot;visible&quot; attribute so</td></tr>
 <tr class="nil"><td class="ln">408</td><td class="code">          // italic-glyph ink (e.g. \gamma) isn&#x27;t clipped at the SVG box.</td></tr>
-<tr class="unc"><td class="ln">409</td><td class="code">          const svg = r.svg.replace(</td></tr>
+<tr class="nil"><td class="ln">409</td><td class="code">          const svg = r.svg.replace(</td></tr>
 <tr class="nil"><td class="ln">410</td><td class="code">            /^&lt;svg/,</td></tr>
 <tr class="nil"><td class="ln">411</td><td class="code">            `&lt;svg overflow=&quot;visible&quot; style=&quot;display:inline;vertical-align:${valign};overflow:visible&quot;`</td></tr>
 <tr class="nil"><td class="ln">412</td><td class="code">          );</td></tr>
-<tr class="unc"><td class="ln">413</td><td class="code">          parts.push(svg);</td></tr>
+<tr class="nil"><td class="ln">413</td><td class="code">          parts.push(svg);</td></tr>
 <tr class="nil"><td class="ln">414</td><td class="code">        } catch (e) {</td></tr>
-<tr class="unc"><td class="ln">415</td><td class="code">          console.warn(&#x27;Inline math render failed:&#x27;, e);</td></tr>
-<tr class="unc"><td class="ln">416</td><td class="code">          parts.push(failedMathFallback(`$${tex}$`, false));</td></tr>
+<tr class="nil"><td class="ln">415</td><td class="code">          console.warn(&#x27;Inline math render failed:&#x27;, e);</td></tr>
+<tr class="nil"><td class="ln">416</td><td class="code">          parts.push(failedMathFallback(`$${tex}$`, false));</td></tr>
 <tr class="nil"><td class="ln">417</td><td class="code">        }</td></tr>
-<tr class="unc"><td class="ln">418</td><td class="code">        i = end + 1;</td></tr>
-<tr class="unc"><td class="ln">419</td><td class="code">        continue;</td></tr>
+<tr class="nil"><td class="ln">418</td><td class="code">        i = end + 1;</td></tr>
+<tr class="nil"><td class="ln">419</td><td class="code">        continue;</td></tr>
 <tr class="nil"><td class="ln">420</td><td class="code">      }</td></tr>
 <tr class="nil"><td class="ln">421</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">422</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">423</td><td class="code">    parts.push(html[i]);</td></tr>
-<tr class="unc"><td class="ln">424</td><td class="code">    i++;</td></tr>
+<tr class="nil"><td class="ln">423</td><td class="code">    parts.push(html[i]);</td></tr>
+<tr class="nil"><td class="ln">424</td><td class="code">    i++;</td></tr>
 <tr class="nil"><td class="ln">425</td><td class="code">  }</td></tr>
 <tr class="nil"><td class="ln">426</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">427</td><td class="code">  return parts.join(&#x27;&#x27;);</td></tr>
+<tr class="nil"><td class="ln">427</td><td class="code">  return parts.join(&#x27;&#x27;);</td></tr>
 <tr class="nil"><td class="ln">428</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">429</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">430</td><td class="code">/**</td></tr>
@@ -456,42 +457,42 @@
 <tr class="nil"><td class="ln">439</td><td class="code"> * a hit, so there&#x27;s no flash at all.</td></tr>
 <tr class="nil"><td class="ln">440</td><td class="code"> */</td></tr>
 <tr class="nil"><td class="ln">441</td><td class="code">export function renderMathInHtmlSync(html: string, bundleId: string, preamble?: string): string | null {</td></tr>
-<tr class="cov"><td class="ln">442</td><td class="code">  if (!containsMath(html)) return html;</td></tr>
-<tr class="cov"><td class="ln">443</td><td class="code">  const pool = pools.get(bundleId);</td></tr>
-<tr class="cov"><td class="ln">444</td><td class="code">  if (!pool) return null;</td></tr>
-<tr class="cov"><td class="ln">445</td><td class="code">  const eff = preamble || &#x27;&#x27;;</td></tr>
-<tr class="cov"><td class="ln">446</td><td class="code">  const parts: string[] = [];</td></tr>
-<tr class="cov"><td class="ln">447</td><td class="code">  let i = 0;</td></tr>
-<tr class="cov"><td class="ln">448</td><td class="code">  while (i &lt; html.length) {</td></tr>
-<tr class="cov"><td class="ln">449</td><td class="code">    if (html[i] === &#x27;&lt;&#x27;) {</td></tr>
-<tr class="cov"><td class="ln">450</td><td class="code">      const tagEnd = html.indexOf(&#x27;&gt;&#x27;, i);</td></tr>
-<tr class="cov"><td class="ln">451</td><td class="code">      if (tagEnd !== -1) { parts.push(html.slice(i, tagEnd + 1)); i = tagEnd + 1; continue; }</td></tr>
+<tr class="nil"><td class="ln">442</td><td class="code">  if (!containsMath(html)) return html;</td></tr>
+<tr class="nil"><td class="ln">443</td><td class="code">  const pool = pools.get(bundleId);</td></tr>
+<tr class="nil"><td class="ln">444</td><td class="code">  if (!pool) return null;</td></tr>
+<tr class="nil"><td class="ln">445</td><td class="code">  const eff = preamble || &#x27;&#x27;;</td></tr>
+<tr class="nil"><td class="ln">446</td><td class="code">  const parts: string[] = [];</td></tr>
+<tr class="nil"><td class="ln">447</td><td class="code">  let i = 0;</td></tr>
+<tr class="nil"><td class="ln">448</td><td class="code">  while (i &lt; html.length) {</td></tr>
+<tr class="nil"><td class="ln">449</td><td class="code">    if (html[i] === &#x27;&lt;&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">450</td><td class="code">      const tagEnd = html.indexOf(&#x27;&gt;&#x27;, i);</td></tr>
+<tr class="nil"><td class="ln">451</td><td class="code">      if (tagEnd !== -1) { parts.push(html.slice(i, tagEnd + 1)); i = tagEnd + 1; continue; }</td></tr>
 <tr class="nil"><td class="ln">452</td><td class="code">    }</td></tr>
-<tr class="cov"><td class="ln">453</td><td class="code">    if (html[i] === &#x27;$&#x27; &amp;&amp; html[i + 1] === &#x27;$&#x27;) {</td></tr>
-<tr class="cov"><td class="ln">454</td><td class="code">      const end = html.indexOf(&#x27;$$&#x27;, i + 2);</td></tr>
-<tr class="cov"><td class="ln">455</td><td class="code">      if (end !== -1) {</td></tr>
-<tr class="cov"><td class="ln">456</td><td class="code">        const tex = texFromHtml(html.slice(i + 2, end));</td></tr>
-<tr class="cov"><td class="ln">457</td><td class="code">        const hit = pool.cache.get(mathCacheKey(tex, bundleId, true, eff));</td></tr>
-<tr class="cov"><td class="ln">458</td><td class="code">        parts.push(hit ? `&lt;div style=&quot;text-align:center;&quot;&gt;${hit.svg}&lt;/div&gt;` : `$$${tex}$$`);</td></tr>
-<tr class="cov"><td class="ln">459</td><td class="code">        i = end + 2; continue;</td></tr>
+<tr class="nil"><td class="ln">453</td><td class="code">    if (html[i] === &#x27;$&#x27; &amp;&amp; html[i + 1] === &#x27;$&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">454</td><td class="code">      const end = html.indexOf(&#x27;$$&#x27;, i + 2);</td></tr>
+<tr class="nil"><td class="ln">455</td><td class="code">      if (end !== -1) {</td></tr>
+<tr class="nil"><td class="ln">456</td><td class="code">        const tex = texFromHtml(html.slice(i + 2, end));</td></tr>
+<tr class="nil"><td class="ln">457</td><td class="code">        const hit = pool.cache.get(mathCacheKey(tex, bundleId, true, eff));</td></tr>
+<tr class="nil"><td class="ln">458</td><td class="code">        parts.push(hit ? `&lt;div style=&quot;text-align:center;&quot;&gt;${hit.svg}&lt;/div&gt;` : `$$${tex}$$`);</td></tr>
+<tr class="nil"><td class="ln">459</td><td class="code">        i = end + 2; continue;</td></tr>
 <tr class="nil"><td class="ln">460</td><td class="code">      }</td></tr>
 <tr class="nil"><td class="ln">461</td><td class="code">    }</td></tr>
-<tr class="cov"><td class="ln">462</td><td class="code">    if (html[i] === &#x27;$&#x27;) {</td></tr>
-<tr class="cov"><td class="ln">463</td><td class="code">      const end = html.indexOf(&#x27;$&#x27;, i + 1);</td></tr>
-<tr class="cov"><td class="ln">464</td><td class="code">      if (end !== -1 &amp;&amp; !html.slice(i + 1, end).includes(&#x27;\n&#x27;)) {</td></tr>
-<tr class="cov"><td class="ln">465</td><td class="code">        const tex = texFromHtml(html.slice(i + 1, end));</td></tr>
-<tr class="cov"><td class="ln">466</td><td class="code">        const hit = pool.cache.get(mathCacheKey(tex, bundleId, false, eff));</td></tr>
-<tr class="cov"><td class="ln">467</td><td class="code">        if (hit) {</td></tr>
-<tr class="cov"><td class="ln">468</td><td class="code">          const valign = hit.valign || &#x27;-0.025ex&#x27;;</td></tr>
-<tr class="cov"><td class="ln">469</td><td class="code">          parts.push(hit.svg.replace(/^&lt;svg/, `&lt;svg overflow=&quot;visible&quot; style=&quot;display:inline;vertical-align:${valign};overflow:visible&quot;`));</td></tr>
+<tr class="nil"><td class="ln">462</td><td class="code">    if (html[i] === &#x27;$&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">463</td><td class="code">      const end = html.indexOf(&#x27;$&#x27;, i + 1);</td></tr>
+<tr class="nil"><td class="ln">464</td><td class="code">      if (end !== -1 &amp;&amp; !html.slice(i + 1, end).includes(&#x27;\n&#x27;)) {</td></tr>
+<tr class="nil"><td class="ln">465</td><td class="code">        const tex = texFromHtml(html.slice(i + 1, end));</td></tr>
+<tr class="nil"><td class="ln">466</td><td class="code">        const hit = pool.cache.get(mathCacheKey(tex, bundleId, false, eff));</td></tr>
+<tr class="nil"><td class="ln">467</td><td class="code">        if (hit) {</td></tr>
+<tr class="nil"><td class="ln">468</td><td class="code">          const valign = hit.valign || &#x27;-0.025ex&#x27;;</td></tr>
+<tr class="nil"><td class="ln">469</td><td class="code">          parts.push(hit.svg.replace(/^&lt;svg/, `&lt;svg overflow=&quot;visible&quot; style=&quot;display:inline;vertical-align:${valign};overflow:visible&quot;`));</td></tr>
 <tr class="nil"><td class="ln">470</td><td class="code">        } else {</td></tr>
-<tr class="cov"><td class="ln">471</td><td class="code">          parts.push(`$${tex}$`);</td></tr>
+<tr class="nil"><td class="ln">471</td><td class="code">          parts.push(`$${tex}$`);</td></tr>
 <tr class="nil"><td class="ln">472</td><td class="code">        }</td></tr>
-<tr class="cov"><td class="ln">473</td><td class="code">        i = end + 1; continue;</td></tr>
+<tr class="nil"><td class="ln">473</td><td class="code">        i = end + 1; continue;</td></tr>
 <tr class="nil"><td class="ln">474</td><td class="code">      }</td></tr>
 <tr class="nil"><td class="ln">475</td><td class="code">    }</td></tr>
-<tr class="cov"><td class="ln">476</td><td class="code">    parts.push(html[i]); i++;</td></tr>
+<tr class="nil"><td class="ln">476</td><td class="code">    parts.push(html[i]); i++;</td></tr>
 <tr class="nil"><td class="ln">477</td><td class="code">  }</td></tr>
-<tr class="cov"><td class="ln">478</td><td class="code">  return parts.join(&#x27;&#x27;);</td></tr>
+<tr class="nil"><td class="ln">478</td><td class="code">  return parts.join(&#x27;&#x27;);</td></tr>
 <tr class="nil"><td class="ln">479</td><td class="code">}</td></tr></table>
 </body></html>

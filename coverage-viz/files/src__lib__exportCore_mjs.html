@@ -5,13 +5,14 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/exportCore.mjs </h1>
   <div class="stats">
-    <span class="stat"><b>91%</b> covered</span>
-    <span class="stat">155/170 executable</span>
-    <span class="stat unc-txt">15 uncovered</span>
+    <span class="stat"><b>90%</b> covered</span>
+    <span class="stat">171/191 statements</span>
+    <span class="stat unc-txt">20 uncovered</span>
     <span class="stat">760 raw lines</span>
     <span class="stat">1.78% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:20.395%"></span><span class="seg unc" style="width:1.974%"></span><span class="seg nil" style="width:77.632%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:89.529%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:10.471%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__lib__assetTypes_mjs.html">assetTypes.mjs</a> <a href="src__lib__demoTheme_mjs.html">demoTheme.mjs</a> <a href="src__lib__elementHtml_mjs.html">elementHtml.mjs</a> <a href="src__lib__elementPlaceholders_mjs.html">elementPlaceholders.mjs</a> <a href="src__lib__fontRegistry_mjs.html">fontRegistry.mjs</a> <a href="src__lib__footer_mjs.html">footer.mjs</a> <a href="src__lib__htmlElement_mjs.html">htmlElement.mjs</a> <a href="src__lib__htmlEscape_mjs.html">htmlEscape.mjs</a> <a href="src__lib__textElementHtml_mjs.html">textElementHtml.mjs</a> <a href="src__lib__textPresets_mjs.html">textPresets.mjs</a> <a href="src__lib__textSizes_mjs.html">textSizes.mjs</a> <a href="src__lib__textStyle_mjs.html">textStyle.mjs</a> <a href="src__lib__themeColors_mjs.html">themeColors.mjs</a> <a href="src__lib__videoEmbedParse_mjs.html">videoEmbedParse.mjs</a></div>
   <div class="links"><span>imported by:</span> <a href="src__debug__batchExportHtml_ts.html">batchExportHtml.ts</a> <a href="src__export-cli_ts.html">export-cli.ts</a> <a href="src__store__fileOps_ts.html">fileOps.ts</a></div>
 </header>
@@ -48,8 +49,8 @@
 <tr class="nil"><td class="ln">31</td><td class="code">export function encodeEigendeckSource(presentation) {</td></tr>
 <tr class="cov"><td class="ln">32</td><td class="code">  const json = JSON.stringify(presentation);</td></tr>
 <tr class="cov"><td class="ln">33</td><td class="code">  return (typeof btoa !== &#x27;undefined&#x27;)</td></tr>
-<tr class="nil"><td class="ln">34</td><td class="code">    ? btoa(unescape(encodeURIComponent(json)))</td></tr>
-<tr class="nil"><td class="ln">35</td><td class="code">    : Buffer.from(json, &#x27;utf-8&#x27;).toString(&#x27;base64&#x27;);</td></tr>
+<tr class="cov"><td class="ln">34</td><td class="code">    ? btoa(unescape(encodeURIComponent(json)))</td></tr>
+<tr class="cov"><td class="ln">35</td><td class="code">    : Buffer.from(json, &#x27;utf-8&#x27;).toString(&#x27;base64&#x27;);</td></tr>
 <tr class="nil"><td class="ln">36</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">37</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">38</td><td class="code">/** Parse the embedded presentation out of exported HTML. Returns null when the</td></tr>
@@ -60,8 +61,8 @@
 <tr class="cov"><td class="ln">43</td><td class="code">  if (!m) return null;</td></tr>
 <tr class="cov"><td class="ln">44</td><td class="code">  const b64 = m[1];</td></tr>
 <tr class="cov"><td class="ln">45</td><td class="code">  const json = (typeof atob !== &#x27;undefined&#x27;)</td></tr>
-<tr class="nil"><td class="ln">46</td><td class="code">    ? decodeURIComponent(escape(atob(b64)))</td></tr>
-<tr class="nil"><td class="ln">47</td><td class="code">    : Buffer.from(b64, &#x27;base64&#x27;).toString(&#x27;utf-8&#x27;);</td></tr>
+<tr class="cov"><td class="ln">46</td><td class="code">    ? decodeURIComponent(escape(atob(b64)))</td></tr>
+<tr class="cov"><td class="ln">47</td><td class="code">    : Buffer.from(b64, &#x27;base64&#x27;).toString(&#x27;utf-8&#x27;);</td></tr>
 <tr class="cov"><td class="ln">48</td><td class="code">  return JSON.parse(json);</td></tr>
 <tr class="nil"><td class="ln">49</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">50</td><td class="code">&nbsp;</td></tr>
@@ -138,57 +139,57 @@
 <tr class="nil"><td class="ln">121</td><td class="code">export function injectDemoBootstrap(html, hash, channelKey) {</td></tr>
 <tr class="nil"><td class="ln">122</td><td class="code">  // Parse the hash to extract params (e.g. &quot;#piece=lattice&quot; -&gt; {piece: &quot;lattice&quot;})</td></tr>
 <tr class="cov"><td class="ln">123</td><td class="code">  const hashParams = {};</td></tr>
-<tr class="cov"><td class="ln">124</td><td class="code">  if (hash) {</td></tr>
+<tr class="nil"><td class="ln">124</td><td class="code">  if (hash) {</td></tr>
 <tr class="cov"><td class="ln">125</td><td class="code">    const qs = hash.startsWith(&#x27;#&#x27;) ? hash.slice(1) : hash;</td></tr>
-<tr class="cov"><td class="ln">126</td><td class="code">    for (const part of qs.split(&#x27;&amp;&#x27;)) {</td></tr>
+<tr class="nil"><td class="ln">126</td><td class="code">    for (const part of qs.split(&#x27;&amp;&#x27;)) {</td></tr>
 <tr class="cov"><td class="ln">127</td><td class="code">      const [k, v] = part.split(&#x27;=&#x27;);</td></tr>
 <tr class="cov"><td class="ln">128</td><td class="code">      if (k) hashParams[k] = v || &#x27;&#x27;;</td></tr>
 <tr class="nil"><td class="ln">129</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">130</td><td class="code">  }</td></tr>
 <tr class="cov"><td class="ln">131</td><td class="code">  const bootstrap = `&lt;script&gt;</td></tr>
-<tr class="nil"><td class="ln">132</td><td class="code">(function(){</td></tr>
-<tr class="nil"><td class="ln">133</td><td class="code">  var __ch = ${JSON.stringify(channelKey)};</td></tr>
-<tr class="nil"><td class="ln">134</td><td class="code">  var __hp = ${JSON.stringify(hashParams)};</td></tr>
+<tr class="cov"><td class="ln">132</td><td class="code">(function(){</td></tr>
+<tr class="cov"><td class="ln">133</td><td class="code">  var __ch = ${JSON.stringify(channelKey)};</td></tr>
+<tr class="cov"><td class="ln">134</td><td class="code">  var __hp = ${JSON.stringify(hashParams)};</td></tr>
 <tr class="nil"><td class="ln">135</td><td class="code">  // Set location.hash (works in normal iframes, may fail in srcdoc)</td></tr>
-<tr class="nil"><td class="ln">136</td><td class="code">  try { window.location.hash = ${JSON.stringify(hash || &#x27;&#x27;)}; } catch(e) {}</td></tr>
+<tr class="cov"><td class="ln">136</td><td class="code">  try { window.location.hash = ${JSON.stringify(hash || &#x27;&#x27;)}; } catch(e) {}</td></tr>
 <tr class="nil"><td class="ln">137</td><td class="code">  // Patch URLSearchParams so demos reading location.hash get injected values</td></tr>
-<tr class="nil"><td class="ln">138</td><td class="code">  var _USP = window.URLSearchParams;</td></tr>
-<tr class="nil"><td class="ln">139</td><td class="code">  window.URLSearchParams = function(init) {</td></tr>
-<tr class="nil"><td class="ln">140</td><td class="code">    var inst = new _USP(init);</td></tr>
-<tr class="nil"><td class="ln">141</td><td class="code">    if (!init || init === &#x27;&#x27; || init === &#x27;#&#x27;) {</td></tr>
-<tr class="nil"><td class="ln">142</td><td class="code">      for (var k in __hp) inst.set(k, __hp[k]);</td></tr>
+<tr class="cov"><td class="ln">138</td><td class="code">  var _USP = window.URLSearchParams;</td></tr>
+<tr class="cov"><td class="ln">139</td><td class="code">  window.URLSearchParams = function(init) {</td></tr>
+<tr class="cov"><td class="ln">140</td><td class="code">    var inst = new _USP(init);</td></tr>
+<tr class="cov"><td class="ln">141</td><td class="code">    if (!init || init === &#x27;&#x27; || init === &#x27;#&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">142</td><td class="code">      for (var k in __hp) inst.set(k, __hp[k]);</td></tr>
 <tr class="nil"><td class="ln">143</td><td class="code">    }</td></tr>
-<tr class="nil"><td class="ln">144</td><td class="code">    return inst;</td></tr>
+<tr class="cov"><td class="ln">144</td><td class="code">    return inst;</td></tr>
 <tr class="nil"><td class="ln">145</td><td class="code">  };</td></tr>
-<tr class="nil"><td class="ln">146</td><td class="code">  window.URLSearchParams.prototype = _USP.prototype;</td></tr>
+<tr class="cov"><td class="ln">146</td><td class="code">  window.URLSearchParams.prototype = _USP.prototype;</td></tr>
 <tr class="nil"><td class="ln">147</td><td class="code">  // Replace BroadcastChannel with postMessage relay via parent.</td></tr>
 <tr class="nil"><td class="ln">148</td><td class="code">  // srcdoc iframes may have opaque origins where BroadcastChannel won&#x27;t work.</td></tr>
-<tr class="nil"><td class="ln">149</td><td class="code">  window.BroadcastChannel = function(name) {</td></tr>
-<tr class="nil"><td class="ln">150</td><td class="code">    this._name = __ch + &#x27;:&#x27; + name;</td></tr>
-<tr class="nil"><td class="ln">151</td><td class="code">    this.onmessage = null;</td></tr>
-<tr class="nil"><td class="ln">152</td><td class="code">    var self = this;</td></tr>
-<tr class="nil"><td class="ln">153</td><td class="code">    window.addEventListener(&#x27;message&#x27;, function(e) {</td></tr>
-<tr class="nil"><td class="ln">154</td><td class="code">      if (!e.data || !self.onmessage) return;</td></tr>
+<tr class="cov"><td class="ln">149</td><td class="code">  window.BroadcastChannel = function(name) {</td></tr>
+<tr class="cov"><td class="ln">150</td><td class="code">    this._name = __ch + &#x27;:&#x27; + name;</td></tr>
+<tr class="cov"><td class="ln">151</td><td class="code">    this.onmessage = null;</td></tr>
+<tr class="cov"><td class="ln">152</td><td class="code">    var self = this;</td></tr>
+<tr class="cov"><td class="ln">153</td><td class="code">    window.addEventListener(&#x27;message&#x27;, function(e) {</td></tr>
+<tr class="cov"><td class="ln">154</td><td class="code">      if (!e.data || !self.onmessage) return;</td></tr>
 <tr class="nil"><td class="ln">155</td><td class="code">      // Enveloped message from relay</td></tr>
-<tr class="nil"><td class="ln">156</td><td class="code">      if (e.data.__bc === self._name) {</td></tr>
-<tr class="nil"><td class="ln">157</td><td class="code">        self.onmessage({ data: e.data.payload });</td></tr>
+<tr class="cov"><td class="ln">156</td><td class="code">      if (e.data.__bc === self._name) {</td></tr>
+<tr class="cov"><td class="ln">157</td><td class="code">        self.onmessage({ data: e.data.payload });</td></tr>
 <tr class="nil"><td class="ln">158</td><td class="code">      }</td></tr>
 <tr class="nil"><td class="ln">159</td><td class="code">      // Raw request-state from parent (slide navigation re-request)</td></tr>
-<tr class="nil"><td class="ln">160</td><td class="code">      if (e.data.type === &#x27;request-state&#x27; &amp;&amp; !e.data.__bc) {</td></tr>
-<tr class="nil"><td class="ln">161</td><td class="code">        self.onmessage({ data: e.data });</td></tr>
+<tr class="cov"><td class="ln">160</td><td class="code">      if (e.data.type === &#x27;request-state&#x27; &amp;&amp; !e.data.__bc) {</td></tr>
+<tr class="cov"><td class="ln">161</td><td class="code">        self.onmessage({ data: e.data });</td></tr>
 <tr class="nil"><td class="ln">162</td><td class="code">      }</td></tr>
 <tr class="nil"><td class="ln">163</td><td class="code">    });</td></tr>
 <tr class="nil"><td class="ln">164</td><td class="code">  };</td></tr>
-<tr class="nil"><td class="ln">165</td><td class="code">  window.BroadcastChannel.prototype.postMessage = function(msg) {</td></tr>
+<tr class="cov"><td class="ln">165</td><td class="code">  window.BroadcastChannel.prototype.postMessage = function(msg) {</td></tr>
 <tr class="nil"><td class="ln">166</td><td class="code">    // Send to parent, which relays to all sibling iframes</td></tr>
-<tr class="nil"><td class="ln">167</td><td class="code">    try {</td></tr>
-<tr class="nil"><td class="ln">168</td><td class="code">      window.parent.postMessage({ __bc: this._name, payload: msg }, &#x27;*&#x27;);</td></tr>
-<tr class="nil"><td class="ln">169</td><td class="code">    } catch(e) {}</td></tr>
+<tr class="cov"><td class="ln">167</td><td class="code">    try {</td></tr>
+<tr class="cov"><td class="ln">168</td><td class="code">      window.parent.postMessage({ __bc: this._name, payload: msg }, &#x27;*&#x27;);</td></tr>
+<tr class="cov"><td class="ln">169</td><td class="code">    } catch(e) {}</td></tr>
 <tr class="nil"><td class="ln">170</td><td class="code">  };</td></tr>
-<tr class="nil"><td class="ln">171</td><td class="code">  window.BroadcastChannel.prototype.close = function() { this.onmessage = null; };</td></tr>
+<tr class="cov"><td class="ln">171</td><td class="code">  window.BroadcastChannel.prototype.close = function() { this.onmessage = null; };</td></tr>
 <tr class="nil"><td class="ln">172</td><td class="code">})();</td></tr>
-<tr class="nil"><td class="ln">173</td><td class="code">&lt;/script&gt;`;</td></tr>
-<tr class="cov"><td class="ln">174</td><td class="code">  if (html.includes(&#x27;&lt;head&gt;&#x27;)) {</td></tr>
+<tr class="cov"><td class="ln">173</td><td class="code">&lt;/script&gt;`;</td></tr>
+<tr class="nil"><td class="ln">174</td><td class="code">  if (html.includes(&#x27;&lt;head&gt;&#x27;)) {</td></tr>
 <tr class="cov"><td class="ln">175</td><td class="code">    return html.replace(&#x27;&lt;head&gt;&#x27;, &#x27;&lt;head&gt;&#x27; + bootstrap);</td></tr>
 <tr class="nil"><td class="ln">176</td><td class="code">  }</td></tr>
 <tr class="cov"><td class="ln">177</td><td class="code">  return bootstrap + html;</td></tr>
@@ -208,8 +209,8 @@
 <tr class="nil"><td class="ln">191</td><td class="code">  }</td></tr>
 <tr class="nil"><td class="ln">192</td><td class="code">  // btoa exists in browsers and modern Node</td></tr>
 <tr class="cov"><td class="ln">193</td><td class="code">  const base64 = (typeof btoa !== &#x27;undefined&#x27;)</td></tr>
-<tr class="nil"><td class="ln">194</td><td class="code">    ? btoa(binary)</td></tr>
-<tr class="nil"><td class="ln">195</td><td class="code">    : Buffer.from(binary, &#x27;binary&#x27;).toString(&#x27;base64&#x27;);</td></tr>
+<tr class="cov"><td class="ln">194</td><td class="code">    ? btoa(binary)</td></tr>
+<tr class="cov"><td class="ln">195</td><td class="code">    : Buffer.from(binary, &#x27;binary&#x27;).toString(&#x27;base64&#x27;);</td></tr>
 <tr class="cov"><td class="ln">196</td><td class="code">  return `data:${mime};base64,${base64}`;</td></tr>
 <tr class="nil"><td class="ln">197</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">198</td><td class="code">&nbsp;</td></tr>
@@ -306,16 +307,16 @@
 <tr class="cov"><td class="ln">289</td><td class="code">  const W = presentation.config?.width || 1920;</td></tr>
 <tr class="cov"><td class="ln">290</td><td class="code">  const H = presentation.config?.height || 1080;</td></tr>
 <tr class="cov"><td class="ln">291</td><td class="code">  const meta = [presentation.config?.author, presentation.config?.venue]</td></tr>
-<tr class="nil"><td class="ln">292</td><td class="code">    .filter(Boolean)</td></tr>
-<tr class="nil"><td class="ln">293</td><td class="code">    .join(&#x27; \u00B7 &#x27;);</td></tr>
+<tr class="cov"><td class="ln">292</td><td class="code">    .filter(Boolean)</td></tr>
+<tr class="cov"><td class="ln">293</td><td class="code">    .join(&#x27; \u00B7 &#x27;);</td></tr>
 <tr class="nil"><td class="ln">294</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">295</td><td class="code">  // Image cache (data URLs)</td></tr>
 <tr class="cov"><td class="ln">296</td><td class="code">  const imageCache = new Map();</td></tr>
 <tr class="nil"><td class="ln">297</td><td class="code">  async function getImageDataUrl(src) {</td></tr>
-<tr class="cov"><td class="ln">298</td><td class="code">    if (!src) return null;   // unresolved asset (no path) — caller emits a placeholder, never crash</td></tr>
+<tr class="part"><td class="ln">298</td><td class="code">    if (!src) return null;   // unresolved asset (no path) — caller emits a placeholder, never crash</td></tr>
 <tr class="cov"><td class="ln">299</td><td class="code">    if (src.startsWith(&#x27;data:&#x27;)) return src;</td></tr>
-<tr class="cov"><td class="ln">300</td><td class="code">    if (imageCache.has(src)) return imageCache.get(src);</td></tr>
-<tr class="cov"><td class="ln">301</td><td class="code">    try {</td></tr>
+<tr class="part"><td class="ln">300</td><td class="code">    if (imageCache.has(src)) return imageCache.get(src);</td></tr>
+<tr class="nil"><td class="ln">301</td><td class="code">    try {</td></tr>
 <tr class="cov"><td class="ln">302</td><td class="code">      const bytes = await readFile(src);</td></tr>
 <tr class="cov"><td class="ln">303</td><td class="code">      const ext = src.split(&#x27;.&#x27;).pop()?.toLowerCase() || &#x27;png&#x27;;</td></tr>
 <tr class="cov"><td class="ln">304</td><td class="code">      const dataUrl = bytesToDataUrl(bytes, ext);</td></tr>
@@ -328,7 +329,7 @@
 <tr class="nil"><td class="ln">311</td><td class="code">  }</td></tr>
 <tr class="nil"><td class="ln">312</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">313</td><td class="code">  // Apply math preamble if available</td></tr>
-<tr class="cov"><td class="ln">314</td><td class="code">  if (presentation.config?.mathPreamble &amp;&amp; applyMathPreamble) {</td></tr>
+<tr class="nil"><td class="ln">314</td><td class="code">  if (presentation.config?.mathPreamble &amp;&amp; applyMathPreamble) {</td></tr>
 <tr class="unc"><td class="ln">315</td><td class="code">    try { await applyMathPreamble(presentation.config.mathPreamble); }</td></tr>
 <tr class="unc"><td class="ln">316</td><td class="code">    catch (e) { console.warn(&#x27;Failed to apply math preamble:&#x27;, e); }</td></tr>
 <tr class="nil"><td class="ln">317</td><td class="code">  }</td></tr>
@@ -340,21 +341,21 @@
 <tr class="cov"><td class="ln">323</td><td class="code">    let inner = &#x27;&#x27;;</td></tr>
 <tr class="cov"><td class="ln">324</td><td class="code">    const demoPieceSrcs = new Set();</td></tr>
 <tr class="nil"><td class="ln">325</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">326</td><td class="code">    for (const el of slide.elements || []) {</td></tr>
+<tr class="nil"><td class="ln">326</td><td class="code">    for (const el of slide.elements || []) {</td></tr>
 <tr class="cov"><td class="ln">327</td><td class="code">      const p = el.position;</td></tr>
-<tr class="cov"><td class="ln">328</td><td class="code">      switch (el.type) {</td></tr>
+<tr class="nil"><td class="ln">328</td><td class="code">      switch (el.type) {</td></tr>
 <tr class="nil"><td class="ln">329</td><td class="code">        case &#x27;text&#x27;: {</td></tr>
 <tr class="nil"><td class="ln">330</td><td class="code">          // Preferred path: caller pre-renders the entire SVG (math already</td></tr>
 <tr class="nil"><td class="ln">331</td><td class="code">          // composited via the iframe pool, per-preset font fully resolved).</td></tr>
 <tr class="nil"><td class="ln">332</td><td class="code">          // We just wrap it in a positioned div.</td></tr>
-<tr class="cov"><td class="ln">333</td><td class="code">          if (renderTextElement) {</td></tr>
+<tr class="nil"><td class="ln">333</td><td class="code">          if (renderTextElement) {</td></tr>
 <tr class="cov"><td class="ln">334</td><td class="code">            const svgMarkup = await renderTextElement(el, slide);</td></tr>
 <tr class="cov"><td class="ln">335</td><td class="code">            const bg = textBackgroundResolved(el, themeColorsByName(presentation.theme, slide &amp;&amp; slide.theme));</td></tr>
 <tr class="cov"><td class="ln">336</td><td class="code">            const sh = textBoxShadowCss(el);</td></tr>
 <tr class="cov"><td class="ln">337</td><td class="code">            const rot = el.rotation ? `transform:rotate(${el.rotation}deg);` : &#x27;&#x27;;</td></tr>
 <tr class="cov"><td class="ln">338</td><td class="code">            const rad = el.borderRadius ? `border-radius:${el.borderRadius}px;` : &#x27;&#x27;;</td></tr>
 <tr class="cov"><td class="ln">339</td><td class="code">            inner += `&lt;div style=&quot;${absBox(p)};${bg ? `background:${escExportAttr(bg)};` : &#x27;&#x27;}${sh ? `box-shadow:${escExportAttr(sh)};` : &#x27;&#x27;}${escExportAttr(rad)}${escExportAttr(rot)}&quot;&gt;` +</td></tr>
-<tr class="nil"><td class="ln">340</td><td class="code">              svgMarkup + `&lt;/div&gt;`;</td></tr>
+<tr class="cov"><td class="ln">340</td><td class="code">              svgMarkup + `&lt;/div&gt;`;</td></tr>
 <tr class="cov"><td class="ln">341</td><td class="code">            break;</td></tr>
 <tr class="nil"><td class="ln">342</td><td class="code">          }</td></tr>
 <tr class="nil"><td class="ln">343</td><td class="code">          // Legacy fallback: build HTML divs in-line. Used by the CLI</td></tr>
@@ -367,7 +368,7 @@
 <tr class="cov"><td class="ln">350</td><td class="code">          const legacyTheme = themeColorsByName(presentation.theme, slide &amp;&amp; slide.theme);</td></tr>
 <tr class="cov"><td class="ln">351</td><td class="code">          const legacyColor = resolveColor(el.color, legacyTheme, themeColorForPreset(legacyTheme, el.preset));</td></tr>
 <tr class="cov"><td class="ln">352</td><td class="code">          let textHtml = el.html || &#x27;&#x27;;</td></tr>
-<tr class="cov"><td class="ln">353</td><td class="code">          if (renderMath &amp;&amp; /\$[^$]+\$|\$\$[\s\S]+?\$\$/.test(textHtml)) {</td></tr>
+<tr class="nil"><td class="ln">353</td><td class="code">          if (renderMath &amp;&amp; /\$[^$]+\$|\$\$[\s\S]+?\$\$/.test(textHtml)) {</td></tr>
 <tr class="cov"><td class="ln">354</td><td class="code">            const bundleId = resolveMathBundle ? resolveMathBundle(el.preset, slide) : undefined;</td></tr>
 <tr class="cov"><td class="ln">355</td><td class="code">            try { textHtml = await renderMath(textHtml, bundleId); }</td></tr>
 <tr class="unc"><td class="ln">356</td><td class="code">            catch (e) { console.warn(&#x27;Math render failed:&#x27;, e); }</td></tr>
@@ -375,7 +376,7 @@
 <tr class="cov"><td class="ln">358</td><td class="code">          const resolvedFont = resolveFont ? resolveFont(el.preset, slide) : ps.fontFamily;</td></tr>
 <tr class="nil"><td class="ln">359</td><td class="code">          // Shared box/style assembly (units = px here; printSlideHtml passes</td></tr>
 <tr class="nil"><td class="ln">360</td><td class="code">          // inches/points). Math + code-font are this path&#x27;s concern → content.</td></tr>
-<tr class="cov"><td class="ln">361</td><td class="code">          inner += textElementHtml(el, {</td></tr>
+<tr class="nil"><td class="ln">361</td><td class="code">          inner += textElementHtml(el, {</td></tr>
 <tr class="nil"><td class="ln">362</td><td class="code">            color: legacyColor,</td></tr>
 <tr class="nil"><td class="ln">363</td><td class="code">            fontFamily: el.fontFamily || resolvedFont,</td></tr>
 <tr class="nil"><td class="ln">364</td><td class="code">            fontSize: effectiveFontSize(el, presentation.config),</td></tr>
@@ -393,20 +394,20 @@
 <tr class="nil"><td class="ln">376</td><td class="code">          // rasterized) emit a visible placeholder rather than the raw PDF</td></tr>
 <tr class="nil"><td class="ln">377</td><td class="code">          // bytes — a data:image/pdf in &lt;img&gt; ships a broken/blank image.</td></tr>
 <tr class="nil"><td class="ln">378</td><td class="code">          let imgSrc;</td></tr>
-<tr class="cov"><td class="ln">379</td><td class="code">          if (el.kind === &#x27;pdf&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">379</td><td class="code">          if (el.kind === &#x27;pdf&#x27;) {</td></tr>
 <tr class="cov"><td class="ln">380</td><td class="code">            imgSrc = getElementPreview ? await getElementPreview(el, slide) : null;</td></tr>
-<tr class="cov"><td class="ln">381</td><td class="code">            if (!imgSrc) {</td></tr>
+<tr class="nil"><td class="ln">381</td><td class="code">            if (!imgSrc) {</td></tr>
 <tr class="cov"><td class="ln">382</td><td class="code">              inner += `&lt;div style=&quot;${absBox(p)};display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#aaa;font-size:24px;font-family:sans-serif;border:1px solid #ddd;&quot;&gt;PDF&lt;/div&gt;`;</td></tr>
 <tr class="cov"><td class="ln">383</td><td class="code">              break;</td></tr>
 <tr class="nil"><td class="ln">384</td><td class="code">            }</td></tr>
-<tr class="cov"><td class="ln">385</td><td class="code">          } else if (deckJson &amp;&amp; el.assetId) {</td></tr>
+<tr class="nil"><td class="ln">385</td><td class="code">          } else if (deckJson &amp;&amp; el.assetId) {</td></tr>
 <tr class="nil"><td class="ln">386</td><td class="code">            // Single-store: don&#x27;t inline the bytes here — the #eigendeck-deck block</td></tr>
 <tr class="nil"><td class="ln">387</td><td class="code">            // already carries them; emit a placeholder the loader paints.</td></tr>
 <tr class="unc"><td class="ln">388</td><td class="code">            inner += imageHtml(&#x27;&#x27;, el, (n) =&gt; `${n}px`, `data-asset-id=&quot;${escExportAttr(el.assetId)}&quot;`);</td></tr>
 <tr class="unc"><td class="ln">389</td><td class="code">            break;</td></tr>
 <tr class="nil"><td class="ln">390</td><td class="code">          } else {</td></tr>
 <tr class="cov"><td class="ln">391</td><td class="code">            imgSrc = await getImageDataUrl(el.src);</td></tr>
-<tr class="cov"><td class="ln">392</td><td class="code">            if (!imgSrc) {</td></tr>
+<tr class="nil"><td class="ln">392</td><td class="code">            if (!imgSrc) {</td></tr>
 <tr class="nil"><td class="ln">393</td><td class="code">              // Unresolved/missing asset — emit a visible placeholder instead of</td></tr>
 <tr class="nil"><td class="ln">394</td><td class="code">              // a broken &lt;img src=&quot;null&quot;&gt; (or crashing the whole export).</td></tr>
 <tr class="unc"><td class="ln">395</td><td class="code">              inner += `&lt;div style=&quot;${absBox(p)};display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#aaa;font-size:24px;font-family:sans-serif;border:1px solid #ddd;&quot;&gt;image&lt;/div&gt;`;</td></tr>
@@ -419,15 +420,15 @@
 <tr class="nil"><td class="ln">402</td><td class="code">        case &#x27;demo&#x27;:</td></tr>
 <tr class="nil"><td class="ln">403</td><td class="code">          // Fonts are NOT baked here — injected at runtime from the parent&#x27;s</td></tr>
 <tr class="nil"><td class="ln">404</td><td class="code">          // single #eigendeck-fonts block (see the font-share script).</td></tr>
-<tr class="cov"><td class="ln">405</td><td class="code">          try {</td></tr>
+<tr class="nil"><td class="ln">405</td><td class="code">          try {</td></tr>
 <tr class="cov"><td class="ln">406</td><td class="code">            const rawDemo = await readTextFile(el.src);</td></tr>
 <tr class="cov"><td class="ln">407</td><td class="code">            inner += isEigendeckDemo(rawDemo).ok</td></tr>
-<tr class="nil"><td class="ln">408</td><td class="code">              ? demoIframeHtml(rawDemo, slide, p, demoThemeVarsCss)</td></tr>
-<tr class="nil"><td class="ln">409</td><td class="code">              : demoBlockedHtml(p);</td></tr>
+<tr class="cov"><td class="ln">408</td><td class="code">              ? demoIframeHtml(rawDemo, slide, p, demoThemeVarsCss)</td></tr>
+<tr class="cov"><td class="ln">409</td><td class="code">              : demoBlockedHtml(p);</td></tr>
 <tr class="unc"><td class="ln">410</td><td class="code">          } catch (e) { console.error(&#x27;Demo export failed:&#x27;, e); }</td></tr>
 <tr class="cov"><td class="ln">411</td><td class="code">          break;</td></tr>
 <tr class="nil"><td class="ln">412</td><td class="code">        case &#x27;demo-piece&#x27;:</td></tr>
-<tr class="cov"><td class="ln">413</td><td class="code">          try {</td></tr>
+<tr class="nil"><td class="ln">413</td><td class="code">          try {</td></tr>
 <tr class="nil"><td class="ln">414</td><td class="code">            // Validate the RAW bytes before bootstrap injection (which prepends script).</td></tr>
 <tr class="nil"><td class="ln">415</td><td class="code">            // Only register the demoSrc for a controller iframe if it&#x27;s a real demo —</td></tr>
 <tr class="nil"><td class="ln">416</td><td class="code">            // otherwise a blocked piece would still spawn an ungated controller below.</td></tr>
@@ -449,18 +450,18 @@
 <tr class="nil"><td class="ln">432</td><td class="code">          //   2. the proactively-cached preview PNG (warm cache / CLI).</td></tr>
 <tr class="nil"><td class="ln">433</td><td class="code">          //   3. a visible &quot;NB&quot; placeholder (cold export).</td></tr>
 <tr class="cov"><td class="ln">434</td><td class="code">          let nbHtml = null;</td></tr>
-<tr class="cov"><td class="ln">435</td><td class="code">          if (renderNotebookElement) {</td></tr>
+<tr class="nil"><td class="ln">435</td><td class="code">          if (renderNotebookElement) {</td></tr>
 <tr class="cov"><td class="ln">436</td><td class="code">            try { nbHtml = await renderNotebookElement(el, slide); }</td></tr>
 <tr class="unc"><td class="ln">437</td><td class="code">            catch (e) { console.error(&#x27;Notebook export render failed:&#x27;, e); }</td></tr>
 <tr class="nil"><td class="ln">438</td><td class="code">          }</td></tr>
-<tr class="cov"><td class="ln">439</td><td class="code">          if (nbHtml) {</td></tr>
+<tr class="nil"><td class="ln">439</td><td class="code">          if (nbHtml) {</td></tr>
 <tr class="cov"><td class="ln">440</td><td class="code">            inner += `&lt;div style=&quot;${absBox(p)};overflow:hidden;&quot;&gt;${nbHtml}&lt;/div&gt;`;</td></tr>
 <tr class="cov"><td class="ln">441</td><td class="code">            break;</td></tr>
 <tr class="nil"><td class="ln">442</td><td class="code">          }</td></tr>
 <tr class="nil"><td class="ln">443</td><td class="code">          // Static snapshot: the proactively-cached preview PNG (the same</td></tr>
 <tr class="nil"><td class="ln">444</td><td class="code">          // bytes SlideThumbnail shows).</td></tr>
 <tr class="cov"><td class="ln">445</td><td class="code">          const previewSrc = getElementPreview ? await getElementPreview(el, slide) : null;</td></tr>
-<tr class="cov"><td class="ln">446</td><td class="code">          if (previewSrc) {</td></tr>
+<tr class="nil"><td class="ln">446</td><td class="code">          if (previewSrc) {</td></tr>
 <tr class="cov"><td class="ln">447</td><td class="code">            inner += `&lt;img src=&quot;${escExportAttr(previewSrc)}&quot; style=&quot;${absBox(p)};object-fit:contain;&quot; /&gt;`;</td></tr>
 <tr class="nil"><td class="ln">448</td><td class="code">          } else {</td></tr>
 <tr class="nil"><td class="ln">449</td><td class="code">            // No cached preview (deck never opened / exported cold). Emit a</td></tr>
@@ -470,11 +471,11 @@
 <tr class="cov"><td class="ln">453</td><td class="code">          break;</td></tr>
 <tr class="nil"><td class="ln">454</td><td class="code">        }</td></tr>
 <tr class="nil"><td class="ln">455</td><td class="code">        case &#x27;video&#x27;: {</td></tr>
-<tr class="cov"><td class="ln">456</td><td class="code">          if (el.kind === &#x27;embed&#x27; &amp;&amp; el.url) {</td></tr>
+<tr class="nil"><td class="ln">456</td><td class="code">          if (el.kind === &#x27;embed&#x27; &amp;&amp; el.url) {</td></tr>
 <tr class="nil"><td class="ln">457</td><td class="code">            // Hosted embed (YouTube/Vimeo/PeerTube): emit the provider iframe so</td></tr>
 <tr class="nil"><td class="ln">458</td><td class="code">            // the video is playable in the exported HTML.</td></tr>
 <tr class="cov"><td class="ln">459</td><td class="code">            const embedSrc = buildEmbedSrc(el, { jsApi: false });</td></tr>
-<tr class="cov"><td class="ln">460</td><td class="code">            if (embedSrc) {</td></tr>
+<tr class="nil"><td class="ln">460</td><td class="code">            if (embedSrc) {</td></tr>
 <tr class="cov"><td class="ln">461</td><td class="code">              inner += `&lt;iframe src=&quot;${escExportAttr(embedSrc)}&quot; style=&quot;${absBox(p)};border:none;&quot; allow=&quot;autoplay; encrypted-media; picture-in-picture&quot; allowfullscreen&gt;&lt;/iframe&gt;`;</td></tr>
 <tr class="nil"><td class="ln">462</td><td class="code">            } else {</td></tr>
 <tr class="nil"><td class="ln">463</td><td class="code">              // Unrecognized provider → a fallback link. Escaping doesn&#x27;t stop a</td></tr>
@@ -483,9 +484,9 @@
 <tr class="cov"><td class="ln">466</td><td class="code">              const safeUrl = safeExportUrl(el.url);</td></tr>
 <tr class="cov"><td class="ln">467</td><td class="code">              inner += `&lt;a ${safeUrl ? `href=&quot;${escExportAttr(safeUrl)}&quot; ` : &#x27;&#x27;}style=&quot;${absBox(p)};display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-size:24px;font-family:sans-serif;text-decoration:none;&quot;&gt;&amp;#9654; Video&lt;/a&gt;`;</td></tr>
 <tr class="nil"><td class="ln">468</td><td class="code">            }</td></tr>
-<tr class="cov"><td class="ln">469</td><td class="code">          } else if (el.kind === &#x27;file&#x27; &amp;&amp; el.src) {</td></tr>
+<tr class="nil"><td class="ln">469</td><td class="code">          } else if (el.kind === &#x27;file&#x27; &amp;&amp; el.src) {</td></tr>
 <tr class="nil"><td class="ln">470</td><td class="code">            // Local file: inline the asset as a playable &lt;video&gt;.</td></tr>
-<tr class="cov"><td class="ln">471</td><td class="code">            try {</td></tr>
+<tr class="nil"><td class="ln">471</td><td class="code">            try {</td></tr>
 <tr class="cov"><td class="ln">472</td><td class="code">              const videoSrc = await getImageDataUrl(el.src);</td></tr>
 <tr class="cov"><td class="ln">473</td><td class="code">              const attrs = [];</td></tr>
 <tr class="cov"><td class="ln">474</td><td class="code">              if (el.controls) attrs.push(&#x27;controls&#x27;);</td></tr>
@@ -497,7 +498,7 @@
 <tr class="nil"><td class="ln">480</td><td class="code">          } else {</td></tr>
 <tr class="nil"><td class="ln">481</td><td class="code">            // Unknown/poster-only: try a cached preview, else a placeholder.</td></tr>
 <tr class="cov"><td class="ln">482</td><td class="code">            const previewSrc = getElementPreview ? await getElementPreview(el, slide) : null;</td></tr>
-<tr class="cov"><td class="ln">483</td><td class="code">            if (previewSrc) {</td></tr>
+<tr class="nil"><td class="ln">483</td><td class="code">            if (previewSrc) {</td></tr>
 <tr class="cov"><td class="ln">484</td><td class="code">              inner += `&lt;img src=&quot;${escExportAttr(previewSrc)}&quot; style=&quot;${absBox(p)};object-fit:contain;background:#000;&quot; /&gt;`;</td></tr>
 <tr class="nil"><td class="ln">485</td><td class="code">            } else {</td></tr>
 <tr class="unc"><td class="ln">486</td><td class="code">              inner += `&lt;div style=&quot;${absBox(p)};display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-size:24px;font-family:sans-serif;&quot;&gt;&amp;#9654; Video&lt;/div&gt;`;</td></tr>
@@ -515,7 +516,7 @@
 <tr class="nil"><td class="ln">498</td><td class="code">          // Locked sandbox (no script/network) — the exported deck stays inert.</td></tr>
 <tr class="nil"><td class="ln">499</td><td class="code">          // Theme drives any tint-valued variables (#138).</td></tr>
 <tr class="cov"><td class="ln">500</td><td class="code">          const htmlTheme = themeColorsByName(presentation.theme, slide &amp;&amp; slide.theme);</td></tr>
-<tr class="cov"><td class="ln">501</td><td class="code">          if (htmlIsScaled(el)) {</td></tr>
+<tr class="nil"><td class="ln">501</td><td class="code">          if (htmlIsScaled(el)) {</td></tr>
 <tr class="nil"><td class="ln">502</td><td class="code">            // Contain-scale: design-size frame transformed to fit the box (px units).</td></tr>
 <tr class="cov"><td class="ln">503</td><td class="code">            const L = htmlScaleLayout(p.width, p.height, el.scaleW, el.scaleH);</td></tr>
 <tr class="cov"><td class="ln">504</td><td class="code">            inner += htmlElementScaledIframeHtml(el, absBox(p), L, &#x27;px&#x27;, undefined, htmlTheme);</td></tr>
@@ -530,10 +531,10 @@
 <tr class="nil"><td class="ln">513</td><td class="code">    // Hidden controller iframes for demo-pieces. demoPieceSrcs only holds marked demos</td></tr>
 <tr class="nil"><td class="ln">514</td><td class="code">    // (the piece case gates before adding), but re-check here — this is another point</td></tr>
 <tr class="nil"><td class="ln">515</td><td class="code">    // where HTML enters the demo pipeline (docs/ASSETS-SECURITY.md demo-ingestion).</td></tr>
-<tr class="cov"><td class="ln">516</td><td class="code">    for (const demoSrc of demoPieceSrcs) {</td></tr>
-<tr class="cov"><td class="ln">517</td><td class="code">      try {</td></tr>
+<tr class="nil"><td class="ln">516</td><td class="code">    for (const demoSrc of demoPieceSrcs) {</td></tr>
+<tr class="nil"><td class="ln">517</td><td class="code">      try {</td></tr>
 <tr class="cov"><td class="ln">518</td><td class="code">        const demoHtml = await readTextFile(demoSrc);</td></tr>
-<tr class="cov"><td class="ln">519</td><td class="code">        if (!isEigendeckDemo(demoHtml).ok) continue;</td></tr>
+<tr class="part"><td class="ln">519</td><td class="code">        if (!isEigendeckDemo(demoHtml).ok) continue;</td></tr>
 <tr class="cov"><td class="ln">520</td><td class="code">        const channelKey = `slide${i}-${demoSrc.replace(/[^a-z0-9]/gi, &#x27;&#x27;)}`;</td></tr>
 <tr class="cov"><td class="ln">521</td><td class="code">        const ctrlHtml = injectDemoBootstrap(demoHtml, &#x27;#role=controller&#x27;, channelKey);</td></tr>
 <tr class="cov"><td class="ln">522</td><td class="code">        const escaped = htmlEscapeForSrcdoc(ctrlHtml);</td></tr>
@@ -541,7 +542,7 @@
 <tr class="unc"><td class="ln">524</td><td class="code">      } catch (e) { console.error(&#x27;Controller iframe failed:&#x27;, e); }</td></tr>
 <tr class="nil"><td class="ln">525</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">526</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">527</td><td class="code">    if (showFooter(slide)) {</td></tr>
+<tr class="nil"><td class="ln">527</td><td class="code">    if (showFooter(slide)) {</td></tr>
 <tr class="cov"><td class="ln">528</td><td class="code">      inner += `&lt;div class=&quot;slide-footer&quot;&gt;&lt;span class=&quot;slide-footer-meta&quot;&gt;${meta}&lt;/span&gt;&lt;span class=&quot;slide-footer-number&quot;&gt;${i + 1}&lt;/span&gt;&lt;/div&gt;`;</td></tr>
 <tr class="nil"><td class="ln">529</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">530</td><td class="code">    // P0-1: emit the per-slide theme background on the wrapper so dark/black/</td></tr>
@@ -568,211 +569,211 @@
 <tr class="nil"><td class="ln">551</td><td class="code">  // copy. Escape `&lt;/` so an asset containing `&lt;/script&gt;` can&#x27;t close the block.</td></tr>
 <tr class="nil"><td class="ln">552</td><td class="code">  // Without deckJson, fall back to the legacy structure-only comment.</td></tr>
 <tr class="cov"><td class="ln">553</td><td class="code">  const deckEmbed = deckJson</td></tr>
-<tr class="nil"><td class="ln">554</td><td class="code">    ? `&lt;script type=&quot;application/json&quot; id=&quot;eigendeck-deck&quot;&gt;${deckJson.replace(/&lt;\//g, &#x27;&lt;\\/&#x27;)}&lt;/script&gt;\n`</td></tr>
-<tr class="nil"><td class="ln">555</td><td class="code">      + `&lt;script&gt;(function(){var e=document.getElementById(&#x27;eigendeck-deck&#x27;);if(!e)return;var d;`</td></tr>
-<tr class="nil"><td class="ln">556</td><td class="code">      + `try{d=JSON.parse(e.textContent)}catch(x){return}var m={};(d.assets||[]).forEach(function(a){`</td></tr>
-<tr class="nil"><td class="ln">557</td><td class="code">      + `if(a&amp;&amp;a.assetId&amp;&amp;a.data)m[a.assetId]=&#x27;data:&#x27;+(a.mime||&#x27;application/octet-stream&#x27;)+&#x27;;base64,&#x27;+a.data});`</td></tr>
-<tr class="nil"><td class="ln">558</td><td class="code">      + `var g=document.querySelectorAll(&#x27;img[data-asset-id]&#x27;);for(var i=0;i&lt;g.length;i++){`</td></tr>
-<tr class="nil"><td class="ln">559</td><td class="code">      + `var u=m[g[i].getAttribute(&#x27;data-asset-id&#x27;)];if(u)g[i].src=u}})();&lt;/script&gt;`</td></tr>
-<tr class="nil"><td class="ln">560</td><td class="code">    : `&lt;!-- eigendeck-source: ${sourceB64} --&gt;`;</td></tr>
+<tr class="cov"><td class="ln">554</td><td class="code">    ? `&lt;script type=&quot;application/json&quot; id=&quot;eigendeck-deck&quot;&gt;${deckJson.replace(/&lt;\//g, &#x27;&lt;\\/&#x27;)}&lt;/script&gt;\n`</td></tr>
+<tr class="cov"><td class="ln">555</td><td class="code">      + `&lt;script&gt;(function(){var e=document.getElementById(&#x27;eigendeck-deck&#x27;);if(!e)return;var d;`</td></tr>
+<tr class="cov"><td class="ln">556</td><td class="code">      + `try{d=JSON.parse(e.textContent)}catch(x){return}var m={};(d.assets||[]).forEach(function(a){`</td></tr>
+<tr class="cov"><td class="ln">557</td><td class="code">      + `if(a&amp;&amp;a.assetId&amp;&amp;a.data)m[a.assetId]=&#x27;data:&#x27;+(a.mime||&#x27;application/octet-stream&#x27;)+&#x27;;base64,&#x27;+a.data});`</td></tr>
+<tr class="cov"><td class="ln">558</td><td class="code">      + `var g=document.querySelectorAll(&#x27;img[data-asset-id]&#x27;);for(var i=0;i&lt;g.length;i++){`</td></tr>
+<tr class="cov"><td class="ln">559</td><td class="code">      + `var u=m[g[i].getAttribute(&#x27;data-asset-id&#x27;)];if(u)g[i].src=u}})();&lt;/script&gt;`</td></tr>
+<tr class="cov"><td class="ln">560</td><td class="code">    : `&lt;!-- eigendeck-source: ${sourceB64} --&gt;`;</td></tr>
 <tr class="nil"><td class="ln">561</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">562</td><td class="code">  return `&lt;!DOCTYPE html&gt;</td></tr>
-<tr class="nil"><td class="ln">563</td><td class="code">&lt;html&gt;</td></tr>
-<tr class="nil"><td class="ln">564</td><td class="code">&lt;head&gt;</td></tr>
-<tr class="nil"><td class="ln">565</td><td class="code">&lt;meta charset=&quot;utf-8&quot;&gt;</td></tr>
-<tr class="nil"><td class="ln">566</td><td class="code">&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;&gt;</td></tr>
-<tr class="nil"><td class="ln">567</td><td class="code">&lt;title&gt;${presentation.title || &#x27;Presentation&#x27;}&lt;/title&gt;</td></tr>
-<tr class="nil"><td class="ln">568</td><td class="code">&lt;!-- Deck fonts embedded ONCE here. Demos (same-origin srcdoc iframes) get them</td></tr>
-<tr class="nil"><td class="ln">569</td><td class="code">     injected at runtime from this block (see the font-share script below) rather</td></tr>
-<tr class="nil"><td class="ln">570</td><td class="code">     than each baking the full base64 set into its srcdoc — that duplicated the</td></tr>
-<tr class="nil"><td class="ln">571</td><td class="code">     fonts per iframe and ballooned the export ~20x. --&gt;</td></tr>
-<tr class="nil"><td class="ln">572</td><td class="code">&lt;style id=&quot;eigendeck-fonts&quot;&gt;${fontFacesCss || &#x27;&#x27;}&lt;/style&gt;</td></tr>
-<tr class="nil"><td class="ln">573</td><td class="code">&lt;style&gt;</td></tr>
-<tr class="nil"><td class="ln">574</td><td class="code">${fontFacesCss ? &#x27;&#x27; : `@import url(&#x27;https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&amp;family=PT+Sans+Narrow:wght@400;700&amp;display=swap&#x27;);`}</td></tr>
+<tr class="cov"><td class="ln">563</td><td class="code">&lt;html&gt;</td></tr>
+<tr class="cov"><td class="ln">564</td><td class="code">&lt;head&gt;</td></tr>
+<tr class="cov"><td class="ln">565</td><td class="code">&lt;meta charset=&quot;utf-8&quot;&gt;</td></tr>
+<tr class="cov"><td class="ln">566</td><td class="code">&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;&gt;</td></tr>
+<tr class="cov"><td class="ln">567</td><td class="code">&lt;title&gt;${presentation.title || &#x27;Presentation&#x27;}&lt;/title&gt;</td></tr>
+<tr class="cov"><td class="ln">568</td><td class="code">&lt;!-- Deck fonts embedded ONCE here. Demos (same-origin srcdoc iframes) get them</td></tr>
+<tr class="cov"><td class="ln">569</td><td class="code">     injected at runtime from this block (see the font-share script below) rather</td></tr>
+<tr class="cov"><td class="ln">570</td><td class="code">     than each baking the full base64 set into its srcdoc — that duplicated the</td></tr>
+<tr class="cov"><td class="ln">571</td><td class="code">     fonts per iframe and ballooned the export ~20x. --&gt;</td></tr>
+<tr class="cov"><td class="ln">572</td><td class="code">&lt;style id=&quot;eigendeck-fonts&quot;&gt;${fontFacesCss || &#x27;&#x27;}&lt;/style&gt;</td></tr>
+<tr class="cov"><td class="ln">573</td><td class="code">&lt;style&gt;</td></tr>
+<tr class="cov"><td class="ln">574</td><td class="code">${fontFacesCss ? &#x27;&#x27; : `@import url(&#x27;https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&amp;family=PT+Sans+Narrow:wght@400;700&amp;display=swap&#x27;);`}</td></tr>
 <tr class="nil"><td class="ln">575</td><td class="code">* { margin: 0; padding: 0; box-sizing: border-box; }</td></tr>
-<tr class="nil"><td class="ln">576</td><td class="code">body { background: #000; overflow: hidden; font-family: &#x27;PT Sans&#x27;, sans-serif; }</td></tr>
+<tr class="cov"><td class="ln">576</td><td class="code">body { background: #000; overflow: hidden; font-family: &#x27;PT Sans&#x27;, sans-serif; }</td></tr>
 <tr class="nil"><td class="ln">577</td><td class="code">#viewport { width: 100vw; height: 100vh; position: relative; }</td></tr>
 <tr class="nil"><td class="ln">578</td><td class="code">#viewport .slide {</td></tr>
-<tr class="nil"><td class="ln">579</td><td class="code">  width: ${W}px; height: ${H}px; position: absolute;</td></tr>
-<tr class="nil"><td class="ln">580</td><td class="code">  top: 50%; left: 50%; transform-origin: center center; display: none; overflow: hidden;</td></tr>
+<tr class="cov"><td class="ln">579</td><td class="code">  width: ${W}px; height: ${H}px; position: absolute;</td></tr>
+<tr class="cov"><td class="ln">580</td><td class="code">  top: 50%; left: 50%; transform-origin: center center; display: none; overflow: hidden;</td></tr>
 <tr class="nil"><td class="ln">581</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">582</td><td class="code">#viewport .slide.active { display: block; }</td></tr>
-<tr class="nil"><td class="ln">583</td><td class="code">ul, ol { padding-left: 1.5em; margin: 0; list-style-type: none; }</td></tr>
-<tr class="nil"><td class="ln">584</td><td class="code">li { margin-bottom: 0.15em; position: relative; }</td></tr>
-<tr class="nil"><td class="ln">585</td><td class="code">ul li::before { content: &#x27;- &#x27;; position: absolute; right: 100%; white-space: pre; }</td></tr>
-<tr class="nil"><td class="ln">586</td><td class="code">ol { counter-reset: ol-counter; }</td></tr>
-<tr class="nil"><td class="ln">587</td><td class="code">ol li::before { counter-increment: ol-counter; content: counter(ol-counter) &#x27;. &#x27;; position: absolute; right: 100%; white-space: pre; }</td></tr>
-<tr class="nil"><td class="ln">588</td><td class="code">.slide-footer {</td></tr>
-<tr class="nil"><td class="ln">589</td><td class="code">  position: absolute; bottom: 20px; right: 40px;</td></tr>
-<tr class="nil"><td class="ln">590</td><td class="code">  display: flex; align-items: baseline; gap: 16px;</td></tr>
-<tr class="nil"><td class="ln">591</td><td class="code">  font-family: ${footerFamily}; color: #999; font-size: 18px;</td></tr>
+<tr class="cov"><td class="ln">583</td><td class="code">ul, ol { padding-left: 1.5em; margin: 0; list-style-type: none; }</td></tr>
+<tr class="cov"><td class="ln">584</td><td class="code">li { margin-bottom: 0.15em; position: relative; }</td></tr>
+<tr class="cov"><td class="ln">585</td><td class="code">ul li::before { content: &#x27;- &#x27;; position: absolute; right: 100%; white-space: pre; }</td></tr>
+<tr class="cov"><td class="ln">586</td><td class="code">ol { counter-reset: ol-counter; }</td></tr>
+<tr class="cov"><td class="ln">587</td><td class="code">ol li::before { counter-increment: ol-counter; content: counter(ol-counter) &#x27;. &#x27;; position: absolute; right: 100%; white-space: pre; }</td></tr>
+<tr class="cov"><td class="ln">588</td><td class="code">.slide-footer {</td></tr>
+<tr class="cov"><td class="ln">589</td><td class="code">  position: absolute; bottom: 20px; right: 40px;</td></tr>
+<tr class="cov"><td class="ln">590</td><td class="code">  display: flex; align-items: baseline; gap: 16px;</td></tr>
+<tr class="cov"><td class="ln">591</td><td class="code">  font-family: ${footerFamily}; color: #999; font-size: 18px;</td></tr>
 <tr class="nil"><td class="ln">592</td><td class="code">}</td></tr>
-<tr class="nil"><td class="ln">593</td><td class="code">.slide-footer-number { font-size: 24px; }</td></tr>
+<tr class="cov"><td class="ln">593</td><td class="code">.slide-footer-number { font-size: 24px; }</td></tr>
 <tr class="nil"><td class="ln">594</td><td class="code">/* Navigation bar */</td></tr>
 <tr class="nil"><td class="ln">595</td><td class="code">#nav-bar {</td></tr>
-<tr class="nil"><td class="ln">596</td><td class="code">  position: fixed; bottom: 0; left: 0; right: 0; z-index: 9999;</td></tr>
-<tr class="nil"><td class="ln">597</td><td class="code">  display: flex; align-items: center; justify-content: center; gap: 16px;</td></tr>
-<tr class="nil"><td class="ln">598</td><td class="code">  padding: 8px 20px; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);</td></tr>
-<tr class="nil"><td class="ln">599</td><td class="code">  font-family: &#x27;PT Sans&#x27;, sans-serif; font-size: 14px; color: #ccc;</td></tr>
-<tr class="nil"><td class="ln">600</td><td class="code">  opacity: 0; transition: opacity 0.3s; pointer-events: none;</td></tr>
-<tr class="nil"><td class="ln">601</td><td class="code">  -webkit-backdrop-filter: blur(8px);</td></tr>
+<tr class="cov"><td class="ln">596</td><td class="code">  position: fixed; bottom: 0; left: 0; right: 0; z-index: 9999;</td></tr>
+<tr class="cov"><td class="ln">597</td><td class="code">  display: flex; align-items: center; justify-content: center; gap: 16px;</td></tr>
+<tr class="cov"><td class="ln">598</td><td class="code">  padding: 8px 20px; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);</td></tr>
+<tr class="cov"><td class="ln">599</td><td class="code">  font-family: &#x27;PT Sans&#x27;, sans-serif; font-size: 14px; color: #ccc;</td></tr>
+<tr class="cov"><td class="ln">600</td><td class="code">  opacity: 0; transition: opacity 0.3s; pointer-events: none;</td></tr>
+<tr class="cov"><td class="ln">601</td><td class="code">  -webkit-backdrop-filter: blur(8px);</td></tr>
 <tr class="nil"><td class="ln">602</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">603</td><td class="code">#nav-bar.visible { opacity: 1; pointer-events: auto; }</td></tr>
 <tr class="nil"><td class="ln">604</td><td class="code">#nav-bar button {</td></tr>
-<tr class="nil"><td class="ln">605</td><td class="code">  background: none; border: 1px solid rgba(255,255,255,0.2); color: #ccc;</td></tr>
-<tr class="nil"><td class="ln">606</td><td class="code">  border-radius: 4px; padding: 4px 12px; font-size: 14px; cursor: pointer;</td></tr>
-<tr class="nil"><td class="ln">607</td><td class="code">  font-family: inherit; min-width: 36px;</td></tr>
+<tr class="cov"><td class="ln">605</td><td class="code">  background: none; border: 1px solid rgba(255,255,255,0.2); color: #ccc;</td></tr>
+<tr class="cov"><td class="ln">606</td><td class="code">  border-radius: 4px; padding: 4px 12px; font-size: 14px; cursor: pointer;</td></tr>
+<tr class="cov"><td class="ln">607</td><td class="code">  font-family: inherit; min-width: 36px;</td></tr>
 <tr class="nil"><td class="ln">608</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">609</td><td class="code">#nav-bar button:hover { background: rgba(255,255,255,0.1); color: #fff; }</td></tr>
 <tr class="nil"><td class="ln">610</td><td class="code">#nav-bar button:disabled { opacity: 0.3; cursor: default; }</td></tr>
 <tr class="nil"><td class="ln">611</td><td class="code">#nav-bar .nav-pos { min-width: 60px; text-align: center; }</td></tr>
 <tr class="nil"><td class="ln">612</td><td class="code">#nav-bar input[type=range] { width: 120px; accent-color: #888; }</td></tr>
-<tr class="nil"><td class="ln">613</td><td class="code">@media (max-width: 768px) {</td></tr>
+<tr class="cov"><td class="ln">613</td><td class="code">@media (max-width: 768px) {</td></tr>
 <tr class="nil"><td class="ln">614</td><td class="code">  #nav-bar { padding: 12px 16px; font-size: 16px; }</td></tr>
 <tr class="nil"><td class="ln">615</td><td class="code">  #nav-bar button { padding: 8px 16px; font-size: 16px; min-width: 44px; }</td></tr>
 <tr class="nil"><td class="ln">616</td><td class="code">}</td></tr>
-<tr class="nil"><td class="ln">617</td><td class="code">${printCss || &#x27;&#x27;}</td></tr>
-<tr class="nil"><td class="ln">618</td><td class="code">&lt;/style&gt;</td></tr>
-<tr class="nil"><td class="ln">619</td><td class="code">&lt;/head&gt;</td></tr>
-<tr class="nil"><td class="ln">620</td><td class="code">&lt;body&gt;</td></tr>
-<tr class="nil"><td class="ln">621</td><td class="code">&lt;div class=&quot;eig-screen-layer&quot;&gt;</td></tr>
-<tr class="nil"><td class="ln">622</td><td class="code">&lt;div id=&quot;viewport&quot;&gt;</td></tr>
-<tr class="nil"><td class="ln">623</td><td class="code">${slideHtml.join(&#x27;\n&#x27;)}</td></tr>
-<tr class="nil"><td class="ln">624</td><td class="code">&lt;/div&gt;</td></tr>
-<tr class="nil"><td class="ln">625</td><td class="code">&lt;div id=&quot;nav-bar&quot;&gt;</td></tr>
-<tr class="nil"><td class="ln">626</td><td class="code">  &lt;button id=&quot;nb-prev&quot;&gt;&amp;lsaquo;&lt;/button&gt;</td></tr>
-<tr class="nil"><td class="ln">627</td><td class="code">  &lt;span class=&quot;nav-pos&quot;&gt;&lt;span id=&quot;nb-cur&quot;&gt;1&lt;/span&gt; / &lt;span id=&quot;nb-total&quot;&gt;&lt;/span&gt;&lt;/span&gt;</td></tr>
-<tr class="nil"><td class="ln">628</td><td class="code">  &lt;button id=&quot;nb-next&quot;&gt;&amp;rsaquo;&lt;/button&gt;</td></tr>
-<tr class="nil"><td class="ln">629</td><td class="code">&lt;/div&gt;</td></tr>
-<tr class="nil"><td class="ln">630</td><td class="code">&lt;/div&gt;</td></tr>
-<tr class="nil"><td class="ln">631</td><td class="code">${printSlideHtmls &amp;&amp; printSlideHtmls.length ? `&lt;div class=&quot;eig-print-layer&quot;&gt;\n${printSlideHtmls.join(&#x27;\n&#x27;)}\n&lt;/div&gt;` : &#x27;&#x27;}</td></tr>
-<tr class="nil"><td class="ln">632</td><td class="code">${deckEmbed}</td></tr>
-<tr class="nil"><td class="ln">633</td><td class="code">&lt;script&gt;</td></tr>
+<tr class="cov"><td class="ln">617</td><td class="code">${printCss || &#x27;&#x27;}</td></tr>
+<tr class="cov"><td class="ln">618</td><td class="code">&lt;/style&gt;</td></tr>
+<tr class="cov"><td class="ln">619</td><td class="code">&lt;/head&gt;</td></tr>
+<tr class="cov"><td class="ln">620</td><td class="code">&lt;body&gt;</td></tr>
+<tr class="cov"><td class="ln">621</td><td class="code">&lt;div class=&quot;eig-screen-layer&quot;&gt;</td></tr>
+<tr class="cov"><td class="ln">622</td><td class="code">&lt;div id=&quot;viewport&quot;&gt;</td></tr>
+<tr class="cov"><td class="ln">623</td><td class="code">${slideHtml.join(&#x27;\n&#x27;)}</td></tr>
+<tr class="cov"><td class="ln">624</td><td class="code">&lt;/div&gt;</td></tr>
+<tr class="cov"><td class="ln">625</td><td class="code">&lt;div id=&quot;nav-bar&quot;&gt;</td></tr>
+<tr class="cov"><td class="ln">626</td><td class="code">  &lt;button id=&quot;nb-prev&quot;&gt;&amp;lsaquo;&lt;/button&gt;</td></tr>
+<tr class="cov"><td class="ln">627</td><td class="code">  &lt;span class=&quot;nav-pos&quot;&gt;&lt;span id=&quot;nb-cur&quot;&gt;1&lt;/span&gt; / &lt;span id=&quot;nb-total&quot;&gt;&lt;/span&gt;&lt;/span&gt;</td></tr>
+<tr class="cov"><td class="ln">628</td><td class="code">  &lt;button id=&quot;nb-next&quot;&gt;&amp;rsaquo;&lt;/button&gt;</td></tr>
+<tr class="cov"><td class="ln">629</td><td class="code">&lt;/div&gt;</td></tr>
+<tr class="cov"><td class="ln">630</td><td class="code">&lt;/div&gt;</td></tr>
+<tr class="cov"><td class="ln">631</td><td class="code">${printSlideHtmls &amp;&amp; printSlideHtmls.length ? `&lt;div class=&quot;eig-print-layer&quot;&gt;\n${printSlideHtmls.join(&#x27;\n&#x27;)}\n&lt;/div&gt;` : &#x27;&#x27;}</td></tr>
+<tr class="cov"><td class="ln">632</td><td class="code">${deckEmbed}</td></tr>
+<tr class="cov"><td class="ln">633</td><td class="code">&lt;script&gt;</td></tr>
 <tr class="nil"><td class="ln">634</td><td class="code">// Font share: the deck fonts live ONCE in the parent&#x27;s #eigendeck-fonts block.</td></tr>
 <tr class="nil"><td class="ln">635</td><td class="code">// Demo iframes are same-origin srcdoc docs, so inject that block into each at</td></tr>
 <tr class="nil"><td class="ln">636</td><td class="code">// runtime instead of baking the (large, base64) font set into every srcdoc —</td></tr>
 <tr class="nil"><td class="ln">637</td><td class="code">// keeps the exported file ~1x the font size instead of ~Nx (one per iframe).</td></tr>
-<tr class="nil"><td class="ln">638</td><td class="code">(function() {</td></tr>
-<tr class="nil"><td class="ln">639</td><td class="code">  var el = document.getElementById(&#x27;eigendeck-fonts&#x27;);</td></tr>
-<tr class="nil"><td class="ln">640</td><td class="code">  var FONT_CSS = el ? el.textContent : &#x27;&#x27;;</td></tr>
-<tr class="nil"><td class="ln">641</td><td class="code">  if (!FONT_CSS) return;</td></tr>
-<tr class="nil"><td class="ln">642</td><td class="code">  function inject(ifr) {</td></tr>
-<tr class="nil"><td class="ln">643</td><td class="code">    try {</td></tr>
-<tr class="nil"><td class="ln">644</td><td class="code">      var d = ifr.contentDocument;</td></tr>
-<tr class="nil"><td class="ln">645</td><td class="code">      if (!d || !d.head || d.getElementById(&#x27;eigendeck-fonts&#x27;)) return;</td></tr>
-<tr class="nil"><td class="ln">646</td><td class="code">      var s = d.createElement(&#x27;style&#x27;);</td></tr>
-<tr class="nil"><td class="ln">647</td><td class="code">      s.id = &#x27;eigendeck-fonts&#x27;;</td></tr>
-<tr class="nil"><td class="ln">648</td><td class="code">      s.textContent = FONT_CSS;</td></tr>
-<tr class="nil"><td class="ln">649</td><td class="code">      d.head.appendChild(s);</td></tr>
-<tr class="nil"><td class="ln">650</td><td class="code">    } catch (ex) {}</td></tr>
+<tr class="cov"><td class="ln">638</td><td class="code">(function() {</td></tr>
+<tr class="cov"><td class="ln">639</td><td class="code">  var el = document.getElementById(&#x27;eigendeck-fonts&#x27;);</td></tr>
+<tr class="cov"><td class="ln">640</td><td class="code">  var FONT_CSS = el ? el.textContent : &#x27;&#x27;;</td></tr>
+<tr class="cov"><td class="ln">641</td><td class="code">  if (!FONT_CSS) return;</td></tr>
+<tr class="cov"><td class="ln">642</td><td class="code">  function inject(ifr) {</td></tr>
+<tr class="cov"><td class="ln">643</td><td class="code">    try {</td></tr>
+<tr class="cov"><td class="ln">644</td><td class="code">      var d = ifr.contentDocument;</td></tr>
+<tr class="cov"><td class="ln">645</td><td class="code">      if (!d || !d.head || d.getElementById(&#x27;eigendeck-fonts&#x27;)) return;</td></tr>
+<tr class="cov"><td class="ln">646</td><td class="code">      var s = d.createElement(&#x27;style&#x27;);</td></tr>
+<tr class="cov"><td class="ln">647</td><td class="code">      s.id = &#x27;eigendeck-fonts&#x27;;</td></tr>
+<tr class="cov"><td class="ln">648</td><td class="code">      s.textContent = FONT_CSS;</td></tr>
+<tr class="cov"><td class="ln">649</td><td class="code">      d.head.appendChild(s);</td></tr>
+<tr class="cov"><td class="ln">650</td><td class="code">    } catch (ex) {}</td></tr>
 <tr class="nil"><td class="ln">651</td><td class="code">  }</td></tr>
-<tr class="nil"><td class="ln">652</td><td class="code">  var ifrs = document.querySelectorAll(&#x27;iframe&#x27;);</td></tr>
-<tr class="nil"><td class="ln">653</td><td class="code">  for (var i = 0; i &lt; ifrs.length; i++) {</td></tr>
-<tr class="nil"><td class="ln">654</td><td class="code">    inject(ifrs[i]);  // already loaded?</td></tr>
-<tr class="nil"><td class="ln">655</td><td class="code">    ifrs[i].addEventListener(&#x27;load&#x27;, (function(f) { return function() { inject(f); }; })(ifrs[i]));</td></tr>
+<tr class="cov"><td class="ln">652</td><td class="code">  var ifrs = document.querySelectorAll(&#x27;iframe&#x27;);</td></tr>
+<tr class="cov"><td class="ln">653</td><td class="code">  for (var i = 0; i &lt; ifrs.length; i++) {</td></tr>
+<tr class="cov"><td class="ln">654</td><td class="code">    inject(ifrs[i]);  // already loaded?</td></tr>
+<tr class="cov"><td class="ln">655</td><td class="code">    ifrs[i].addEventListener(&#x27;load&#x27;, (function(f) { return function() { inject(f); }; })(ifrs[i]));</td></tr>
 <tr class="nil"><td class="ln">656</td><td class="code">  }</td></tr>
 <tr class="nil"><td class="ln">657</td><td class="code">})();</td></tr>
 <tr class="nil"><td class="ln">658</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">659</td><td class="code">// BroadcastChannel relay for demo-piece iframes</td></tr>
-<tr class="nil"><td class="ln">660</td><td class="code">window.addEventListener(&#x27;message&#x27;, function(e) {</td></tr>
-<tr class="nil"><td class="ln">661</td><td class="code">  if (!e.data || !e.data.__bc) return;</td></tr>
-<tr class="nil"><td class="ln">662</td><td class="code">  var allIframes = document.querySelectorAll(&#x27;iframe&#x27;);</td></tr>
-<tr class="nil"><td class="ln">663</td><td class="code">  for (var i = 0; i &lt; allIframes.length; i++) {</td></tr>
-<tr class="nil"><td class="ln">664</td><td class="code">    if (allIframes[i].contentWindow !== e.source) {</td></tr>
-<tr class="nil"><td class="ln">665</td><td class="code">      try { allIframes[i].contentWindow.postMessage(e.data, &#x27;*&#x27;); } catch(ex) {}</td></tr>
+<tr class="cov"><td class="ln">660</td><td class="code">window.addEventListener(&#x27;message&#x27;, function(e) {</td></tr>
+<tr class="cov"><td class="ln">661</td><td class="code">  if (!e.data || !e.data.__bc) return;</td></tr>
+<tr class="cov"><td class="ln">662</td><td class="code">  var allIframes = document.querySelectorAll(&#x27;iframe&#x27;);</td></tr>
+<tr class="cov"><td class="ln">663</td><td class="code">  for (var i = 0; i &lt; allIframes.length; i++) {</td></tr>
+<tr class="cov"><td class="ln">664</td><td class="code">    if (allIframes[i].contentWindow !== e.source) {</td></tr>
+<tr class="cov"><td class="ln">665</td><td class="code">      try { allIframes[i].contentWindow.postMessage(e.data, &#x27;*&#x27;); } catch(ex) {}</td></tr>
 <tr class="nil"><td class="ln">666</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">667</td><td class="code">  }</td></tr>
 <tr class="nil"><td class="ln">668</td><td class="code">});</td></tr>
 <tr class="nil"><td class="ln">669</td><td class="code">&nbsp;</td></tr>
-<tr class="nil"><td class="ln">670</td><td class="code">const slides = document.querySelectorAll(&#x27;#viewport .slide&#x27;);</td></tr>
-<tr class="nil"><td class="ln">671</td><td class="code">let current = 0;</td></tr>
-<tr class="nil"><td class="ln">672</td><td class="code">const W = ${W}, H = ${H};</td></tr>
-<tr class="nil"><td class="ln">673</td><td class="code">const nb = document.getElementById(&#x27;nav-bar&#x27;);</td></tr>
-<tr class="nil"><td class="ln">674</td><td class="code">const nbCur = document.getElementById(&#x27;nb-cur&#x27;);</td></tr>
-<tr class="nil"><td class="ln">675</td><td class="code">const nbPrev = document.getElementById(&#x27;nb-prev&#x27;);</td></tr>
-<tr class="nil"><td class="ln">676</td><td class="code">const nbNext = document.getElementById(&#x27;nb-next&#x27;);</td></tr>
-<tr class="nil"><td class="ln">677</td><td class="code">document.getElementById(&#x27;nb-total&#x27;).textContent = slides.length;</td></tr>
+<tr class="cov"><td class="ln">670</td><td class="code">const slides = document.querySelectorAll(&#x27;#viewport .slide&#x27;);</td></tr>
+<tr class="cov"><td class="ln">671</td><td class="code">let current = 0;</td></tr>
+<tr class="cov"><td class="ln">672</td><td class="code">const W = ${W}, H = ${H};</td></tr>
+<tr class="cov"><td class="ln">673</td><td class="code">const nb = document.getElementById(&#x27;nav-bar&#x27;);</td></tr>
+<tr class="cov"><td class="ln">674</td><td class="code">const nbCur = document.getElementById(&#x27;nb-cur&#x27;);</td></tr>
+<tr class="cov"><td class="ln">675</td><td class="code">const nbPrev = document.getElementById(&#x27;nb-prev&#x27;);</td></tr>
+<tr class="cov"><td class="ln">676</td><td class="code">const nbNext = document.getElementById(&#x27;nb-next&#x27;);</td></tr>
+<tr class="cov"><td class="ln">677</td><td class="code">document.getElementById(&#x27;nb-total&#x27;).textContent = slides.length;</td></tr>
 <tr class="nil"><td class="ln">678</td><td class="code">&nbsp;</td></tr>
-<tr class="nil"><td class="ln">679</td><td class="code">function show(i) {</td></tr>
-<tr class="nil"><td class="ln">680</td><td class="code">  i = Math.max(0, Math.min(i, slides.length - 1));</td></tr>
-<tr class="nil"><td class="ln">681</td><td class="code">  slides.forEach((s, idx) =&gt; s.classList.toggle(&#x27;active&#x27;, idx === i));</td></tr>
-<tr class="nil"><td class="ln">682</td><td class="code">  resize();</td></tr>
-<tr class="nil"><td class="ln">683</td><td class="code">  current = i;</td></tr>
-<tr class="nil"><td class="ln">684</td><td class="code">  nbCur.textContent = i + 1;</td></tr>
-<tr class="nil"><td class="ln">685</td><td class="code">  nbPrev.disabled = i === 0;</td></tr>
-<tr class="nil"><td class="ln">686</td><td class="code">  nbNext.disabled = i === slides.length - 1;</td></tr>
+<tr class="cov"><td class="ln">679</td><td class="code">function show(i) {</td></tr>
+<tr class="cov"><td class="ln">680</td><td class="code">  i = Math.max(0, Math.min(i, slides.length - 1));</td></tr>
+<tr class="cov"><td class="ln">681</td><td class="code">  slides.forEach((s, idx) =&gt; s.classList.toggle(&#x27;active&#x27;, idx === i));</td></tr>
+<tr class="cov"><td class="ln">682</td><td class="code">  resize();</td></tr>
+<tr class="cov"><td class="ln">683</td><td class="code">  current = i;</td></tr>
+<tr class="cov"><td class="ln">684</td><td class="code">  nbCur.textContent = i + 1;</td></tr>
+<tr class="cov"><td class="ln">685</td><td class="code">  nbPrev.disabled = i === 0;</td></tr>
+<tr class="cov"><td class="ln">686</td><td class="code">  nbNext.disabled = i === slides.length - 1;</td></tr>
 <tr class="nil"><td class="ln">687</td><td class="code">  // Re-request state for demo iframes (retry as they may still be loading)</td></tr>
-<tr class="nil"><td class="ln">688</td><td class="code">  function requestState(slide, attempt) {</td></tr>
-<tr class="nil"><td class="ln">689</td><td class="code">    var iframes = slide.querySelectorAll(&#x27;iframe&#x27;);</td></tr>
-<tr class="nil"><td class="ln">690</td><td class="code">    for (var j = 0; j &lt; iframes.length; j++) {</td></tr>
-<tr class="nil"><td class="ln">691</td><td class="code">      try { iframes[j].contentWindow.postMessage({ type: &#x27;request-state&#x27; }, &#x27;*&#x27;); } catch(ex) {}</td></tr>
+<tr class="cov"><td class="ln">688</td><td class="code">  function requestState(slide, attempt) {</td></tr>
+<tr class="cov"><td class="ln">689</td><td class="code">    var iframes = slide.querySelectorAll(&#x27;iframe&#x27;);</td></tr>
+<tr class="cov"><td class="ln">690</td><td class="code">    for (var j = 0; j &lt; iframes.length; j++) {</td></tr>
+<tr class="cov"><td class="ln">691</td><td class="code">      try { iframes[j].contentWindow.postMessage({ type: &#x27;request-state&#x27; }, &#x27;*&#x27;); } catch(ex) {}</td></tr>
 <tr class="nil"><td class="ln">692</td><td class="code">    }</td></tr>
-<tr class="nil"><td class="ln">693</td><td class="code">    if (attempt &lt; 3) setTimeout(function() { requestState(slide, attempt + 1); }, 500);</td></tr>
+<tr class="cov"><td class="ln">693</td><td class="code">    if (attempt &lt; 3) setTimeout(function() { requestState(slide, attempt + 1); }, 500);</td></tr>
 <tr class="nil"><td class="ln">694</td><td class="code">  }</td></tr>
-<tr class="nil"><td class="ln">695</td><td class="code">  setTimeout(function() { requestState(slides[i], 0); }, 200);</td></tr>
+<tr class="cov"><td class="ln">695</td><td class="code">  setTimeout(function() { requestState(slides[i], 0); }, 200);</td></tr>
 <tr class="nil"><td class="ln">696</td><td class="code">}</td></tr>
-<tr class="nil"><td class="ln">697</td><td class="code">function resize() {</td></tr>
-<tr class="nil"><td class="ln">698</td><td class="code">  const vw = window.innerWidth, vh = window.innerHeight;</td></tr>
-<tr class="nil"><td class="ln">699</td><td class="code">  const scale = Math.min(vw / W, vh / H);</td></tr>
-<tr class="nil"><td class="ln">700</td><td class="code">  slides.forEach(function(s) {</td></tr>
-<tr class="nil"><td class="ln">701</td><td class="code">    s.style.transform = &#x27;translate(-50%, -50%) scale(&#x27; + scale + &#x27;)&#x27;;</td></tr>
+<tr class="cov"><td class="ln">697</td><td class="code">function resize() {</td></tr>
+<tr class="cov"><td class="ln">698</td><td class="code">  const vw = window.innerWidth, vh = window.innerHeight;</td></tr>
+<tr class="cov"><td class="ln">699</td><td class="code">  const scale = Math.min(vw / W, vh / H);</td></tr>
+<tr class="cov"><td class="ln">700</td><td class="code">  slides.forEach(function(s) {</td></tr>
+<tr class="cov"><td class="ln">701</td><td class="code">    s.style.transform = &#x27;translate(-50%, -50%) scale(&#x27; + scale + &#x27;)&#x27;;</td></tr>
 <tr class="nil"><td class="ln">702</td><td class="code">  });</td></tr>
 <tr class="nil"><td class="ln">703</td><td class="code">}</td></tr>
-<tr class="nil"><td class="ln">704</td><td class="code">function next() { if (current &lt; slides.length - 1) show(current + 1); }</td></tr>
-<tr class="nil"><td class="ln">705</td><td class="code">function prev() { if (current &gt; 0) show(current - 1); }</td></tr>
+<tr class="cov"><td class="ln">704</td><td class="code">function next() { if (current &lt; slides.length - 1) show(current + 1); }</td></tr>
+<tr class="cov"><td class="ln">705</td><td class="code">function prev() { if (current &gt; 0) show(current - 1); }</td></tr>
 <tr class="nil"><td class="ln">706</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">707</td><td class="code">// Nav bar buttons</td></tr>
-<tr class="nil"><td class="ln">708</td><td class="code">nbPrev.onclick = prev;</td></tr>
-<tr class="nil"><td class="ln">709</td><td class="code">nbNext.onclick = next;</td></tr>
+<tr class="cov"><td class="ln">708</td><td class="code">nbPrev.onclick = prev;</td></tr>
+<tr class="cov"><td class="ln">709</td><td class="code">nbNext.onclick = next;</td></tr>
 <tr class="nil"><td class="ln">710</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">711</td><td class="code">// Keyboard</td></tr>
-<tr class="nil"><td class="ln">712</td><td class="code">document.addEventListener(&#x27;keydown&#x27;, (e) =&gt; {</td></tr>
-<tr class="nil"><td class="ln">713</td><td class="code">  if (e.key === &#x27;ArrowRight&#x27; || e.key === &#x27;ArrowDown&#x27; || e.key === &#x27; &#x27; || e.key === &#x27;PageDown&#x27;) {</td></tr>
-<tr class="nil"><td class="ln">714</td><td class="code">    e.preventDefault(); next();</td></tr>
+<tr class="cov"><td class="ln">712</td><td class="code">document.addEventListener(&#x27;keydown&#x27;, (e) =&gt; {</td></tr>
+<tr class="cov"><td class="ln">713</td><td class="code">  if (e.key === &#x27;ArrowRight&#x27; || e.key === &#x27;ArrowDown&#x27; || e.key === &#x27; &#x27; || e.key === &#x27;PageDown&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">714</td><td class="code">    e.preventDefault(); next();</td></tr>
 <tr class="nil"><td class="ln">715</td><td class="code">  }</td></tr>
-<tr class="nil"><td class="ln">716</td><td class="code">  if (e.key === &#x27;ArrowLeft&#x27; || e.key === &#x27;ArrowUp&#x27; || e.key === &#x27;PageUp&#x27;) {</td></tr>
-<tr class="nil"><td class="ln">717</td><td class="code">    e.preventDefault(); prev();</td></tr>
+<tr class="cov"><td class="ln">716</td><td class="code">  if (e.key === &#x27;ArrowLeft&#x27; || e.key === &#x27;ArrowUp&#x27; || e.key === &#x27;PageUp&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">717</td><td class="code">    e.preventDefault(); prev();</td></tr>
 <tr class="nil"><td class="ln">718</td><td class="code">  }</td></tr>
-<tr class="nil"><td class="ln">719</td><td class="code">  if (e.key === &#x27;Home&#x27;) { e.preventDefault(); show(0); }</td></tr>
-<tr class="nil"><td class="ln">720</td><td class="code">  if (e.key === &#x27;End&#x27;) { e.preventDefault(); show(slides.length - 1); }</td></tr>
+<tr class="cov"><td class="ln">719</td><td class="code">  if (e.key === &#x27;Home&#x27;) { e.preventDefault(); show(0); }</td></tr>
+<tr class="cov"><td class="ln">720</td><td class="code">  if (e.key === &#x27;End&#x27;) { e.preventDefault(); show(slides.length - 1); }</td></tr>
 <tr class="nil"><td class="ln">721</td><td class="code">});</td></tr>
 <tr class="nil"><td class="ln">722</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">723</td><td class="code">// Show nav bar on mouse move / touch, auto-hide after 3s</td></tr>
-<tr class="nil"><td class="ln">724</td><td class="code">var hideTimer = null;</td></tr>
-<tr class="nil"><td class="ln">725</td><td class="code">function showNav() {</td></tr>
-<tr class="nil"><td class="ln">726</td><td class="code">  nb.classList.add(&#x27;visible&#x27;);</td></tr>
-<tr class="nil"><td class="ln">727</td><td class="code">  clearTimeout(hideTimer);</td></tr>
-<tr class="nil"><td class="ln">728</td><td class="code">  hideTimer = setTimeout(function() { nb.classList.remove(&#x27;visible&#x27;); }, 3000);</td></tr>
+<tr class="cov"><td class="ln">724</td><td class="code">var hideTimer = null;</td></tr>
+<tr class="cov"><td class="ln">725</td><td class="code">function showNav() {</td></tr>
+<tr class="cov"><td class="ln">726</td><td class="code">  nb.classList.add(&#x27;visible&#x27;);</td></tr>
+<tr class="cov"><td class="ln">727</td><td class="code">  clearTimeout(hideTimer);</td></tr>
+<tr class="cov"><td class="ln">728</td><td class="code">  hideTimer = setTimeout(function() { nb.classList.remove(&#x27;visible&#x27;); }, 3000);</td></tr>
 <tr class="nil"><td class="ln">729</td><td class="code">}</td></tr>
-<tr class="nil"><td class="ln">730</td><td class="code">document.addEventListener(&#x27;mousemove&#x27;, showNav);</td></tr>
-<tr class="nil"><td class="ln">731</td><td class="code">document.addEventListener(&#x27;touchstart&#x27;, showNav, { passive: true });</td></tr>
+<tr class="cov"><td class="ln">730</td><td class="code">document.addEventListener(&#x27;mousemove&#x27;, showNav);</td></tr>
+<tr class="cov"><td class="ln">731</td><td class="code">document.addEventListener(&#x27;touchstart&#x27;, showNav, { passive: true });</td></tr>
 <tr class="nil"><td class="ln">732</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">733</td><td class="code">// Touch: swipe left/right to navigate</td></tr>
-<tr class="nil"><td class="ln">734</td><td class="code">var touchStartX = 0, touchStartY = 0;</td></tr>
-<tr class="nil"><td class="ln">735</td><td class="code">document.addEventListener(&#x27;touchstart&#x27;, function(e) {</td></tr>
-<tr class="nil"><td class="ln">736</td><td class="code">  touchStartX = e.touches[0].clientX;</td></tr>
-<tr class="nil"><td class="ln">737</td><td class="code">  touchStartY = e.touches[0].clientY;</td></tr>
-<tr class="nil"><td class="ln">738</td><td class="code">}, { passive: true });</td></tr>
-<tr class="nil"><td class="ln">739</td><td class="code">document.addEventListener(&#x27;touchend&#x27;, function(e) {</td></tr>
+<tr class="cov"><td class="ln">734</td><td class="code">var touchStartX = 0, touchStartY = 0;</td></tr>
+<tr class="cov"><td class="ln">735</td><td class="code">document.addEventListener(&#x27;touchstart&#x27;, function(e) {</td></tr>
+<tr class="cov"><td class="ln">736</td><td class="code">  touchStartX = e.touches[0].clientX;</td></tr>
+<tr class="cov"><td class="ln">737</td><td class="code">  touchStartY = e.touches[0].clientY;</td></tr>
+<tr class="cov"><td class="ln">738</td><td class="code">}, { passive: true });</td></tr>
+<tr class="cov"><td class="ln">739</td><td class="code">document.addEventListener(&#x27;touchend&#x27;, function(e) {</td></tr>
 <tr class="nil"><td class="ln">740</td><td class="code">  // Don&#x27;t swipe-navigate if the touch started inside an iframe area</td></tr>
-<tr class="nil"><td class="ln">741</td><td class="code">  var startEl = document.elementFromPoint(touchStartX, touchStartY);</td></tr>
-<tr class="nil"><td class="ln">742</td><td class="code">  if (startEl &amp;&amp; (startEl.tagName === &#x27;IFRAME&#x27; || startEl.closest(&#x27;iframe&#x27;))) return;</td></tr>
-<tr class="nil"><td class="ln">743</td><td class="code">  var dx = e.changedTouches[0].clientX - touchStartX;</td></tr>
-<tr class="nil"><td class="ln">744</td><td class="code">  var dy = e.changedTouches[0].clientY - touchStartY;</td></tr>
-<tr class="nil"><td class="ln">745</td><td class="code">  if (Math.abs(dx) &gt; 80 &amp;&amp; Math.abs(dx) &gt; Math.abs(dy) * 2) {</td></tr>
-<tr class="nil"><td class="ln">746</td><td class="code">    if (dx &lt; 0) next(); else prev();</td></tr>
+<tr class="cov"><td class="ln">741</td><td class="code">  var startEl = document.elementFromPoint(touchStartX, touchStartY);</td></tr>
+<tr class="cov"><td class="ln">742</td><td class="code">  if (startEl &amp;&amp; (startEl.tagName === &#x27;IFRAME&#x27; || startEl.closest(&#x27;iframe&#x27;))) return;</td></tr>
+<tr class="cov"><td class="ln">743</td><td class="code">  var dx = e.changedTouches[0].clientX - touchStartX;</td></tr>
+<tr class="cov"><td class="ln">744</td><td class="code">  var dy = e.changedTouches[0].clientY - touchStartY;</td></tr>
+<tr class="cov"><td class="ln">745</td><td class="code">  if (Math.abs(dx) &gt; 80 &amp;&amp; Math.abs(dx) &gt; Math.abs(dy) * 2) {</td></tr>
+<tr class="cov"><td class="ln">746</td><td class="code">    if (dx &lt; 0) next(); else prev();</td></tr>
 <tr class="nil"><td class="ln">747</td><td class="code">  }</td></tr>
 <tr class="nil"><td class="ln">748</td><td class="code">});</td></tr>
 <tr class="nil"><td class="ln">749</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">750</td><td class="code">// No click-to-navigate — it interferes with interactive demos.</td></tr>
 <tr class="nil"><td class="ln">751</td><td class="code">// Use swipe on mobile, keyboard/nav bar on desktop.</td></tr>
 <tr class="nil"><td class="ln">752</td><td class="code">&nbsp;</td></tr>
-<tr class="nil"><td class="ln">753</td><td class="code">show(0);</td></tr>
-<tr class="nil"><td class="ln">754</td><td class="code">window.addEventListener(&#x27;resize&#x27;, resize);</td></tr>
+<tr class="cov"><td class="ln">753</td><td class="code">show(0);</td></tr>
+<tr class="cov"><td class="ln">754</td><td class="code">window.addEventListener(&#x27;resize&#x27;, resize);</td></tr>
 <tr class="nil"><td class="ln">755</td><td class="code">// Show nav briefly on load</td></tr>
-<tr class="nil"><td class="ln">756</td><td class="code">setTimeout(function() { showNav(); }, 500);</td></tr>
-<tr class="nil"><td class="ln">757</td><td class="code">&lt;/script&gt;</td></tr>
-<tr class="nil"><td class="ln">758</td><td class="code">&lt;/body&gt;</td></tr>
-<tr class="nil"><td class="ln">759</td><td class="code">&lt;/html&gt;`;</td></tr>
+<tr class="cov"><td class="ln">756</td><td class="code">setTimeout(function() { showNav(); }, 500);</td></tr>
+<tr class="cov"><td class="ln">757</td><td class="code">&lt;/script&gt;</td></tr>
+<tr class="cov"><td class="ln">758</td><td class="code">&lt;/body&gt;</td></tr>
+<tr class="cov"><td class="ln">759</td><td class="code">&lt;/html&gt;`;</td></tr>
 <tr class="nil"><td class="ln">760</td><td class="code">}</td></tr></table>
 </body></html>

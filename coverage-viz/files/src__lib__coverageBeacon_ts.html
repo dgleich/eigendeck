@@ -5,39 +5,40 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/coverageBeacon.ts </h1>
   <div class="stats">
-    <span class="stat"><b>61%</b> covered</span>
-    <span class="stat">14/23 executable</span>
-    <span class="stat unc-txt">9 uncovered</span>
+    <span class="stat"><b>94%</b> covered</span>
+    <span class="stat">15/16 statements</span>
+    <span class="stat unc-txt">1 uncovered</span>
     <span class="stat">39 raw lines</span>
     <span class="stat">0.09% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:35.897%"></span><span class="seg unc" style="width:23.077%"></span><span class="seg nil" style="width:41.026%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:93.750%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:6.250%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src__main_tsx.html">main.tsx</a> <a href="src__presenter_tsx.html">presenter.tsx</a> <a href="src__security_tsx.html">security.tsx</a> <a href="src__settings_tsx.html">settings.tsx</a></div>
 </header>
 <table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// E2E coverage beacon (spike). Active ONLY in Istanbul-instrumented builds</td></tr>
-<tr class="cov"><td class="ln">2</td><td class="code">// (COVERAGE_INSTRUMENT=1 → vite-plugin-istanbul → window.__coverage__ exists).</td></tr>
-<tr class="cov"><td class="ln">3</td><td class="code">// It periodically POSTs the coverage map to the e2e collector server</td></tr>
-<tr class="cov"><td class="ln">4</td><td class="code">// (e2e/coverage-server.mjs), so EVERY e2e probe contributes its real-WebKitGTK</td></tr>
-<tr class="cov"><td class="ln">5</td><td class="code">// line hits with zero per-probe changes. A no-op in normal builds (no</td></tr>
-<tr class="cov"><td class="ln">6</td><td class="code">// __coverage__), so calling it unconditionally from main is free.</td></tr>
-<tr class="cov"><td class="ln">7</td><td class="code">export function installCoverageBeacon(): void {</td></tr>
-<tr class="cov"><td class="ln">8</td><td class="code">  const w = window as unknown as { __coverage__?: unknown; __covBeaconInstalled?: boolean };</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// (COVERAGE_INSTRUMENT=1 → vite-plugin-istanbul → window.__coverage__ exists).</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// It periodically POSTs the coverage map to the e2e collector server</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// (e2e/coverage-server.mjs), so EVERY e2e probe contributes its real-WebKitGTK</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// line hits with zero per-probe changes. A no-op in normal builds (no</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">// __coverage__), so calling it unconditionally from main is free.</td></tr>
+<tr class="part"><td class="ln">7</td><td class="code">export function installCoverageBeacon(): void {</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">  const w = window as unknown as { __coverage__?: unknown; __covBeaconInstalled?: boolean };</td></tr>
 <tr class="cov"><td class="ln">9</td><td class="code">  if (!w.__coverage__ || w.__covBeaconInstalled) return;</td></tr>
-<tr class="unc"><td class="ln">10</td><td class="code">  w.__covBeaconInstalled = true;</td></tr>
+<tr class="cov"><td class="ln">10</td><td class="code">  w.__covBeaconInstalled = true;</td></tr>
 <tr class="nil"><td class="ln">11</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">12</td><td class="code">  // One stable id per page → the collector overwrites cov-&lt;id&gt;.json each POST,</td></tr>
 <tr class="nil"><td class="ln">13</td><td class="code">  // keeping only the latest cumulative snapshot (so re-posting never double-counts).</td></tr>
-<tr class="unc"><td class="ln">14</td><td class="code">  const id = &#x27;p&#x27; + Math.random().toString(36).slice(2) + Date.now().toString(36);</td></tr>
-<tr class="unc"><td class="ln">15</td><td class="code">  const url = `/__coverage__?id=${id}`;</td></tr>
+<tr class="cov"><td class="ln">14</td><td class="code">  const id = &#x27;p&#x27; + Math.random().toString(36).slice(2) + Date.now().toString(36);</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">  const url = `/__coverage__?id=${id}`;</td></tr>
 <tr class="nil"><td class="ln">16</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">17</td><td class="code">  const send = (): void =&gt; {</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">  const send = (): void =&gt; {</td></tr>
 <tr class="cov"><td class="ln">18</td><td class="code">    try {</td></tr>
-<tr class="cov"><td class="ln">19</td><td class="code">      // Plain fetch (NOT keepalive): the coverage body far exceeds the 64KB</td></tr>
-<tr class="cov"><td class="ln">20</td><td class="code">      // keepalive/sendBeacon cap, so a keepalive request would be silently dropped.</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">      // Plain fetch (NOT keepalive): the coverage body far exceeds the 64KB</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">      // keepalive/sendBeacon cap, so a keepalive request would be silently dropped.</td></tr>
 <tr class="cov"><td class="ln">21</td><td class="code">      fetch(url, {</td></tr>
 <tr class="nil"><td class="ln">22</td><td class="code">        method: &#x27;POST&#x27;,</td></tr>
-<tr class="cov"><td class="ln">23</td><td class="code">        headers: { &#x27;Content-Type&#x27;: &#x27;application/json&#x27; },</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">        headers: { &#x27;Content-Type&#x27;: &#x27;application/json&#x27; },</td></tr>
 <tr class="cov"><td class="ln">24</td><td class="code">        body: JSON.stringify(w.__coverage__),</td></tr>
 <tr class="nil"><td class="ln">25</td><td class="code">      }).catch(() =&gt; {});</td></tr>
 <tr class="nil"><td class="ln">26</td><td class="code">    } catch { /* ignore */ }</td></tr>
@@ -45,13 +46,13 @@
 <tr class="nil"><td class="ln">28</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">29</td><td class="code">  // Coverage is cumulative; snapshot early (short probes) then on an interval so we</td></tr>
 <tr class="nil"><td class="ln">30</td><td class="code">  // capture hits even if the rig hard-closes the session without a clean teardown.</td></tr>
-<tr class="unc"><td class="ln">31</td><td class="code">  setTimeout(send, 1000);</td></tr>
-<tr class="unc"><td class="ln">32</td><td class="code">  setInterval(send, 1500);</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">  setTimeout(send, 1000);</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code">  setInterval(send, 1500);</td></tr>
 <tr class="nil"><td class="ln">33</td><td class="code">  // Best-effort final flush (sendBeacon is &gt;64KB-capped so it usually no-ops here;</td></tr>
 <tr class="nil"><td class="ln">34</td><td class="code">  // the last interval already captured essentially everything).</td></tr>
-<tr class="unc"><td class="ln">35</td><td class="code">  window.addEventListener(&#x27;pagehide&#x27;, () =&gt; { send(); });</td></tr>
-<tr class="unc"><td class="ln">36</td><td class="code">  window.addEventListener(&#x27;visibilitychange&#x27;, () =&gt; {</td></tr>
-<tr class="unc"><td class="ln">37</td><td class="code">    if (document.visibilityState === &#x27;hidden&#x27;) send();</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code">  window.addEventListener(&#x27;pagehide&#x27;, () =&gt; { send(); });</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">  window.addEventListener(&#x27;visibilitychange&#x27;, () =&gt; {</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">    if (document.visibilityState === &#x27;hidden&#x27;) send();</td></tr>
 <tr class="nil"><td class="ln">38</td><td class="code">  });</td></tr>
 <tr class="nil"><td class="ln">39</td><td class="code">}</td></tr></table>
 </body></html>

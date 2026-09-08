@@ -5,54 +5,55 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/useWakeLock.ts </h1>
   <div class="stats">
-    <span class="stat"><b>97%</b> covered</span>
-    <span class="stat">34/35 executable</span>
-    <span class="stat unc-txt">1 uncovered</span>
+    <span class="stat"><b>93%</b> covered</span>
+    <span class="stat">25/27 statements</span>
+    <span class="stat unc-txt">2 uncovered</span>
     <span class="stat">45 raw lines</span>
     <span class="stat">0.11% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:75.556%"></span><span class="seg unc" style="width:2.222%"></span><span class="seg nil" style="width:22.222%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:92.593%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:7.407%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src__components__PresentMode_tsx.html">PresentMode.tsx</a></div>
 </header>
 <table class="src"><tr class="nil"><td class="ln">1</td><td class="code">import { useEffect } from &#x27;react&#x27;;</td></tr>
 <tr class="nil"><td class="ln">2</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">3</td><td class="code">/**</td></tr>
-<tr class="cov"><td class="ln">4</td><td class="code"> * Hold a **Screen Wake Lock** while `active` (i.e. during Present mode) so the</td></tr>
-<tr class="cov"><td class="ln">5</td><td class="code"> * display doesn&#x27;t sleep and the screensaver doesn&#x27;t start mid-talk (#179).</td></tr>
-<tr class="cov"><td class="ln">6</td><td class="code"> *</td></tr>
-<tr class="cov"><td class="ln">7</td><td class="code"> * Best-effort + feature-detected: silently no-ops where the API is missing (older</td></tr>
-<tr class="cov"><td class="ln">8</td><td class="code"> * WebViews). The OS releases the lock whenever the document becomes hidden (the</td></tr>
-<tr class="cov"><td class="ln">9</td><td class="code"> * user switches apps), so we re-acquire on `visibilitychange` while still active.</td></tr>
-<tr class="cov"><td class="ln">10</td><td class="code"> * A rejected request (not visible / low battery) is ignored — this is a nicety,</td></tr>
-<tr class="cov"><td class="ln">11</td><td class="code"> * never a hard failure.</td></tr>
-<tr class="unc"><td class="ln">12</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code"> * Hold a **Screen Wake Lock** while `active` (i.e. during Present mode) so the</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code"> * display doesn&#x27;t sleep and the screensaver doesn&#x27;t start mid-talk (#179).</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code"> * Best-effort + feature-detected: silently no-ops where the API is missing (older</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code"> * WebViews). The OS releases the lock whenever the document becomes hidden (the</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code"> * user switches apps), so we re-acquire on `visibilitychange` while still active.</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code"> * A rejected request (not visible / low battery) is ignored — this is a nicety,</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code"> * never a hard failure.</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code"> */</td></tr>
 <tr class="nil"><td class="ln">13</td><td class="code">export function useScreenWakeLock(active: boolean): void {</td></tr>
-<tr class="cov"><td class="ln">14</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">  useEffect(() =&gt; {</td></tr>
 <tr class="cov"><td class="ln">15</td><td class="code">    if (!active || typeof navigator === &#x27;undefined&#x27; || !navigator.wakeLock) return;</td></tr>
-<tr class="cov"><td class="ln">16</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">17</td><td class="code">    let sentinel: WakeLockSentinel | null = null;</td></tr>
 <tr class="cov"><td class="ln">18</td><td class="code">    let cancelled = false;</td></tr>
 <tr class="nil"><td class="ln">19</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">20</td><td class="code">    const acquire = async (): Promise&lt;void&gt; =&gt; {</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">    const acquire = async (): Promise&lt;void&gt; =&gt; {</td></tr>
 <tr class="cov"><td class="ln">21</td><td class="code">      if (cancelled || sentinel || document.visibilityState !== &#x27;visible&#x27;) return;</td></tr>
-<tr class="cov"><td class="ln">22</td><td class="code">      try {</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">      try {</td></tr>
 <tr class="cov"><td class="ln">23</td><td class="code">        const s = await navigator.wakeLock.request(&#x27;screen&#x27;);</td></tr>
-<tr class="cov"><td class="ln">24</td><td class="code">        if (cancelled) { void s.release().catch(() =&gt; {}); return; }</td></tr>
+<tr class="part"><td class="ln">24</td><td class="code">        if (cancelled) { void s.release().catch(() =&gt; {}); return; }</td></tr>
 <tr class="cov"><td class="ln">25</td><td class="code">        sentinel = s;</td></tr>
-<tr class="cov"><td class="ln">26</td><td class="code">        // The OS can drop the lock on its own — clear our handle so the next</td></tr>
-<tr class="cov"><td class="ln">27</td><td class="code">        // visibilitychange re-acquires it.</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">        // The OS can drop the lock on its own — clear our handle so the next</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">        // visibilitychange re-acquires it.</td></tr>
 <tr class="cov"><td class="ln">28</td><td class="code">        s.addEventListener(&#x27;release&#x27;, () =&gt; { if (sentinel === s) sentinel = null; });</td></tr>
-<tr class="cov"><td class="ln">29</td><td class="code">      } catch {</td></tr>
-<tr class="cov"><td class="ln">30</td><td class="code">        /* request rejected — best-effort, ignore */</td></tr>
-<tr class="cov"><td class="ln">31</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">      } catch {</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">        /* request rejected — best-effort, ignore */</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">      }</td></tr>
 <tr class="nil"><td class="ln">32</td><td class="code">    };</td></tr>
 <tr class="cov"><td class="ln">33</td><td class="code">    const onVisibility = (): void =&gt; { if (document.visibilityState === &#x27;visible&#x27;) void acquire(); };</td></tr>
 <tr class="nil"><td class="ln">34</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">35</td><td class="code">    void acquire();</td></tr>
 <tr class="cov"><td class="ln">36</td><td class="code">    document.addEventListener(&#x27;visibilitychange&#x27;, onVisibility);</td></tr>
 <tr class="nil"><td class="ln">37</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">38</td><td class="code">    return () =&gt; {</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">    return () =&gt; {</td></tr>
 <tr class="cov"><td class="ln">39</td><td class="code">      cancelled = true;</td></tr>
 <tr class="cov"><td class="ln">40</td><td class="code">      document.removeEventListener(&#x27;visibilitychange&#x27;, onVisibility);</td></tr>
 <tr class="cov"><td class="ln">41</td><td class="code">      void sentinel?.release().catch(() =&gt; {});</td></tr>

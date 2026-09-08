@@ -5,13 +5,14 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/components/SlideSidebar.tsx </h1>
   <div class="stats">
-    <span class="stat"><b>38%</b> covered</span>
-    <span class="stat">39/102 executable</span>
-    <span class="stat unc-txt">63 uncovered</span>
+    <span class="stat"><b>40%</b> covered</span>
+    <span class="stat">34/85 statements</span>
+    <span class="stat unc-txt">51 uncovered</span>
     <span class="stat">148 raw lines</span>
     <span class="stat">0.35% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:26.351%"></span><span class="seg unc" style="width:42.568%"></span><span class="seg nil" style="width:31.081%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:40.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:60.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__components__ContextMenu_tsx.html">ContextMenu.tsx</a> <a href="src__components__SlideThumbnail_tsx.html">SlideThumbnail.tsx</a> <a href="src__lib__confirmDialog_ts.html">confirmDialog.ts</a> <a href="src__store__presentation_ts.html">presentation.ts</a> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
   <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a></div>
 </header>
@@ -21,8 +22,8 @@
 <tr class="nil"><td class="ln">4</td><td class="code">import type { MenuEntry } from &#x27;./ContextMenu&#x27;;<a class="jump" href="src__components__ContextMenu_tsx.html" title="src/components/ContextMenu.tsx">→ ContextMenu.tsx</a></td></tr>
 <tr class="nil"><td class="ln">5</td><td class="code">import { SlideThumbnail } from &#x27;./SlideThumbnail&#x27;;<a class="jump" href="src__components__SlideThumbnail_tsx.html" title="src/components/SlideThumbnail.tsx">→ SlideThumbnail.tsx</a></td></tr>
 <tr class="nil"><td class="ln">6</td><td class="code">import { askConfirm } from &#x27;../lib/confirmDialog&#x27;;<a class="jump" href="src__lib__confirmDialog_ts.html" title="src/lib/confirmDialog.ts">→ confirmDialog.ts</a></td></tr>
-<tr class="cov"><td class="ln">7</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">8</td><td class="code">const THUMB_WIDTH = 166;</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">8</td><td class="code">const THUMB_WIDTH = 166;</td></tr>
 <tr class="nil"><td class="ln">9</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">10</td><td class="code">export function SlideSidebar() {</td></tr>
 <tr class="nil"><td class="ln">11</td><td class="code">  const {</td></tr>
@@ -34,55 +35,55 @@
 <tr class="cov"><td class="ln">17</td><td class="code">    duplicateSlide,</td></tr>
 <tr class="cov"><td class="ln">18</td><td class="code">    moveSlide,</td></tr>
 <tr class="cov"><td class="ln">19</td><td class="code">  } = usePresentationStore();</td></tr>
-<tr class="cov"><td class="ln">20</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">21</td><td class="code">  const [dragging, setDragging] = useState&lt;number | null&gt;(null);</td></tr>
-<tr class="cov"><td class="ln">22</td><td class="code">  const [dropTarget, setDropTarget] = useState&lt;number | null&gt;(null);</td></tr>
-<tr class="cov"><td class="ln">23</td><td class="code">  const containerRef = useRef&lt;HTMLDivElement&gt;(null);</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">  const [dropTarget, setDropTarget] = useState&lt;number | null&gt;(null);</td></tr>
+<tr class="part"><td class="ln">23</td><td class="code">  const containerRef = useRef&lt;HTMLDivElement&gt;(null);</td></tr>
 <tr class="cov"><td class="ln">24</td><td class="code">  const startY = useRef(0);</td></tr>
-<tr class="cov"><td class="ln">25</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">26</td><td class="code">  // Scroll the active slide into view when currentSlideIndex changes — and, if the</td></tr>
-<tr class="cov"><td class="ln">27</td><td class="code">  // sidebar already holds keyboard focus (e.g. arrow-key slide nav), move focus to</td></tr>
-<tr class="cov"><td class="ln">28</td><td class="code">  // the active thumbnail so Backspace deletes the highlighted slide, not the one</td></tr>
-<tr class="cov"><td class="ln">29</td><td class="code">  // that happened to be focused before. Guarded so we never steal focus from the</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">  // Scroll the active slide into view when currentSlideIndex changes — and, if the</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">  // sidebar already holds keyboard focus (e.g. arrow-key slide nav), move focus to</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">  // the active thumbnail so Backspace deletes the highlighted slide, not the one</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">  // that happened to be focused before. Guarded so we never steal focus from the</td></tr>
 <tr class="nil"><td class="ln">30</td><td class="code">  // canvas / a text field during a programmatic selectSlide (undo-nav, etc.).</td></tr>
-<tr class="unc"><td class="ln">31</td><td class="code">  useEffect(() =&gt; {</td></tr>
-<tr class="unc"><td class="ln">32</td><td class="code">    if (!containerRef.current) return;</td></tr>
-<tr class="cov"><td class="ln">33</td><td class="code">    const thumbs = containerRef.current.querySelectorAll(&#x27;.slide-thumbnail&#x27;);</td></tr>
-<tr class="unc"><td class="ln">34</td><td class="code">    const active = thumbs[currentSlideIndex] as HTMLElement | undefined;</td></tr>
+<tr class="cov"><td class="ln">31</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code">    if (!containerRef.current) return;</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">    const thumbs = containerRef.current.querySelectorAll(&#x27;.slide-thumbnail&#x27;);</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">    const active = thumbs[currentSlideIndex] as HTMLElement | undefined;</td></tr>
 <tr class="unc"><td class="ln">35</td><td class="code">    if (active) {</td></tr>
 <tr class="unc"><td class="ln">36</td><td class="code">      active.scrollIntoView({ block: &#x27;nearest&#x27;, behavior: &#x27;smooth&#x27; });</td></tr>
 <tr class="unc"><td class="ln">37</td><td class="code">      if (containerRef.current.contains(document.activeElement) &amp;&amp; document.activeElement !== active) {</td></tr>
 <tr class="unc"><td class="ln">38</td><td class="code">        active.focus();</td></tr>
-<tr class="unc"><td class="ln">39</td><td class="code">      }</td></tr>
-<tr class="unc"><td class="ln">40</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">    }</td></tr>
 <tr class="unc"><td class="ln">41</td><td class="code">  }, [currentSlideIndex]);</td></tr>
-<tr class="unc"><td class="ln">42</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">43</td><td class="code">  const handleContainerPointerMove = useCallback(</td></tr>
 <tr class="unc"><td class="ln">44</td><td class="code">    (e: React.PointerEvent) =&gt; {</td></tr>
-<tr class="unc"><td class="ln">45</td><td class="code">      if (dragging === null) return;</td></tr>
-<tr class="unc"><td class="ln">46</td><td class="code">      const thumbs = containerRef.current?.querySelectorAll(&#x27;.slide-thumbnail&#x27;);</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">      if (dragging === null) return;</td></tr>
+<tr class="nil"><td class="ln">46</td><td class="code">      const thumbs = containerRef.current?.querySelectorAll(&#x27;.slide-thumbnail&#x27;);</td></tr>
 <tr class="unc"><td class="ln">47</td><td class="code">      if (!thumbs) return;</td></tr>
-<tr class="unc"><td class="ln">48</td><td class="code">      let found = false;</td></tr>
-<tr class="cov"><td class="ln">49</td><td class="code">      for (let i = 0; i &lt; thumbs.length; i++) {</td></tr>
-<tr class="unc"><td class="ln">50</td><td class="code">        const rect = thumbs[i].getBoundingClientRect();</td></tr>
-<tr class="cov"><td class="ln">51</td><td class="code">        if (e.clientY &gt;= rect.top &amp;&amp; e.clientY &lt;= rect.bottom &amp;&amp; i !== dragging) {</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">      let found = false;</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">      for (let i = 0; i &lt; thumbs.length; i++) {</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">        const rect = thumbs[i].getBoundingClientRect();</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">        if (e.clientY &gt;= rect.top &amp;&amp; e.clientY &lt;= rect.bottom &amp;&amp; i !== dragging) {</td></tr>
 <tr class="unc"><td class="ln">52</td><td class="code">          setDropTarget(i); found = true; break;</td></tr>
-<tr class="unc"><td class="ln">53</td><td class="code">        }</td></tr>
-<tr class="unc"><td class="ln">54</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">      }</td></tr>
 <tr class="unc"><td class="ln">55</td><td class="code">      if (!found) setDropTarget(null);</td></tr>
-<tr class="unc"><td class="ln">56</td><td class="code">    },</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code">    },</td></tr>
 <tr class="unc"><td class="ln">57</td><td class="code">    [dragging]</td></tr>
 <tr class="nil"><td class="ln">58</td><td class="code">  );</td></tr>
-<tr class="cov"><td class="ln">59</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">60</td><td class="code">  const handleContainerPointerUp = useCallback(() =&gt; {</td></tr>
-<tr class="unc"><td class="ln">61</td><td class="code">    if (dragging !== null &amp;&amp; dropTarget !== null &amp;&amp; dragging !== dropTarget) moveSlide(dragging, dropTarget);</td></tr>
-<tr class="unc"><td class="ln">62</td><td class="code">    if (dragging !== null) {</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code">  const handleContainerPointerUp = useCallback(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">61</td><td class="code">    if (dragging !== null &amp;&amp; dropTarget !== null &amp;&amp; dragging !== dropTarget) moveSlide(dragging, dropTarget);</td></tr>
+<tr class="nil"><td class="ln">62</td><td class="code">    if (dragging !== null) {</td></tr>
 <tr class="nil"><td class="ln">63</td><td class="code">      // Clear any text selection that happened during drag</td></tr>
-<tr class="unc"><td class="ln">64</td><td class="code">      window.getSelection()?.removeAllRanges();</td></tr>
+<tr class="nil"><td class="ln">64</td><td class="code">      window.getSelection()?.removeAllRanges();</td></tr>
 <tr class="nil"><td class="ln">65</td><td class="code">    }</td></tr>
-<tr class="cov"><td class="ln">66</td><td class="code">    setDragging(null); setDropTarget(null);</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code">    setDragging(null); setDropTarget(null);</td></tr>
 <tr class="nil"><td class="ln">67</td><td class="code">  }, [dragging, dropTarget, moveSlide]);</td></tr>
-<tr class="unc"><td class="ln">68</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">69</td><td class="code">  return (</td></tr>
 <tr class="unc"><td class="ln">70</td><td class="code">    &lt;div className=&quot;sidebar&quot;&gt;</td></tr>
 <tr class="nil"><td class="ln">71</td><td class="code">      &lt;div</td></tr>
@@ -90,65 +91,65 @@
 <tr class="nil"><td class="ln">73</td><td class="code">        ref={containerRef}</td></tr>
 <tr class="cov"><td class="ln">74</td><td class="code">        onPointerMove={handleContainerPointerMove}</td></tr>
 <tr class="cov"><td class="ln">75</td><td class="code">        onPointerUp={handleContainerPointerUp}</td></tr>
-<tr class="cov"><td class="ln">76</td><td class="code">        onPointerLeave={() =&gt; { if (dragging !== null) { setDragging(null); setDropTarget(null); } }}</td></tr>
+<tr class="nil"><td class="ln">76</td><td class="code">        onPointerLeave={() =&gt; { if (dragging !== null) { setDragging(null); setDropTarget(null); } }}</td></tr>
 <tr class="nil"><td class="ln">77</td><td class="code">      &gt;</td></tr>
 <tr class="nil"><td class="ln">78</td><td class="code">        {presentation.slides.map((slide, index) =&gt; {</td></tr>
-<tr class="unc"><td class="ln">79</td><td class="code">          const child = isGroupChild(presentation.slides, index);</td></tr>
-<tr class="unc"><td class="ln">80</td><td class="code">          const slideNum = getSlideNumber(presentation.slides, index);</td></tr>
-<tr class="unc"><td class="ln">81</td><td class="code">          return (</td></tr>
-<tr class="unc"><td class="ln">82</td><td class="code">          &lt;div</td></tr>
+<tr class="nil"><td class="ln">79</td><td class="code">          const child = isGroupChild(presentation.slides, index);</td></tr>
+<tr class="nil"><td class="ln">80</td><td class="code">          const slideNum = getSlideNumber(presentation.slides, index);</td></tr>
+<tr class="nil"><td class="ln">81</td><td class="code">          return (</td></tr>
+<tr class="nil"><td class="ln">82</td><td class="code">          &lt;div</td></tr>
 <tr class="unc"><td class="ln">83</td><td class="code">            key={slide.id}</td></tr>
 <tr class="unc"><td class="ln">84</td><td class="code">            className={`slide-thumbnail${index === currentSlideIndex ? &#x27; active&#x27; : &#x27;&#x27;}${dropTarget === index ? &#x27; drag-over&#x27; : &#x27;&#x27;}${dragging === index ? &#x27; dragging&#x27; : &#x27;&#x27;}${child ? &#x27; group-child&#x27; : &#x27;&#x27;}${slide.groupId ? &#x27; in-group&#x27; : &#x27;&#x27;}`}</td></tr>
 <tr class="nil"><td class="ln">85</td><td class="code">            // Focusable so the slide can be deleted from the keyboard (and so the</td></tr>
 <tr class="nil"><td class="ln">86</td><td class="code">            // sidebar is the keydown target — Backspace deletes the focused slide</td></tr>
 <tr class="nil"><td class="ln">87</td><td class="code">            // instead of triggering the webview&#x27;s history-back). a11y: keyboard nav.</td></tr>
-<tr class="cov"><td class="ln">88</td><td class="code">            tabIndex={0}</td></tr>
+<tr class="nil"><td class="ln">88</td><td class="code">            tabIndex={0}</td></tr>
 <tr class="cov"><td class="ln">89</td><td class="code">            onClick={(e) =&gt; { if (dragging === null) { selectSlide(index); e.currentTarget.focus(); } }}</td></tr>
-<tr class="cov"><td class="ln">90</td><td class="code">            onKeyDown={(e) =&gt; {</td></tr>
+<tr class="part"><td class="ln">90</td><td class="code">            onKeyDown={(e) =&gt; {</td></tr>
 <tr class="cov"><td class="ln">91</td><td class="code">              if ((e.key === &#x27;Delete&#x27; || e.key === &#x27;Backspace&#x27;)) {</td></tr>
-<tr class="cov"><td class="ln">92</td><td class="code">                // A thumbnail keeps DOM focus after you click an element on the</td></tr>
-<tr class="cov"><td class="ln">93</td><td class="code">                // canvas, so this handler would otherwise delete the SLIDE when an</td></tr>
-<tr class="cov"><td class="ln">94</td><td class="code">                // element is selected. Only delete the slide when a slide is</td></tr>
-<tr class="cov"><td class="ln">95</td><td class="code">                // actually the selection; otherwise let it bubble to the global</td></tr>
-<tr class="cov"><td class="ln">96</td><td class="code">                // handler, which deletes the selected element(s). (#: backspace bug)</td></tr>
+<tr class="nil"><td class="ln">92</td><td class="code">                // A thumbnail keeps DOM focus after you click an element on the</td></tr>
+<tr class="nil"><td class="ln">93</td><td class="code">                // canvas, so this handler would otherwise delete the SLIDE when an</td></tr>
+<tr class="nil"><td class="ln">94</td><td class="code">                // element is selected. Only delete the slide when a slide is</td></tr>
+<tr class="nil"><td class="ln">95</td><td class="code">                // actually the selection; otherwise let it bubble to the global</td></tr>
+<tr class="nil"><td class="ln">96</td><td class="code">                // handler, which deletes the selected element(s). (#: backspace bug)</td></tr>
 <tr class="cov"><td class="ln">97</td><td class="code">                const sel = usePresentationStore.getState().selectedObject;</td></tr>
 <tr class="cov"><td class="ln">98</td><td class="code">                if (sel &amp;&amp; sel.type !== &#x27;slide&#x27;) return;</td></tr>
-<tr class="cov"><td class="ln">99</td><td class="code">                e.preventDefault(); e.stopPropagation();</td></tr>
-<tr class="unc"><td class="ln">100</td><td class="code">                if (presentation.slides.length &gt; 1) {</td></tr>
-<tr class="unc"><td class="ln">101</td><td class="code">                  deleteSlide(index);</td></tr>
+<tr class="nil"><td class="ln">99</td><td class="code">                e.preventDefault(); e.stopPropagation();</td></tr>
+<tr class="nil"><td class="ln">100</td><td class="code">                if (presentation.slides.length &gt; 1) {</td></tr>
+<tr class="nil"><td class="ln">101</td><td class="code">                  deleteSlide(index);</td></tr>
 <tr class="nil"><td class="ln">102</td><td class="code">                  // The deleted thumbnail&#x27;s DOM focus falls to &lt;body&gt;, and</td></tr>
 <tr class="nil"><td class="ln">103</td><td class="code">                  // currentSlideIndex often doesn&#x27;t change, so the focus effect</td></tr>
-<tr class="unc"><td class="ln">104</td><td class="code">                  // above won&#x27;t re-fire. Re-focus the neighbour thumbnail once</td></tr>
-<tr class="unc"><td class="ln">105</td><td class="code">                  // the list re-renders so repeated Delete keeps working (#124).</td></tr>
+<tr class="nil"><td class="ln">104</td><td class="code">                  // above won&#x27;t re-fire. Re-focus the neighbour thumbnail once</td></tr>
+<tr class="nil"><td class="ln">105</td><td class="code">                  // the list re-renders so repeated Delete keeps working (#124).</td></tr>
 <tr class="unc"><td class="ln">106</td><td class="code">                  requestAnimationFrame(() =&gt; {</td></tr>
-<tr class="unc"><td class="ln">107</td><td class="code">                    const thumbs = containerRef.current?.querySelectorAll(&#x27;.slide-thumbnail&#x27;);</td></tr>
+<tr class="nil"><td class="ln">107</td><td class="code">                    const thumbs = containerRef.current?.querySelectorAll(&#x27;.slide-thumbnail&#x27;);</td></tr>
 <tr class="unc"><td class="ln">108</td><td class="code">                    const newIdx = usePresentationStore.getState().currentSlideIndex;</td></tr>
 <tr class="unc"><td class="ln">109</td><td class="code">                    (thumbs?.[newIdx] as HTMLElement | undefined)?.focus();</td></tr>
 <tr class="nil"><td class="ln">110</td><td class="code">                  });</td></tr>
-<tr class="unc"><td class="ln">111</td><td class="code">                }</td></tr>
+<tr class="nil"><td class="ln">111</td><td class="code">                }</td></tr>
 <tr class="nil"><td class="ln">112</td><td class="code">              }</td></tr>
-<tr class="unc"><td class="ln">113</td><td class="code">            }}</td></tr>
-<tr class="nil"><td class="ln">114</td><td class="code">            onContextMenu={(e) =&gt; {</td></tr>
-<tr class="unc"><td class="ln">115</td><td class="code">              e.preventDefault();</td></tr>
+<tr class="nil"><td class="ln">113</td><td class="code">            }}</td></tr>
+<tr class="unc"><td class="ln">114</td><td class="code">            onContextMenu={(e) =&gt; {</td></tr>
+<tr class="nil"><td class="ln">115</td><td class="code">              e.preventDefault();</td></tr>
 <tr class="unc"><td class="ln">116</td><td class="code">              selectSlide(index);</td></tr>
 <tr class="unc"><td class="ln">117</td><td class="code">              const store = usePresentationStore.getState();</td></tr>
 <tr class="unc"><td class="ln">118</td><td class="code">              const items: MenuEntry[] = [</td></tr>
-<tr class="unc"><td class="ln">119</td><td class="code">                { label: &#x27;Duplicate Slide&#x27;, shortcut: &#x27;⌘D&#x27;, onClick: () =&gt; duplicateSlide(index) },</td></tr>
+<tr class="nil"><td class="ln">119</td><td class="code">                { label: &#x27;Duplicate Slide&#x27;, shortcut: &#x27;⌘D&#x27;, onClick: () =&gt; duplicateSlide(index) },</td></tr>
 <tr class="unc"><td class="ln">120</td><td class="code">                { label: &#x27;Add Build Slide&#x27;, onClick: () =&gt; store.addBuildSlide() },</td></tr>
 <tr class="nil"><td class="ln">121</td><td class="code">                { separator: true },</td></tr>
-<tr class="unc"><td class="ln">122</td><td class="code">                { label: &#x27;Delete Slide&#x27;, shortcut: &#x27;X&#x27;, onClick: () =&gt; deleteSlide(index), disabled: presentation.slides.length &lt;= 1 },</td></tr>
-<tr class="unc"><td class="ln">123</td><td class="code">              ];</td></tr>
+<tr class="nil"><td class="ln">122</td><td class="code">                { label: &#x27;Delete Slide&#x27;, shortcut: &#x27;X&#x27;, onClick: () =&gt; deleteSlide(index), disabled: presentation.slides.length &lt;= 1 },</td></tr>
+<tr class="nil"><td class="ln">123</td><td class="code">              ];</td></tr>
 <tr class="unc"><td class="ln">124</td><td class="code">              window.dispatchEvent(new CustomEvent(&#x27;show-context-menu&#x27;, { detail: { x: e.clientX, y: e.clientY, items } }));</td></tr>
 <tr class="nil"><td class="ln">125</td><td class="code">            }}</td></tr>
 <tr class="unc"><td class="ln">126</td><td class="code">            onPointerDown={(e) =&gt; {</td></tr>
 <tr class="unc"><td class="ln">127</td><td class="code">              if (e.button !== 0 || (e.target as HTMLElement).closest(&#x27;.slide-actions&#x27;)) return;</td></tr>
-<tr class="unc"><td class="ln">128</td><td class="code">              startY.current = e.clientY;</td></tr>
-<tr class="unc"><td class="ln">129</td><td class="code">              const idx = index;</td></tr>
-<tr class="cov"><td class="ln">130</td><td class="code">              const onMove = (me: PointerEvent) =&gt; { if (Math.abs(me.clientY - startY.current) &gt; 8) setDragging(idx); };</td></tr>
-<tr class="cov"><td class="ln">131</td><td class="code">              const onUp = () =&gt; { window.removeEventListener(&#x27;pointermove&#x27;, onMove); window.removeEventListener(&#x27;pointerup&#x27;, onUp); };</td></tr>
-<tr class="cov"><td class="ln">132</td><td class="code">              window.addEventListener(&#x27;pointermove&#x27;, onMove); window.addEventListener(&#x27;pointerup&#x27;, onUp);</td></tr>
+<tr class="nil"><td class="ln">128</td><td class="code">              startY.current = e.clientY;</td></tr>
+<tr class="nil"><td class="ln">129</td><td class="code">              const idx = index;</td></tr>
+<tr class="nil"><td class="ln">130</td><td class="code">              const onMove = (me: PointerEvent) =&gt; { if (Math.abs(me.clientY - startY.current) &gt; 8) setDragging(idx); };</td></tr>
+<tr class="nil"><td class="ln">131</td><td class="code">              const onUp = () =&gt; { window.removeEventListener(&#x27;pointermove&#x27;, onMove); window.removeEventListener(&#x27;pointerup&#x27;, onUp); };</td></tr>
+<tr class="nil"><td class="ln">132</td><td class="code">              window.addEventListener(&#x27;pointermove&#x27;, onMove); window.addEventListener(&#x27;pointerup&#x27;, onUp);</td></tr>
 <tr class="nil"><td class="ln">133</td><td class="code">            }}</td></tr>
-<tr class="unc"><td class="ln">134</td><td class="code">          &gt;</td></tr>
+<tr class="nil"><td class="ln">134</td><td class="code">          &gt;</td></tr>
 <tr class="unc"><td class="ln">135</td><td class="code">            &lt;span className=&quot;slide-number&quot;&gt;{child ? &#x27;&#x27; : slideNum}&lt;/span&gt;</td></tr>
 <tr class="nil"><td class="ln">136</td><td class="code">            &lt;SlideThumbnail presentation={presentation} slide={slide} width={THUMB_WIDTH} /&gt;</td></tr>
 <tr class="nil"><td class="ln">137</td><td class="code">            &lt;div className=&quot;slide-actions&quot;&gt;</td></tr>

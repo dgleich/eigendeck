@@ -6,44 +6,45 @@
   <h1>src/lib/grid.ts </h1>
   <div class="stats">
     <span class="stat"><b>100%</b> covered</span>
-    <span class="stat">41/41 executable</span>
+    <span class="stat">30/30 statements</span>
     <span class="stat unc-txt">0 uncovered</span>
     <span class="stat">118 raw lines</span>
     <span class="stat">0.28% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:34.746%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:65.254%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:100.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:0.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src__components__SlideEditor_tsx.html">SlideEditor.tsx</a> <a href="src__components__SlideElementRenderer_tsx.html">SlideElementRenderer.tsx</a></div>
 </header>
 <table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Pure helpers for the editor alignment grid (snap-to-grid).</td></tr>
-<tr class="cov"><td class="ln">2</td><td class="code">//</td></tr>
-<tr class="cov"><td class="ln">3</td><td class="code">// Kept free of any store/preference reads so the rounding is trivially</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// Kept free of any store/preference reads so the rounding is trivially</td></tr>
 <tr class="nil"><td class="ln">4</td><td class="code">// unit-testable. The component layer (DraggableBox) supplies the live</td></tr>
 <tr class="nil"><td class="ln">5</td><td class="code">// spacing + on/off + bypass state and calls snapToGrid().</td></tr>
-<tr class="cov"><td class="ln">6</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">7</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">/**</td></tr>
 <tr class="nil"><td class="ln">8</td><td class="code"> * Round a slide-space coordinate to the nearest multiple of `spacing`.</td></tr>
-<tr class="cov"><td class="ln">9</td><td class="code"> *</td></tr>
-<tr class="cov"><td class="ln">10</td><td class="code"> * A spacing below 2px (or non-finite) is treated as &quot;no grid&quot; and returns</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code"> * A spacing below 2px (or non-finite) is treated as &quot;no grid&quot; and returns</td></tr>
 <tr class="nil"><td class="ln">11</td><td class="code"> * the value unchanged — guards against a 0/1px grid snapping everything to</td></tr>
-<tr class="cov"><td class="ln">12</td><td class="code"> * the origin or to every pixel.</td></tr>
-<tr class="cov"><td class="ln">13</td><td class="code"> */</td></tr>
-<tr class="cov"><td class="ln">14</td><td class="code">export function snapToGrid(value: number, spacing: number): number {</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code"> * the origin or to every pixel.</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">export function snapToGrid(value: number, spacing: number): number {</td></tr>
 <tr class="cov"><td class="ln">15</td><td class="code">  if (!Number.isFinite(spacing) || spacing &lt; 2) return value;</td></tr>
 <tr class="cov"><td class="ln">16</td><td class="code">  return Math.round(value / spacing) * spacing;</td></tr>
-<tr class="cov"><td class="ln">17</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">18</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">19</td><td class="code">/**</td></tr>
-<tr class="cov"><td class="ln">20</td><td class="code"> * New size for a bottom-right (SE) resize that snaps the moving EDGE to the grid</td></tr>
-<tr class="cov"><td class="ln">21</td><td class="code"> * rather than the size itself (#97).</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code"> * New size for a bottom-right (SE) resize that snaps the moving EDGE to the grid</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code"> * rather than the size itself (#97).</td></tr>
 <tr class="nil"><td class="ln">22</td><td class="code"> *</td></tr>
 <tr class="nil"><td class="ln">23</td><td class="code"> * Snapping width/height directly leaves the far edge off-grid whenever the</td></tr>
-<tr class="cov"><td class="ln">24</td><td class="code"> * element&#x27;s `origin` (x or y) isn&#x27;t grid-aligned — e.g. origin 130, width</td></tr>
-<tr class="cov"><td class="ln">25</td><td class="code"> * snapped to 200 → right edge 330, not on a 30px grid. Instead we snap the edge</td></tr>
-<tr class="cov"><td class="ln">26</td><td class="code"> * (`origin + rawSize`) and derive the size back from the fixed origin, so the</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code"> * element&#x27;s `origin` (x or y) isn&#x27;t grid-aligned — e.g. origin 130, width</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code"> * snapped to 200 → right edge 330, not on a 30px grid. Instead we snap the edge</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code"> * (`origin + rawSize`) and derive the size back from the fixed origin, so the</td></tr>
 <tr class="nil"><td class="ln">27</td><td class="code"> * edge lands on a gridline and only the size absorbs the origin&#x27;s offset.</td></tr>
-<tr class="cov"><td class="ln">28</td><td class="code"> *</td></tr>
-<tr class="cov"><td class="ln">29</td><td class="code"> * `spacing &lt; 2` (or non-finite) means &quot;no grid&quot; — pass 0 when snap is off or</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code"> * `spacing &lt; 2` (or non-finite) means &quot;no grid&quot; — pass 0 when snap is off or</td></tr>
 <tr class="nil"><td class="ln">30</td><td class="code"> * bypassed and the raw size is returned (clamped/rounded). Result is clamped to</td></tr>
 <tr class="nil"><td class="ln">31</td><td class="code"> * `minSize` and rounded to whole px.</td></tr>
 <tr class="nil"><td class="ln">32</td><td class="code"> */</td></tr>
@@ -63,7 +64,7 @@
 <tr class="cov"><td class="ln">46</td><td class="code">const MARK = &#x27;rgba(100,116,139,0.55)&#x27;;</td></tr>
 <tr class="nil"><td class="ln">47</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">48</td><td class="code">// A single &quot;+&quot; SVG path centered at (x,y) with arm half-length a.</td></tr>
-<tr class="cov"><td class="ln">49</td><td class="code">const crossPath = (x: number, y: number, a: number) =&gt;</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">const crossPath = (x: number, y: number, a: number) =&gt;</td></tr>
 <tr class="cov"><td class="ln">50</td><td class="code">  `M${x} ${y - a}V${y + a}M${x - a} ${y}H${x + a}`;</td></tr>
 <tr class="nil"><td class="ln">51</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">52</td><td class="code">/**</td></tr>
@@ -121,15 +122,15 @@
 <tr class="nil"><td class="ln">104</td><td class="code">  // bullseye; at other spacings it just marks center.</td></tr>
 <tr class="cov"><td class="ln">105</td><td class="code">  const center = crossPath(width / 2, height / 2, 12);</td></tr>
 <tr class="cov"><td class="ln">106</td><td class="code">  return (</td></tr>
-<tr class="nil"><td class="ln">107</td><td class="code">    `&lt;svg xmlns=&#x27;http://www.w3.org/2000/svg&#x27; width=&#x27;${width}&#x27; height=&#x27;${height}&#x27; ` +</td></tr>
-<tr class="nil"><td class="ln">108</td><td class="code">    `viewBox=&#x27;0 0 ${width} ${height}&#x27;&gt;` +</td></tr>
-<tr class="nil"><td class="ln">109</td><td class="code">    `&lt;defs&gt;&lt;pattern id=&#x27;eigendeck-grid&#x27; width=&#x27;${tile}&#x27; height=&#x27;${tile}&#x27; patternUnits=&#x27;userSpaceOnUse&#x27;&gt;` +</td></tr>
-<tr class="nil"><td class="ln">110</td><td class="code">    `&lt;path d=&#x27;${thin}&#x27; stroke=&#x27;${MARK}&#x27; stroke-width=&#x27;1&#x27; fill=&#x27;none&#x27;/&gt;` +</td></tr>
-<tr class="nil"><td class="ln">111</td><td class="code">    (thick ? `&lt;path d=&#x27;${thick}&#x27; stroke=&#x27;${MARK}&#x27; stroke-width=&#x27;2&#x27; fill=&#x27;none&#x27;/&gt;` : &#x27;&#x27;) +</td></tr>
-<tr class="nil"><td class="ln">112</td><td class="code">    `&lt;g fill=&#x27;${MARK}&#x27;&gt;${dots}&lt;/g&gt;` +</td></tr>
-<tr class="nil"><td class="ln">113</td><td class="code">    `&lt;/pattern&gt;&lt;/defs&gt;` +</td></tr>
-<tr class="nil"><td class="ln">114</td><td class="code">    `&lt;rect width=&#x27;${width}&#x27; height=&#x27;${height}&#x27; fill=&#x27;url(#eigendeck-grid)&#x27;/&gt;` +</td></tr>
-<tr class="nil"><td class="ln">115</td><td class="code">    `&lt;path d=&#x27;${center}&#x27; stroke=&#x27;${MARK}&#x27; stroke-width=&#x27;1.5&#x27; fill=&#x27;none&#x27;/&gt;` +</td></tr>
+<tr class="cov"><td class="ln">107</td><td class="code">    `&lt;svg xmlns=&#x27;http://www.w3.org/2000/svg&#x27; width=&#x27;${width}&#x27; height=&#x27;${height}&#x27; ` +</td></tr>
+<tr class="cov"><td class="ln">108</td><td class="code">    `viewBox=&#x27;0 0 ${width} ${height}&#x27;&gt;` +</td></tr>
+<tr class="cov"><td class="ln">109</td><td class="code">    `&lt;defs&gt;&lt;pattern id=&#x27;eigendeck-grid&#x27; width=&#x27;${tile}&#x27; height=&#x27;${tile}&#x27; patternUnits=&#x27;userSpaceOnUse&#x27;&gt;` +</td></tr>
+<tr class="cov"><td class="ln">110</td><td class="code">    `&lt;path d=&#x27;${thin}&#x27; stroke=&#x27;${MARK}&#x27; stroke-width=&#x27;1&#x27; fill=&#x27;none&#x27;/&gt;` +</td></tr>
+<tr class="cov"><td class="ln">111</td><td class="code">    (thick ? `&lt;path d=&#x27;${thick}&#x27; stroke=&#x27;${MARK}&#x27; stroke-width=&#x27;2&#x27; fill=&#x27;none&#x27;/&gt;` : &#x27;&#x27;) +</td></tr>
+<tr class="cov"><td class="ln">112</td><td class="code">    `&lt;g fill=&#x27;${MARK}&#x27;&gt;${dots}&lt;/g&gt;` +</td></tr>
+<tr class="cov"><td class="ln">113</td><td class="code">    `&lt;/pattern&gt;&lt;/defs&gt;` +</td></tr>
+<tr class="cov"><td class="ln">114</td><td class="code">    `&lt;rect width=&#x27;${width}&#x27; height=&#x27;${height}&#x27; fill=&#x27;url(#eigendeck-grid)&#x27;/&gt;` +</td></tr>
+<tr class="cov"><td class="ln">115</td><td class="code">    `&lt;path d=&#x27;${center}&#x27; stroke=&#x27;${MARK}&#x27; stroke-width=&#x27;1.5&#x27; fill=&#x27;none&#x27;/&gt;` +</td></tr>
 <tr class="nil"><td class="ln">116</td><td class="code">    `&lt;/svg&gt;`</td></tr>
 <tr class="nil"><td class="ln">117</td><td class="code">  );</td></tr>
 <tr class="nil"><td class="ln">118</td><td class="code">}</td></tr></table>

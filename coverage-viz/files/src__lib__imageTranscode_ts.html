@@ -6,12 +6,13 @@
   <h1>src/lib/imageTranscode.ts </h1>
   <div class="stats">
     <span class="stat"><b>0%</b> covered</span>
-    <span class="stat">0/21 executable</span>
-    <span class="stat unc-txt">21 uncovered</span>
+    <span class="stat">0/29 statements</span>
+    <span class="stat unc-txt">29 uncovered</span>
     <span class="stat">44 raw lines</span>
     <span class="stat">0.10% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:0.000%"></span><span class="seg unc" style="width:47.727%"></span><span class="seg nil" style="width:52.273%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:0.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:100.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src__components__SlideEditor_tsx.html">SlideEditor.tsx</a></div>
 </header>
@@ -31,7 +32,7 @@
 <tr class="nil"><td class="ln">14</td><td class="code">/** Decode `bytes` (of MIME `sourceMime`) and re-encode as PNG. null on failure. */</td></tr>
 <tr class="nil"><td class="ln">15</td><td class="code">export async function transcodeImageToPng(bytes: Uint8Array, sourceMime: string): Promise&lt;Uint8Array | null&gt; {</td></tr>
 <tr class="unc"><td class="ln">16</td><td class="code">  const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: sourceMime }));</td></tr>
-<tr class="unc"><td class="ln">17</td><td class="code">  try {</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">  try {</td></tr>
 <tr class="unc"><td class="ln">18</td><td class="code">    const img = await loadImage(url);</td></tr>
 <tr class="unc"><td class="ln">19</td><td class="code">    const w = img.naturalWidth, h = img.naturalHeight;</td></tr>
 <tr class="unc"><td class="ln">20</td><td class="code">    if (!w || !h) return null;</td></tr>
@@ -40,7 +41,7 @@
 <tr class="unc"><td class="ln">23</td><td class="code">    const ctx = canvas.getContext(&#x27;2d&#x27;);</td></tr>
 <tr class="unc"><td class="ln">24</td><td class="code">    if (!ctx) return null;</td></tr>
 <tr class="unc"><td class="ln">25</td><td class="code">    ctx.drawImage(img, 0, 0);</td></tr>
-<tr class="unc"><td class="ln">26</td><td class="code">    const blob: Blob | null = await new Promise((resolve) =&gt;</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">    const blob: Blob | null = await new Promise((resolve) =&gt;</td></tr>
 <tr class="unc"><td class="ln">27</td><td class="code">      canvas.toBlob((b) =&gt; resolve(b), &#x27;image/png&#x27;));</td></tr>
 <tr class="unc"><td class="ln">28</td><td class="code">    if (!blob) return null;</td></tr>
 <tr class="unc"><td class="ln">29</td><td class="code">    return new Uint8Array(await blob.arrayBuffer());</td></tr>
@@ -52,7 +53,7 @@
 <tr class="nil"><td class="ln">35</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">36</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">37</td><td class="code">function loadImage(src: string): Promise&lt;HTMLImageElement&gt; {</td></tr>
-<tr class="unc"><td class="ln">38</td><td class="code">  return new Promise((resolve, reject) =&gt; {</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">  return new Promise((resolve, reject) =&gt; {</td></tr>
 <tr class="unc"><td class="ln">39</td><td class="code">    const img = new Image();</td></tr>
 <tr class="unc"><td class="ln">40</td><td class="code">    img.onload = () =&gt; resolve(img);</td></tr>
 <tr class="unc"><td class="ln">41</td><td class="code">    img.onerror = () =&gt; reject(new Error(&#x27;decode failed&#x27;));</td></tr>

@@ -5,13 +5,14 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/runtime.ts </h1>
   <div class="stats">
-    <span class="stat"><b>50%</b> covered</span>
-    <span class="stat">4/8 executable</span>
-    <span class="stat unc-txt">4 uncovered</span>
+    <span class="stat"><b>100%</b> covered</span>
+    <span class="stat">4/4 statements</span>
+    <span class="stat unc-txt">0 uncovered</span>
     <span class="stat">21 raw lines</span>
     <span class="stat">0.05% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:19.048%"></span><span class="seg unc" style="width:19.048%"></span><span class="seg nil" style="width:61.905%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:100.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:0.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__lib__fonts_ts.html">fonts.ts</a> <a href="src__lib__preferences_ts.html">preferences.ts</a> <a href="src__lib__serverDiscovery_ts.html">serverDiscovery.ts</a> <a href="src__lib__windowFocus_ts.html">windowFocus.ts</a></div>
   <div class="links"><span>imported by:</span> <a href="src__main_tsx.html">main.tsx</a> <a href="src__presenter_tsx.html">presenter.tsx</a> <a href="src__security_tsx.html">security.tsx</a> <a href="src__settings_tsx.html">settings.tsx</a></div>
 </header>
@@ -20,7 +21,7 @@
 <tr class="nil"><td class="ln">3</td><td class="code">// never silently miss boot setup the main window does — the divergence that</td></tr>
 <tr class="nil"><td class="ln">4</td><td class="code">// caused the projector font + math glitches. Add new global boot steps here,</td></tr>
 <tr class="nil"><td class="ln">5</td><td class="code">// once.</td></tr>
-<tr class="cov"><td class="ln">6</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">7</td><td class="code">import { injectFontFaces } from &#x27;./fonts&#x27;;<a class="jump" href="src__lib__fonts_ts.html" title="src/lib/fonts.ts">→ fonts.ts</a></td></tr>
 <tr class="cov"><td class="ln">8</td><td class="code">import { discoverAllServers } from &#x27;./serverDiscovery&#x27;;<a class="jump" href="src__lib__serverDiscovery_ts.html" title="src/lib/serverDiscovery.ts">→ serverDiscovery.ts</a></td></tr>
 <tr class="cov"><td class="ln">9</td><td class="code">import { initPrefSync } from &#x27;./preferences&#x27;;<a class="jump" href="src__lib__preferences_ts.html" title="src/lib/preferences.ts">→ preferences.ts</a></td></tr>
@@ -28,12 +29,12 @@
 <tr class="nil"><td class="ln">11</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">12</td><td class="code">export function initRuntime(): void {</td></tr>
 <tr class="nil"><td class="ln">13</td><td class="code">  // Register @font-face for all bundled font packages (text + math).</td></tr>
-<tr class="unc"><td class="ln">14</td><td class="code">  injectFontFaces();</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">  injectFontFaces();</td></tr>
 <tr class="nil"><td class="ln">15</td><td class="code">  // Refresh the Jupyter server registry in the background (live notebooks).</td></tr>
-<tr class="unc"><td class="ln">16</td><td class="code">  void discoverAllServers();</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">  void discoverAllServers();</td></tr>
 <tr class="nil"><td class="ln">17</td><td class="code">  // Keep preferences in sync across webview windows (main ↔ Settings window).</td></tr>
-<tr class="unc"><td class="ln">18</td><td class="code">  initPrefSync();</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">  initPrefSync();</td></tr>
 <tr class="nil"><td class="ln">19</td><td class="code">  // Subdue chrome when this window is inactive (macOS-style).</td></tr>
-<tr class="unc"><td class="ln">20</td><td class="code">  initWindowFocus();</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">  initWindowFocus();</td></tr>
 <tr class="nil"><td class="ln">21</td><td class="code">}</td></tr></table>
 </body></html>

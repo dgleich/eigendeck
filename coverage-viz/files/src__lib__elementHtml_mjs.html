@@ -6,12 +6,13 @@
   <h1>src/lib/elementHtml.mjs </h1>
   <div class="stats">
     <span class="stat"><b>100%</b> covered</span>
-    <span class="stat">16/16 executable</span>
+    <span class="stat">20/20 statements</span>
     <span class="stat unc-txt">0 uncovered</span>
     <span class="stat">55 raw lines</span>
     <span class="stat">0.13% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:29.091%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:70.909%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:100.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:0.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__lib__arrowGeometry_mjs.html">arrowGeometry.mjs</a> <a href="src__lib__elementDescriptor_mjs.html">elementDescriptor.mjs</a> <a href="src__lib__htmlEscape_mjs.html">htmlEscape.mjs</a></div>
   <div class="links"><span>imported by:</span> <a href="src__lib__exportCore_mjs.html">exportCore.mjs</a> <a href="src__lib__printSlideHtml_ts.html">printSlideHtml.ts</a></div>
 </header>
@@ -55,8 +56,8 @@
 <tr class="cov"><td class="ln">38</td><td class="code">  const p = el.position;</td></tr>
 <tr class="cov"><td class="ln">39</td><td class="code">  const iv = imageVisuals(el);</td></tr>
 <tr class="cov"><td class="ln">40</td><td class="code">  const styles = [</td></tr>
-<tr class="nil"><td class="ln">41</td><td class="code">    `position:absolute`, `left:${escAttr(len(p.x))}`, `top:${escAttr(len(p.y))}`,</td></tr>
-<tr class="nil"><td class="ln">42</td><td class="code">    `width:${escAttr(len(p.width))}`, `height:${escAttr(len(p.height))}`, `object-fit:contain`,</td></tr>
+<tr class="cov"><td class="ln">41</td><td class="code">    `position:absolute`, `left:${escAttr(len(p.x))}`, `top:${escAttr(len(p.y))}`,</td></tr>
+<tr class="cov"><td class="ln">42</td><td class="code">    `width:${escAttr(len(p.width))}`, `height:${escAttr(len(p.height))}`, `object-fit:contain`,</td></tr>
 <tr class="nil"><td class="ln">43</td><td class="code">  ];</td></tr>
 <tr class="cov"><td class="ln">44</td><td class="code">  if (iv.shadow) styles.push(`filter:${escAttr(iv.shadow)}`);</td></tr>
 <tr class="cov"><td class="ln">45</td><td class="code">  if (iv.borderRadius) styles.push(`border-radius:${escAttr(iv.borderRadius)}px`);</td></tr>

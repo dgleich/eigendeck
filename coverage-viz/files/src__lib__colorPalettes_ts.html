@@ -6,81 +6,82 @@
   <h1>src/lib/colorPalettes.ts </h1>
   <div class="stats">
     <span class="stat"><b>100%</b> covered</span>
-    <span class="stat">10/10 executable</span>
+    <span class="stat">5/5 statements</span>
     <span class="stat unc-txt">0 uncovered</span>
     <span class="stat">70 raw lines</span>
     <span class="stat">0.16% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:14.286%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:85.714%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:100.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:0.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src__components__ColorControl_tsx.html">ColorControl.tsx</a> <a href="src__components__PropertiesPanel_tsx.html">PropertiesPanel.tsx</a> <a href="src__components__TextFormatToolbar_tsx.html">TextFormatToolbar.tsx</a></div>
 </header>
-<table class="src"><tr class="cov"><td class="ln">1</td><td class="code">// The single source of the color swatch palettes, shared by every color control</td></tr>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// The single source of the color swatch palettes, shared by every color control</td></tr>
 <tr class="nil"><td class="ln">2</td><td class="code">// (the inline text-format toolbar + the inspector text-color / background / arrow /</td></tr>
 <tr class="nil"><td class="ln">3</td><td class="code">// cover pickers) via &lt;ColorControl&gt;. Previously each site kept its own array</td></tr>
 <tr class="nil"><td class="ln">4</td><td class="code">// (COLORS / TEXT_COLORS / ARROW_COLORS / TEXT_BG_COLORS), which drifted — the inline</td></tr>
 <tr class="nil"><td class="ln">5</td><td class="code">// bar and inspector even disagreed on the &quot;text color&quot; set. Canonical now.</td></tr>
 <tr class="nil"><td class="ln">6</td><td class="code">&nbsp;</td></tr>
-<tr class="nil"><td class="ln">7</td><td class="code">export interface Swatch {</td></tr>
-<tr class="nil"><td class="ln">8</td><td class="code">  color: string;</td></tr>
+<tr class="cov"><td class="ln">7</td><td class="code">export interface Swatch {</td></tr>
+<tr class="cov"><td class="ln">8</td><td class="code">  color: string;</td></tr>
 <tr class="nil"><td class="ln">9</td><td class="code">  /** Tooltip (used by the text palette; fill/arrow swatches are self-evident). */</td></tr>
-<tr class="nil"><td class="ln">10</td><td class="code">  label?: string;</td></tr>
+<tr class="cov"><td class="ln">10</td><td class="code">  label?: string;</td></tr>
 <tr class="nil"><td class="ln">11</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">12</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">13</td><td class="code">/** Foreground text color — neutrals + each hue in a normal and a light shade.</td></tr>
 <tr class="nil"><td class="ln">14</td><td class="code"> *  Canonical for BOTH the inline toolbar and the inspector text-color picker</td></tr>
 <tr class="nil"><td class="ln">15</td><td class="code"> *  (was the toolbar&#x27;s 17-entry `COLORS`; the inspector&#x27;s leaner 10 was a subset). */</td></tr>
 <tr class="cov"><td class="ln">16</td><td class="code">export const TEXT_PALETTE: readonly Swatch[] = [</td></tr>
-<tr class="nil"><td class="ln">17</td><td class="code">  { color: &#x27;#222222&#x27;, label: &#x27;Black&#x27; },</td></tr>
-<tr class="nil"><td class="ln">18</td><td class="code">  { color: &#x27;#6b7280&#x27;, label: &#x27;Grey&#x27; },</td></tr>
-<tr class="nil"><td class="ln">19</td><td class="code">  { color: &#x27;#9ca3af&#x27;, label: &#x27;Medium Grey&#x27; },</td></tr>
+<tr class="cov"><td class="ln">17</td><td class="code">  { color: &#x27;#222222&#x27;, label: &#x27;Black&#x27; },</td></tr>
+<tr class="cov"><td class="ln">18</td><td class="code">  { color: &#x27;#6b7280&#x27;, label: &#x27;Grey&#x27; },</td></tr>
+<tr class="cov"><td class="ln">19</td><td class="code">  { color: &#x27;#9ca3af&#x27;, label: &#x27;Medium Grey&#x27; },</td></tr>
 <tr class="cov"><td class="ln">20</td><td class="code">  { color: &#x27;#d1d5db&#x27;, label: &#x27;Light Grey&#x27; },</td></tr>
-<tr class="nil"><td class="ln">21</td><td class="code">  { color: &#x27;#16a34a&#x27;, label: &#x27;Green&#x27; },</td></tr>
-<tr class="nil"><td class="ln">22</td><td class="code">  { color: &#x27;#86efac&#x27;, label: &#x27;Light Green&#x27; },</td></tr>
-<tr class="nil"><td class="ln">23</td><td class="code">  { color: &#x27;#0d9488&#x27;, label: &#x27;Teal&#x27; },</td></tr>
-<tr class="nil"><td class="ln">24</td><td class="code">  { color: &#x27;#5eead4&#x27;, label: &#x27;Light Teal&#x27; },</td></tr>
-<tr class="nil"><td class="ln">25</td><td class="code">  { color: &#x27;#2563eb&#x27;, label: &#x27;Blue&#x27; },</td></tr>
-<tr class="nil"><td class="ln">26</td><td class="code">  { color: &#x27;#93c5fd&#x27;, label: &#x27;Light Blue&#x27; },</td></tr>
-<tr class="nil"><td class="ln">27</td><td class="code">  { color: &#x27;#dc2626&#x27;, label: &#x27;Red&#x27; },</td></tr>
-<tr class="nil"><td class="ln">28</td><td class="code">  { color: &#x27;#fca5a5&#x27;, label: &#x27;Light Red&#x27; },</td></tr>
-<tr class="nil"><td class="ln">29</td><td class="code">  { color: &#x27;#ea580c&#x27;, label: &#x27;Orange&#x27; },</td></tr>
-<tr class="nil"><td class="ln">30</td><td class="code">  { color: &#x27;#fdba74&#x27;, label: &#x27;Light Orange&#x27; },</td></tr>
-<tr class="nil"><td class="ln">31</td><td class="code">  { color: &#x27;#9333ea&#x27;, label: &#x27;Purple&#x27; },</td></tr>
-<tr class="nil"><td class="ln">32</td><td class="code">  { color: &#x27;#c4b5fd&#x27;, label: &#x27;Light Purple&#x27; },</td></tr>
-<tr class="nil"><td class="ln">33</td><td class="code">  { color: &#x27;#ffffff&#x27;, label: &#x27;White&#x27; },</td></tr>
+<tr class="cov"><td class="ln">21</td><td class="code">  { color: &#x27;#16a34a&#x27;, label: &#x27;Green&#x27; },</td></tr>
+<tr class="cov"><td class="ln">22</td><td class="code">  { color: &#x27;#86efac&#x27;, label: &#x27;Light Green&#x27; },</td></tr>
+<tr class="cov"><td class="ln">23</td><td class="code">  { color: &#x27;#0d9488&#x27;, label: &#x27;Teal&#x27; },</td></tr>
+<tr class="cov"><td class="ln">24</td><td class="code">  { color: &#x27;#5eead4&#x27;, label: &#x27;Light Teal&#x27; },</td></tr>
+<tr class="cov"><td class="ln">25</td><td class="code">  { color: &#x27;#2563eb&#x27;, label: &#x27;Blue&#x27; },</td></tr>
+<tr class="cov"><td class="ln">26</td><td class="code">  { color: &#x27;#93c5fd&#x27;, label: &#x27;Light Blue&#x27; },</td></tr>
+<tr class="cov"><td class="ln">27</td><td class="code">  { color: &#x27;#dc2626&#x27;, label: &#x27;Red&#x27; },</td></tr>
+<tr class="cov"><td class="ln">28</td><td class="code">  { color: &#x27;#fca5a5&#x27;, label: &#x27;Light Red&#x27; },</td></tr>
+<tr class="cov"><td class="ln">29</td><td class="code">  { color: &#x27;#ea580c&#x27;, label: &#x27;Orange&#x27; },</td></tr>
+<tr class="cov"><td class="ln">30</td><td class="code">  { color: &#x27;#fdba74&#x27;, label: &#x27;Light Orange&#x27; },</td></tr>
+<tr class="cov"><td class="ln">31</td><td class="code">  { color: &#x27;#9333ea&#x27;, label: &#x27;Purple&#x27; },</td></tr>
+<tr class="cov"><td class="ln">32</td><td class="code">  { color: &#x27;#c4b5fd&#x27;, label: &#x27;Light Purple&#x27; },</td></tr>
+<tr class="cov"><td class="ln">33</td><td class="code">  { color: &#x27;#ffffff&#x27;, label: &#x27;White&#x27; },</td></tr>
 <tr class="nil"><td class="ln">34</td><td class="code">];</td></tr>
 <tr class="nil"><td class="ln">35</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">36</td><td class="code">/** Fill palette for panels/masks — text-box backgrounds AND cover rectangles.</td></tr>
 <tr class="nil"><td class="ln">37</td><td class="code"> *  Bands: neutrals, soft tints (legible panels over busy slides), medium tints,</td></tr>
 <tr class="nil"><td class="ln">38</td><td class="code"> *  then a few deep saturated fills. */</td></tr>
 <tr class="cov"><td class="ln">39</td><td class="code">export const FILL_PALETTE: readonly Swatch[] = [</td></tr>
-<tr class="nil"><td class="ln">40</td><td class="code">  { color: &#x27;#ffffff&#x27; }, { color: &#x27;#f3f4f6&#x27; }, { color: &#x27;#d1d5db&#x27; }, { color: &#x27;#9ca3af&#x27; }, { color: &#x27;#374151&#x27; }, { color: &#x27;#000000&#x27; },</td></tr>
-<tr class="nil"><td class="ln">41</td><td class="code">  { color: &#x27;#fee2e2&#x27; }, { color: &#x27;#ffedd5&#x27; }, { color: &#x27;#fef9c3&#x27; }, { color: &#x27;#fff3b0&#x27; }, { color: &#x27;#dcfce7&#x27; }, { color: &#x27;#ccfbf1&#x27; },</td></tr>
-<tr class="nil"><td class="ln">42</td><td class="code">  { color: &#x27;#fca5a5&#x27; }, { color: &#x27;#fdba74&#x27; }, { color: &#x27;#fde047&#x27; }, { color: &#x27;#86efac&#x27; }, { color: &#x27;#5eead4&#x27; }, { color: &#x27;#7dd3fc&#x27; },</td></tr>
-<tr class="nil"><td class="ln">43</td><td class="code">  { color: &#x27;#93c5fd&#x27; }, { color: &#x27;#a5b4fc&#x27; }, { color: &#x27;#c4b5fd&#x27; }, { color: &#x27;#f0abfc&#x27; }, { color: &#x27;#f9a8d4&#x27; },</td></tr>
-<tr class="nil"><td class="ln">44</td><td class="code">  { color: &#x27;#b91c1c&#x27; }, { color: &#x27;#15803d&#x27; }, { color: &#x27;#1d4ed8&#x27; }, { color: &#x27;#6d28d9&#x27; },</td></tr>
+<tr class="cov"><td class="ln">40</td><td class="code">  { color: &#x27;#ffffff&#x27; }, { color: &#x27;#f3f4f6&#x27; }, { color: &#x27;#d1d5db&#x27; }, { color: &#x27;#9ca3af&#x27; }, { color: &#x27;#374151&#x27; }, { color: &#x27;#000000&#x27; },</td></tr>
+<tr class="cov"><td class="ln">41</td><td class="code">  { color: &#x27;#fee2e2&#x27; }, { color: &#x27;#ffedd5&#x27; }, { color: &#x27;#fef9c3&#x27; }, { color: &#x27;#fff3b0&#x27; }, { color: &#x27;#dcfce7&#x27; }, { color: &#x27;#ccfbf1&#x27; },</td></tr>
+<tr class="cov"><td class="ln">42</td><td class="code">  { color: &#x27;#fca5a5&#x27; }, { color: &#x27;#fdba74&#x27; }, { color: &#x27;#fde047&#x27; }, { color: &#x27;#86efac&#x27; }, { color: &#x27;#5eead4&#x27; }, { color: &#x27;#7dd3fc&#x27; },</td></tr>
+<tr class="cov"><td class="ln">43</td><td class="code">  { color: &#x27;#93c5fd&#x27; }, { color: &#x27;#a5b4fc&#x27; }, { color: &#x27;#c4b5fd&#x27; }, { color: &#x27;#f0abfc&#x27; }, { color: &#x27;#f9a8d4&#x27; },</td></tr>
+<tr class="cov"><td class="ln">44</td><td class="code">  { color: &#x27;#b91c1c&#x27; }, { color: &#x27;#15803d&#x27; }, { color: &#x27;#1d4ed8&#x27; }, { color: &#x27;#6d28d9&#x27; },</td></tr>
 <tr class="nil"><td class="ln">45</td><td class="code">];</td></tr>
 <tr class="nil"><td class="ln">46</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">47</td><td class="code">/** Arrow stroke palette — saturated colors, no light neutrals. */</td></tr>
 <tr class="cov"><td class="ln">48</td><td class="code">export const ARROW_PALETTE: readonly Swatch[] = [</td></tr>
 <tr class="cov"><td class="ln">49</td><td class="code">  { color: &#x27;#e53e3e&#x27; }, { color: &#x27;#dc2626&#x27; }, { color: &#x27;#ea580c&#x27; }, { color: &#x27;#16a34a&#x27; },</td></tr>
-<tr class="nil"><td class="ln">50</td><td class="code">  { color: &#x27;#2563eb&#x27; }, { color: &#x27;#9333ea&#x27; }, { color: &#x27;#222222&#x27; }, { color: &#x27;#6b7280&#x27; },</td></tr>
+<tr class="cov"><td class="ln">50</td><td class="code">  { color: &#x27;#2563eb&#x27; }, { color: &#x27;#9333ea&#x27; }, { color: &#x27;#222222&#x27; }, { color: &#x27;#6b7280&#x27; },</td></tr>
 <tr class="nil"><td class="ln">51</td><td class="code">];</td></tr>
 <tr class="nil"><td class="ln">52</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">53</td><td class="code">/** Themed tint bases (#132): &#x27;accent&#x27; follows the slide theme; the rest are</td></tr>
 <tr class="nil"><td class="ln">54</td><td class="code"> *  semantic (alert red, example green, amber, purple). Each renders RELATIVE to the</td></tr>
 <tr class="nil"><td class="ln">55</td><td class="code"> *  slide background (a wash for fills, the accent solid for foreground) so it stays</td></tr>
 <tr class="nil"><td class="ln">56</td><td class="code"> *  colored + contrasting on ANY theme. */</td></tr>
-<tr class="nil"><td class="ln">57</td><td class="code">export interface TintSwatch { base: string; title: string; }</td></tr>
+<tr class="cov"><td class="ln">57</td><td class="code">export interface TintSwatch { base: string; title: string; }</td></tr>
 <tr class="cov"><td class="ln">58</td><td class="code">export const TINT_SWATCHES: readonly TintSwatch[] = [</td></tr>
 <tr class="cov"><td class="ln">59</td><td class="code">  { base: &#x27;accent&#x27;, title: &#x27;Theme accent tint (adapts to each slide theme)&#x27; },</td></tr>
-<tr class="nil"><td class="ln">60</td><td class="code">  { base: &#x27;#dc2626&#x27;, title: &#x27;Red tint (alert)&#x27; },</td></tr>
-<tr class="nil"><td class="ln">61</td><td class="code">  { base: &#x27;#16a34a&#x27;, title: &#x27;Green tint (example)&#x27; },</td></tr>
-<tr class="nil"><td class="ln">62</td><td class="code">  { base: &#x27;#d97706&#x27;, title: &#x27;Amber tint&#x27; },</td></tr>
-<tr class="nil"><td class="ln">63</td><td class="code">  { base: &#x27;#7c3aed&#x27;, title: &#x27;Purple tint&#x27; },</td></tr>
+<tr class="cov"><td class="ln">60</td><td class="code">  { base: &#x27;#dc2626&#x27;, title: &#x27;Red tint (alert)&#x27; },</td></tr>
+<tr class="cov"><td class="ln">61</td><td class="code">  { base: &#x27;#16a34a&#x27;, title: &#x27;Green tint (example)&#x27; },</td></tr>
+<tr class="cov"><td class="ln">62</td><td class="code">  { base: &#x27;#d97706&#x27;, title: &#x27;Amber tint&#x27; },</td></tr>
+<tr class="cov"><td class="ln">63</td><td class="code">  { base: &#x27;#7c3aed&#x27;, title: &#x27;Purple tint&#x27; },</td></tr>
 <tr class="nil"><td class="ln">64</td><td class="code">];</td></tr>
 <tr class="nil"><td class="ln">65</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">66</td><td class="code">/** The single accent tint — the only theme-relative option for a FOREGROUND color</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code">/** The single accent tint — the only theme-relative option for a FOREGROUND color</td></tr>
 <tr class="nil"><td class="ln">67</td><td class="code"> *  (text/arrow), where the semantic tints would just be literal colors. */</td></tr>
 <tr class="cov"><td class="ln">68</td><td class="code">export const ACCENT_TINT: readonly TintSwatch[] = [</td></tr>
 <tr class="nil"><td class="ln">69</td><td class="code">  { base: &#x27;accent&#x27;, title: &#x27;Theme accent (adapts to each slide theme)&#x27; },</td></tr>

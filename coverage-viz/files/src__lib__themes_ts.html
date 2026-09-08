@@ -6,64 +6,65 @@
   <h1>src/lib/themes.ts </h1>
   <div class="stats">
     <span class="stat"><b>100%</b> covered</span>
-    <span class="stat">22/22 executable</span>
+    <span class="stat">11/11 statements</span>
     <span class="stat unc-txt">0 uncovered</span>
     <span class="stat">58 raw lines</span>
     <span class="stat">0.14% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:37.931%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:62.069%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:100.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:0.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__lib__themeColors_mjs.html">themeColors.mjs</a></div>
   <div class="links"><span>imported by:</span> <a href="src__components__ColorControl_tsx.html">ColorControl.tsx</a> <a href="src__components__PresentMode_tsx.html">PresentMode.tsx</a> <a href="src__components__PresentSlide_tsx.html">PresentSlide.tsx</a> <a href="src__components__PropertiesPanel_tsx.html">PropertiesPanel.tsx</a> <a href="src__components__SlideEditor_tsx.html">SlideEditor.tsx</a> <a href="src__components__SlideElementRenderer_tsx.html">SlideElementRenderer.tsx</a> <a href="src__components__SlideThumbnail_tsx.html">SlideThumbnail.tsx</a> <a href="src__components__TextElementSvg_tsx.html">TextElementSvg.tsx</a> <a href="src__components__notebook__NotebookContent_tsx.html">NotebookContent.tsx</a> <a href="src__lib__demoThemeInject_ts.html">demoThemeInject.ts</a> <a href="src__lib__elementClipboard_ts.html">elementClipboard.ts</a> <a href="src__lib__notebookExport_tsx.html">notebookExport.tsx</a> <a href="src__lib__printLayer_ts.html">printLayer.ts</a> <a href="src__lib__printSlideHtml_ts.html">printSlideHtml.ts</a> <a href="src__lib__snapshotAll_ts.html">snapshotAll.ts</a> <a href="src__store__fileOps_ts.html">fileOps.ts</a></div>
 </header>
 <table class="src"><tr class="nil"><td class="ln">1</td><td class="code">/**</td></tr>
-<tr class="cov"><td class="ln">2</td><td class="code"> * Theme definitions for Eigendeck presentations.</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code"> * Theme definitions for Eigendeck presentations.</td></tr>
 <tr class="nil"><td class="ln">3</td><td class="code"> *</td></tr>
 <tr class="nil"><td class="ln">4</td><td class="code"> * Color VALUES live in the canonical, framework-free map `themeColors.mjs`</td></tr>
 <tr class="nil"><td class="ln">5</td><td class="code"> * (shared with the headless CLI export). This file is the TS surface over that</td></tr>
 <tr class="nil"><td class="ln">6</td><td class="code"> * map — types, UI labels, and the resolver helpers.</td></tr>
 <tr class="nil"><td class="ln">7</td><td class="code"> * To add a custom theme, add an entry to THEME_COLORS in themeColors.mjs.</td></tr>
-<tr class="cov"><td class="ln">8</td><td class="code"> */</td></tr>
-<tr class="cov"><td class="ln">9</td><td class="code">&nbsp;</td></tr>
-<tr class="nil"><td class="ln">10</td><td class="code">import { THEME_COLORS, themeColorsByName, themeColorForPreset as themeColorForPresetMjs } from &#x27;./themeColors.mjs&#x27;;<a class="jump" href="src__lib__themeColors_mjs.html" title="src/lib/themeColors.mjs">→ themeColors.mjs</a></td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">10</td><td class="code">import { THEME_COLORS, themeColorsByName, themeColorForPreset as themeColorForPresetMjs } from &#x27;./themeColors.mjs&#x27;;<a class="jump" href="src__lib__themeColors_mjs.html" title="src/lib/themeColors.mjs">→ themeColors.mjs</a></td></tr>
 <tr class="nil"><td class="ln">11</td><td class="code">&nbsp;</td></tr>
-<tr class="nil"><td class="ln">12</td><td class="code">export interface ThemeColors {</td></tr>
+<tr class="cov"><td class="ln">12</td><td class="code">export interface ThemeColors {</td></tr>
 <tr class="nil"><td class="ln">13</td><td class="code">  background: string;  // slide background</td></tr>
 <tr class="nil"><td class="ln">14</td><td class="code">  text: string;        // body/textbox default text</td></tr>
 <tr class="cov"><td class="ln">15</td><td class="code">  heading: string;     // title text</td></tr>
 <tr class="nil"><td class="ln">16</td><td class="code">  accent: string;      // annotation text</td></tr>
 <tr class="nil"><td class="ln">17</td><td class="code">  muted: string;       // footnote text</td></tr>
-<tr class="cov"><td class="ln">18</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">19</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">20</td><td class="code">const THEME_LABELS: Record&lt;string, string&gt; = {</td></tr>
 <tr class="cov"><td class="ln">21</td><td class="code">  white: &#x27;White&#x27;, light: &#x27;Light&#x27;, dark: &#x27;Dark&#x27;, black: &#x27;Black&#x27;,</td></tr>
-<tr class="cov"><td class="ln">22</td><td class="code">};</td></tr>
-<tr class="cov"><td class="ln">23</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">24</td><td class="code">// Colors come from the canonical map (themeColors.mjs); this layer adds UI labels.</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">};</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">// Colors come from the canonical map (themeColors.mjs); this layer adds UI labels.</td></tr>
 <tr class="cov"><td class="ln">25</td><td class="code">export const BUILT_IN_THEMES: Record&lt;string, { label: string; colors: ThemeColors }&gt; =</td></tr>
-<tr class="cov"><td class="ln">26</td><td class="code">  Object.fromEntries(</td></tr>
-<tr class="cov"><td class="ln">27</td><td class="code">    Object.entries(THEME_COLORS).map(([name, colors]) =&gt; [</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">  Object.fromEntries(</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">    Object.entries(THEME_COLORS).map(([name, colors]) =&gt; [</td></tr>
 <tr class="cov"><td class="ln">28</td><td class="code">      name, { label: THEME_LABELS[name] || name, colors: colors as ThemeColors },</td></tr>
 <tr class="nil"><td class="ln">29</td><td class="code">    ]),</td></tr>
 <tr class="nil"><td class="ln">30</td><td class="code">  );</td></tr>
 <tr class="nil"><td class="ln">31</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">32</td><td class="code">/** Resolve the effective theme for a slide */</td></tr>
 <tr class="nil"><td class="ln">33</td><td class="code">export function resolveTheme(presentationTheme: string, slideTheme?: string): ThemeColors {</td></tr>
-<tr class="cov"><td class="ln">34</td><td class="code">  return themeColorsByName(presentationTheme, slideTheme) as ThemeColors;</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">  return themeColorsByName(presentationTheme, slideTheme) as ThemeColors;</td></tr>
 <tr class="nil"><td class="ln">35</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">36</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">37</td><td class="code">/** Get the theme-default color for a text preset, or undefined if not themed */</td></tr>
 <tr class="nil"><td class="ln">38</td><td class="code">export function themeColorForPreset(theme: ThemeColors, preset: string): string {</td></tr>
-<tr class="cov"><td class="ln">39</td><td class="code">  return themeColorForPresetMjs(theme, preset);</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">  return themeColorForPresetMjs(theme, preset);</td></tr>
 <tr class="nil"><td class="ln">40</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">41</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">42</td><td class="code">/** Check if a theme is &quot;dark&quot; (for UI decisions like icon colors) */</td></tr>
 <tr class="nil"><td class="ln">43</td><td class="code">export function isDarkTheme(theme: ThemeColors): boolean {</td></tr>
 <tr class="nil"><td class="ln">44</td><td class="code">  // Simple luminance check on background</td></tr>
-<tr class="cov"><td class="ln">45</td><td class="code">  const hex = theme.background.replace(&#x27;#&#x27;, &#x27;&#x27;);</td></tr>
-<tr class="cov"><td class="ln">46</td><td class="code">  const r = parseInt(hex.slice(0, 2), 16);</td></tr>
-<tr class="cov"><td class="ln">47</td><td class="code">  const g = parseInt(hex.slice(2, 4), 16);</td></tr>
-<tr class="cov"><td class="ln">48</td><td class="code">  const b = parseInt(hex.slice(4, 6), 16);</td></tr>
-<tr class="cov"><td class="ln">49</td><td class="code">  return (r * 299 + g * 587 + b * 114) / 1000 &lt; 128;</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">  const hex = theme.background.replace(&#x27;#&#x27;, &#x27;&#x27;);</td></tr>
+<tr class="nil"><td class="ln">46</td><td class="code">  const r = parseInt(hex.slice(0, 2), 16);</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">  const g = parseInt(hex.slice(2, 4), 16);</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">  const b = parseInt(hex.slice(4, 6), 16);</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">  return (r * 299 + g * 587 + b * 114) / 1000 &lt; 128;</td></tr>
 <tr class="nil"><td class="ln">50</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">51</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">52</td><td class="code">/** Salt that changes when the resolved slide THEME changes — mixed into the</td></tr>
@@ -71,6 +72,6 @@
 <tr class="nil"><td class="ln">54</td><td class="code"> *  PNG. Shared by the live capture (NotebookContent) and the PDF/print export&#x27;s</td></tr>
 <tr class="nil"><td class="ln">55</td><td class="code"> *  staleness check (#140) so both compute the SAME value. */</td></tr>
 <tr class="nil"><td class="ln">56</td><td class="code">export function previewThemeSalt(theme: ThemeColors): string {</td></tr>
-<tr class="cov"><td class="ln">57</td><td class="code">  return `${theme.background}|${theme.text}|${isDarkTheme(theme) ? &#x27;d&#x27; : &#x27;l&#x27;}`;</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">  return `${theme.background}|${theme.text}|${isDarkTheme(theme) ? &#x27;d&#x27; : &#x27;l&#x27;}`;</td></tr>
 <tr class="nil"><td class="ln">58</td><td class="code">}</td></tr></table>
 </body></html>

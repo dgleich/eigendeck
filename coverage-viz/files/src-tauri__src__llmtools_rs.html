@@ -5,13 +5,14 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src-tauri/src/llmtools.rs </h1>
   <div class="stats">
-    <span class="stat"><b>45%</b> covered</span>
-    <span class="stat">57/126 executable</span>
-    <span class="stat unc-txt">69 uncovered</span>
+    <span class="stat"><b>48%</b> covered</span>
+    <span class="stat">52/109 line</span>
+    <span class="stat unc-txt">57 uncovered</span>
     <span class="stat">203 raw lines</span>
     <span class="stat">0.48% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:28.079%"></span><span class="seg unc" style="width:33.990%"></span><span class="seg nil" style="width:37.931%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:47.706%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:52.294%"></span></span>
+  <div class="metricnote">llvm-cov <b>line</b> coverage (region-precise). A red <code>)?;</code> = the <code>?</code> error path was never taken.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src-tauri__src__lib_rs.html">lib.rs</a></div>
 </header>
@@ -57,18 +58,18 @@
 <tr class="unc"><td class="ln">40</td><td class="code">    let candidate = resource_dir.join(&quot;resources&quot;).join(&quot;llm-tools&quot;);</td></tr>
 <tr class="unc"><td class="ln">41</td><td class="code">    if is_valid_kit(&amp;candidate) {</td></tr>
 <tr class="unc"><td class="ln">42</td><td class="code">        return Ok(candidate);</td></tr>
-<tr class="unc"><td class="ln">43</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">    }</td></tr>
 <tr class="unc"><td class="ln">44</td><td class="code">    let flat = resource_dir.join(&quot;llm-tools&quot;);</td></tr>
 <tr class="unc"><td class="ln">45</td><td class="code">    if is_valid_kit(&amp;flat) {</td></tr>
 <tr class="unc"><td class="ln">46</td><td class="code">        return Ok(flat);</td></tr>
-<tr class="unc"><td class="ln">47</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">48</td><td class="code">    // Dev fallback: the source tree (only present in `cargo tauri dev`).</td></tr>
 <tr class="unc"><td class="ln">49</td><td class="code">    let dev = PathBuf::from(env!(&quot;CARGO_MANIFEST_DIR&quot;))</td></tr>
 <tr class="unc"><td class="ln">50</td><td class="code">        .join(&quot;resources&quot;)</td></tr>
 <tr class="unc"><td class="ln">51</td><td class="code">        .join(&quot;llm-tools&quot;);</td></tr>
 <tr class="unc"><td class="ln">52</td><td class="code">    if is_valid_kit(&amp;dev) {</td></tr>
 <tr class="unc"><td class="ln">53</td><td class="code">        return Ok(dev);</td></tr>
-<tr class="unc"><td class="ln">54</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">55</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">56</td><td class="code">    Err(format!(</td></tr>
 <tr class="unc"><td class="ln">57</td><td class="code">        &quot;LLM tools kit not found (no valid nested kit with a skills/ subdir). \</td></tr>
@@ -78,8 +79,8 @@
 <tr class="unc"><td class="ln">61</td><td class="code">        candidate.display(),</td></tr>
 <tr class="unc"><td class="ln">62</td><td class="code">        flat.display(),</td></tr>
 <tr class="unc"><td class="ln">63</td><td class="code">        dev.display(),</td></tr>
-<tr class="unc"><td class="ln">64</td><td class="code">    ))</td></tr>
-<tr class="unc"><td class="ln">65</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">64</td><td class="code">    ))</td></tr>
+<tr class="nil"><td class="ln">65</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">66</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">67</td><td class="code">/// Resolve the absolute path to the app&#x27;s sibling `eigendeck-cli` binary.</td></tr>
 <tr class="nil"><td class="ln">68</td><td class="code">/// In a packaged macOS app both binaries live in `Contents/MacOS/`; on</td></tr>
@@ -95,7 +96,7 @@
 <tr class="unc"><td class="ln">78</td><td class="code">        &quot;eigendeck-cli&quot;</td></tr>
 <tr class="nil"><td class="ln">79</td><td class="code">    };</td></tr>
 <tr class="unc"><td class="ln">80</td><td class="code">    Ok(dir.join(name))</td></tr>
-<tr class="unc"><td class="ln">81</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">81</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">82</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">83</td><td class="code">/// Install the LLM tools kit into `&lt;target_dir&gt;/eigendeck-llm-tools/`.</td></tr>
 <tr class="nil"><td class="ln">84</td><td class="code">/// Returns the created directory path so the frontend can reveal it.</td></tr>
@@ -109,7 +110,7 @@
 <tr class="unc"><td class="ln">92</td><td class="code">    let target = Path::new(&amp;target_dir);</td></tr>
 <tr class="unc"><td class="ln">93</td><td class="code">    if !target.is_dir() {</td></tr>
 <tr class="unc"><td class="ln">94</td><td class="code">        return Err(format!(&quot;Target folder does not exist: {}&quot;, target_dir));</td></tr>
-<tr class="unc"><td class="ln">95</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">95</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">96</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">97</td><td class="code">    let kit_dir = resolve_kit_dir(&amp;app)?;</td></tr>
 <tr class="unc"><td class="ln">98</td><td class="code">    let cli_path = resolve_cli_path()?;</td></tr>
@@ -123,8 +124,8 @@
 <tr class="unc"><td class="ln">106</td><td class="code">            &quot;{} already exists — remove it (or choose another folder) first; \</td></tr>
 <tr class="unc"><td class="ln">107</td><td class="code">             the installer will not overwrite an existing kit.&quot;,</td></tr>
 <tr class="unc"><td class="ln">108</td><td class="code">            out_dir.display()</td></tr>
-<tr class="unc"><td class="ln">109</td><td class="code">        ));</td></tr>
-<tr class="unc"><td class="ln">110</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">109</td><td class="code">        ));</td></tr>
+<tr class="nil"><td class="ln">110</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">111</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">112</td><td class="code">    // Copy the whole kit tree — the kit has subdirs (skills/, reference/), so recurse.</td></tr>
 <tr class="nil"><td class="ln">113</td><td class="code">    // AGENTS.md gets the CLI-path substitution; everything else is a straight copy.</td></tr>
@@ -133,10 +134,10 @@
 <tr class="unc"><td class="ln">116</td><td class="code">    if let Err(e) = copy_kit_tree(&amp;kit_dir, &amp;out_dir, &amp;cli_str) {</td></tr>
 <tr class="unc"><td class="ln">117</td><td class="code">        let _ = std::fs::remove_dir_all(&amp;out_dir);</td></tr>
 <tr class="unc"><td class="ln">118</td><td class="code">        return Err(e);</td></tr>
-<tr class="unc"><td class="ln">119</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">119</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">120</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">121</td><td class="code">    Ok(out_dir.to_string_lossy().to_string())</td></tr>
-<tr class="unc"><td class="ln">122</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">122</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">123</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">124</td><td class="code">/// Recursively copy `src` into `dst`, preserving the directory structure. The</td></tr>
 <tr class="nil"><td class="ln">125</td><td class="code">/// top-level `AGENTS.md` has `__EIGENDECK_CLI_PATH__` replaced with the resolved</td></tr>
@@ -161,7 +162,7 @@
 <tr class="nil"><td class="ln">144</td><td class="code">            // appeared mid-copy), stop rather than clobber it.</td></tr>
 <tr class="cov"><td class="ln">145</td><td class="code">            if dest.exists() {</td></tr>
 <tr class="cov"><td class="ln">146</td><td class="code">                return Err(format!(&quot;Refusing to overwrite existing file: {}&quot;, dest.display()));</td></tr>
-<tr class="cov"><td class="ln">147</td><td class="code">            }</td></tr>
+<tr class="nil"><td class="ln">147</td><td class="code">            }</td></tr>
 <tr class="cov"><td class="ln">148</td><td class="code">            if name == &quot;AGENTS.md&quot; {</td></tr>
 <tr class="cov"><td class="ln">149</td><td class="code">                let contents = std::fs::read_to_string(&amp;path)</td></tr>
 <tr class="cov"><td class="ln">150</td><td class="code">                    .map_err(|e| format!(&quot;Could not read {}: {}&quot;, path.display(), e))?;</td></tr>
@@ -172,10 +173,10 @@
 <tr class="cov"><td class="ln">155</td><td class="code">                std::fs::copy(&amp;path, &amp;dest)</td></tr>
 <tr class="cov"><td class="ln">156</td><td class="code">                    .map_err(|e| format!(&quot;Could not copy {} → {}: {}&quot;, path.display(), dest.display(), e))?;</td></tr>
 <tr class="nil"><td class="ln">157</td><td class="code">            }</td></tr>
-<tr class="unc"><td class="ln">158</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">158</td><td class="code">        }</td></tr>
 <tr class="nil"><td class="ln">159</td><td class="code">    }</td></tr>
 <tr class="cov"><td class="ln">160</td><td class="code">    Ok(())</td></tr>
-<tr class="cov"><td class="ln">161</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">161</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">162</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">163</td><td class="code">#[cfg(test)]</td></tr>
 <tr class="nil"><td class="ln">164</td><td class="code">mod tests {</td></tr>
@@ -186,7 +187,7 @@
 <tr class="cov"><td class="ln">169</td><td class="code">        let d = std::env::temp_dir().join(format!(&quot;eigendeck-llmtools-{}-{}&quot;, std::process::id(), name));</td></tr>
 <tr class="cov"><td class="ln">170</td><td class="code">        let _ = fs::remove_dir_all(&amp;d);</td></tr>
 <tr class="cov"><td class="ln">171</td><td class="code">        d</td></tr>
-<tr class="cov"><td class="ln">172</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">172</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">173</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">174</td><td class="code">    #[test]</td></tr>
 <tr class="cov"><td class="ln">175</td><td class="code">    fn copy_kit_tree_preserves_nested_structure_and_substitutes_cli() {</td></tr>
@@ -201,7 +202,7 @@
 <tr class="cov"><td class="ln">184</td><td class="code">        assert_eq!(fs::read_to_string(dst.join(&quot;skills&quot;).join(&quot;eigendeck&quot;).join(&quot;SKILL.md&quot;)).unwrap(), &quot;skill&quot;);</td></tr>
 <tr class="cov"><td class="ln">185</td><td class="code">        fs::remove_dir_all(&amp;src).ok();</td></tr>
 <tr class="cov"><td class="ln">186</td><td class="code">        fs::remove_dir_all(&amp;dst).ok();</td></tr>
-<tr class="cov"><td class="ln">187</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">187</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">188</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">189</td><td class="code">    #[test]</td></tr>
 <tr class="cov"><td class="ln">190</td><td class="code">    fn copy_kit_tree_refuses_to_overwrite_an_existing_file() {</td></tr>
@@ -216,6 +217,6 @@
 <tr class="cov"><td class="ln">199</td><td class="code">        assert_eq!(fs::read_to_string(dst.join(&quot;x.md&quot;)).unwrap(), &quot;old&quot;); // untouched</td></tr>
 <tr class="cov"><td class="ln">200</td><td class="code">        fs::remove_dir_all(&amp;src).ok();</td></tr>
 <tr class="cov"><td class="ln">201</td><td class="code">        fs::remove_dir_all(&amp;dst).ok();</td></tr>
-<tr class="cov"><td class="ln">202</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">202</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">203</td><td class="code">}</td></tr></table>
 </body></html>

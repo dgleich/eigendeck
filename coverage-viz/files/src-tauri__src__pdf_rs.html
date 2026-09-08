@@ -6,12 +6,13 @@
   <h1>src-tauri/src/pdf.rs </h1>
   <div class="stats">
     <span class="stat"><b>0%</b> covered</span>
-    <span class="stat">0/149 executable</span>
-    <span class="stat unc-txt">149 uncovered</span>
+    <span class="stat">0/135 line</span>
+    <span class="stat unc-txt">135 uncovered</span>
     <span class="stat">292 raw lines</span>
     <span class="stat">0.68% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:0.000%"></span><span class="seg unc" style="width:51.027%"></span><span class="seg nil" style="width:48.973%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:0.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:100.000%"></span></span>
+  <div class="metricnote">llvm-cov <b>line</b> coverage (region-precise). A red <code>)?;</code> = the <code>?</code> error path was never taken.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src-tauri__src__lib_rs.html">lib.rs</a></div>
 </header>
@@ -66,21 +67,21 @@
 <tr class="unc"><td class="ln">49</td><td class="code">    let candidate = resource_dir.join(&quot;resources&quot;).join(&quot;pdfium&quot;).join(filename);</td></tr>
 <tr class="unc"><td class="ln">50</td><td class="code">    if candidate.exists() {</td></tr>
 <tr class="unc"><td class="ln">51</td><td class="code">        return Ok(candidate);</td></tr>
-<tr class="unc"><td class="ln">52</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">53</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">54</td><td class="code">    // Fallback: some tauri-dev modes don&#x27;t prefix `resources/` — check</td></tr>
 <tr class="nil"><td class="ln">55</td><td class="code">    // the flat form too.</td></tr>
 <tr class="unc"><td class="ln">56</td><td class="code">    let flat = resource_dir.join(filename);</td></tr>
 <tr class="unc"><td class="ln">57</td><td class="code">    if flat.exists() {</td></tr>
 <tr class="unc"><td class="ln">58</td><td class="code">        return Ok(flat);</td></tr>
-<tr class="unc"><td class="ln">59</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">60</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">61</td><td class="code">    Err(format!(</td></tr>
 <tr class="unc"><td class="ln">62</td><td class="code">        &quot;pdfium dylib not found. Checked: {} and {}. \</td></tr>
 <tr class="unc"><td class="ln">63</td><td class="code">         Make sure build.rs ran (downloads bblanchon prebuilt).&quot;,</td></tr>
 <tr class="unc"><td class="ln">64</td><td class="code">        candidate.display(), flat.display(),</td></tr>
-<tr class="unc"><td class="ln">65</td><td class="code">    ))</td></tr>
-<tr class="unc"><td class="ln">66</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">65</td><td class="code">    ))</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">67</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">68</td><td class="code">/// Rasterize a PDF&#x27;s first page to PNG bytes (for the clipboard&#x27;s raster</td></tr>
 <tr class="nil"><td class="ln">69</td><td class="code">/// fallback). All-Rust via pdfium.</td></tr>
@@ -89,7 +90,7 @@
 <tr class="unc"><td class="ln">72</td><td class="code">) -&gt; Result&lt;Vec&lt;u8&gt;, String&gt; {</td></tr>
 <tr class="unc"><td class="ln">73</td><td class="code">    let pdfium = get_pdfium(app)?;</td></tr>
 <tr class="unc"><td class="ln">74</td><td class="code">    render_page_inner(pdfium, pdf_bytes, 0, max_width, max_height)</td></tr>
-<tr class="unc"><td class="ln">75</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">75</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">76</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">77</td><td class="code">fn get_pdfium(app: &amp;tauri::AppHandle) -&gt; Result&lt;&amp;&#x27;static Pdfium, String&gt; {</td></tr>
 <tr class="unc"><td class="ln">78</td><td class="code">    let init = PDFIUM.get_or_init(|| {</td></tr>
@@ -97,9 +98,9 @@
 <tr class="unc"><td class="ln">80</td><td class="code">        let bindings = Pdfium::bind_to_library(&amp;lib_path)</td></tr>
 <tr class="unc"><td class="ln">81</td><td class="code">            .map_err(|e| format!(&quot;Pdfium::bind_to_library({}) failed: {}&quot;, lib_path.display(), e))?;</td></tr>
 <tr class="unc"><td class="ln">82</td><td class="code">        Ok(Pdfium::new(bindings))</td></tr>
-<tr class="unc"><td class="ln">83</td><td class="code">    });</td></tr>
+<tr class="nil"><td class="ln">83</td><td class="code">    });</td></tr>
 <tr class="unc"><td class="ln">84</td><td class="code">    init.as_ref().map_err(|e| e.clone())</td></tr>
-<tr class="unc"><td class="ln">85</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">85</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">86</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">87</td><td class="code">/// Pure render: given a Pdfium instance and PDF bytes, rasterize the</td></tr>
 <tr class="nil"><td class="ln">88</td><td class="code">/// requested page to PNG bytes aspect-fit into (max_width, max_height).</td></tr>
@@ -176,7 +177,7 @@
 <tr class="unc"><td class="ln">159</td><td class="code">        png_bytes.len() / 1024, t_png.elapsed().as_millis());</td></tr>
 <tr class="nil"><td class="ln">160</td><td class="code">&nbsp;</td></tr>
 <tr class="unc"><td class="ln">161</td><td class="code">    Ok(png_bytes)</td></tr>
-<tr class="unc"><td class="ln">162</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">162</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">163</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">164</td><td class="code">/// Render one page of a stored PDF asset to PNG bytes, aspect-fit into</td></tr>
 <tr class="nil"><td class="ln">165</td><td class="code">/// (max_width, max_height). `page` is 0-indexed.</td></tr>
@@ -192,7 +193,7 @@
 <tr class="nil"><td class="ln">175</td><td class="code">// producing a beachball + queued visual updates. spawn_blocking moves</td></tr>
 <tr class="nil"><td class="ln">176</td><td class="code">// the pdfium parse/render onto tokio&#x27;s blocking thread pool, leaving the</td></tr>
 <tr class="nil"><td class="ln">177</td><td class="code">// main thread free for paint commits and IPC dispatch.</td></tr>
-<tr class="unc"><td class="ln">178</td><td class="code">#[tauri::command]</td></tr>
+<tr class="nil"><td class="ln">178</td><td class="code">#[tauri::command]</td></tr>
 <tr class="unc"><td class="ln">179</td><td class="code">pub async fn db_render_pdf_page(</td></tr>
 <tr class="unc"><td class="ln">180</td><td class="code">    app: tauri::AppHandle,</td></tr>
 <tr class="unc"><td class="ln">181</td><td class="code">    asset_id: String,</td></tr>
@@ -219,11 +220,11 @@
 <tr class="unc"><td class="ln">202</td><td class="code">        plog!(&quot;[pdf] db_render_pdf_page TOTAL: {}ms ({}KB PNG)&quot;,</td></tr>
 <tr class="unc"><td class="ln">203</td><td class="code">            t_total.elapsed().as_millis(), png.len() / 1024);</td></tr>
 <tr class="unc"><td class="ln">204</td><td class="code">        Ok(png)</td></tr>
-<tr class="unc"><td class="ln">205</td><td class="code">    })</td></tr>
+<tr class="nil"><td class="ln">205</td><td class="code">    })</td></tr>
 <tr class="unc"><td class="ln">206</td><td class="code">    .await</td></tr>
 <tr class="unc"><td class="ln">207</td><td class="code">    .map_err(|e| format!(&quot;spawn_blocking join: {}&quot;, e))??;</td></tr>
 <tr class="unc"><td class="ln">208</td><td class="code">    Ok(tauri::ipc::Response::new(png))</td></tr>
-<tr class="unc"><td class="ln">209</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">209</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">210</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">211</td><td class="code">/// Number of pages in a stored PDF asset. Cheap (parses header, doesn&#x27;t</td></tr>
 <tr class="nil"><td class="ln">212</td><td class="code">/// rasterize). Used by the inspector &quot;page 1 of N&quot; hint.</td></tr>
@@ -238,7 +239,7 @@
 <tr class="unc"><td class="ln">221</td><td class="code">        .load_pdf_from_byte_slice(&amp;bytes, None)</td></tr>
 <tr class="unc"><td class="ln">222</td><td class="code">        .map_err(|e| format!(&quot;load_pdf_from_byte_slice for {}: {}&quot;, asset_id, e))?;</td></tr>
 <tr class="unc"><td class="ln">223</td><td class="code">    Ok(document.pages().len() as u32)</td></tr>
-<tr class="unc"><td class="ln">224</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">224</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">225</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">226</td><td class="code">#[cfg(test)]</td></tr>
 <tr class="nil"><td class="ln">227</td><td class="code">mod tests {</td></tr>
@@ -256,7 +257,7 @@
 <tr class="unc"><td class="ln">239</td><td class="code">            &quot;libpdfium.so&quot;</td></tr>
 <tr class="nil"><td class="ln">240</td><td class="code">        };</td></tr>
 <tr class="unc"><td class="ln">241</td><td class="code">        manifest_dir.join(&quot;resources&quot;).join(&quot;pdfium&quot;).join(filename)</td></tr>
-<tr class="unc"><td class="ln">242</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">242</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">243</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">244</td><td class="code">    /// End-to-end pdfium smoke test: bind the bundled dylib, generate a</td></tr>
 <tr class="nil"><td class="ln">245</td><td class="code">    /// blank PDF in-process (no fixture file needed), run it through</td></tr>
@@ -305,6 +306,6 @@
 <tr class="nil"><td class="ln">288</td><td class="code">            &amp;[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A],</td></tr>
 <tr class="nil"><td class="ln">289</td><td class="code">            &quot;output should start with PNG magic bytes&quot;,</td></tr>
 <tr class="nil"><td class="ln">290</td><td class="code">        );</td></tr>
-<tr class="unc"><td class="ln">291</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">291</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">292</td><td class="code">}</td></tr></table>
 </body></html>

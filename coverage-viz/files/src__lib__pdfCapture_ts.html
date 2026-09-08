@@ -5,13 +5,14 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/pdfCapture.ts </h1>
   <div class="stats">
-    <span class="stat"><b>59%</b> covered</span>
-    <span class="stat">23/39 executable</span>
-    <span class="stat unc-txt">16 uncovered</span>
+    <span class="stat"><b>51%</b> covered</span>
+    <span class="stat">25/49 statements</span>
+    <span class="stat unc-txt">24 uncovered</span>
     <span class="stat">89 raw lines</span>
     <span class="stat">0.21% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:25.843%"></span><span class="seg unc" style="width:17.978%"></span><span class="seg nil" style="width:56.180%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:51.020%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:48.980%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__store__presentation_ts.html">presentation.ts</a> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
   <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a></div>
 </header>
@@ -62,7 +63,7 @@
 <tr class="nil"><td class="ln">45</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">46</td><td class="code">  const jpegImages: Uint8Array[] = [];</td></tr>
 <tr class="cov"><td class="ln">47</td><td class="code">  const total = presentation.slides.length;</td></tr>
-<tr class="cov"><td class="ln">48</td><td class="code">  try {</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">  try {</td></tr>
 <tr class="cov"><td class="ln">49</td><td class="code">    for (let i = 0; i &lt; total; i++) {</td></tr>
 <tr class="cov"><td class="ln">50</td><td class="code">      onProgress?.({ current: i + 1, total });</td></tr>
 <tr class="cov"><td class="ln">51</td><td class="code">      usePresentationStore.getState().selectSlide(i);</td></tr>
@@ -70,11 +71,11 @@
 <tr class="nil"><td class="ln">53</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">54</td><td class="code">      const canvas = document.querySelector(&#x27;.slide-canvas&#x27;) as HTMLElement | null;</td></tr>
 <tr class="cov"><td class="ln">55</td><td class="code">      let bytes = new Uint8Array(0);</td></tr>
-<tr class="cov"><td class="ln">56</td><td class="code">      if (canvas) {</td></tr>
-<tr class="unc"><td class="ln">57</td><td class="code">        try {</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code">      if (canvas) {</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">        try {</td></tr>
 <tr class="unc"><td class="ln">58</td><td class="code">          const dataUrl = await domToDataUrl(canvas, {</td></tr>
-<tr class="nil"><td class="ln">59</td><td class="code">            width: W, height: H, scale: 1,</td></tr>
-<tr class="nil"><td class="ln">60</td><td class="code">            style: { transform: &#x27;none&#x27;, transformOrigin: &#x27;top left&#x27; },</td></tr>
+<tr class="unc"><td class="ln">59</td><td class="code">            width: W, height: H, scale: 1,</td></tr>
+<tr class="unc"><td class="ln">60</td><td class="code">            style: { transform: &#x27;none&#x27;, transformOrigin: &#x27;top left&#x27; },</td></tr>
 <tr class="nil"><td class="ln">61</td><td class="code">          });</td></tr>
 <tr class="nil"><td class="ln">62</td><td class="code">          // Flatten onto an opaque white background and re-encode as JPEG (the PDF</td></tr>
 <tr class="nil"><td class="ln">63</td><td class="code">          // embeds JPEG frames; the source PNG may be transparent).</td></tr>

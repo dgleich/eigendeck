@@ -5,102 +5,103 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/sanitizeHtml.ts </h1>
   <div class="stats">
-    <span class="stat"><b>86%</b> covered</span>
-    <span class="stat">69/80 executable</span>
-    <span class="stat unc-txt">11 uncovered</span>
+    <span class="stat"><b>82%</b> covered</span>
+    <span class="stat">47/57 statements</span>
+    <span class="stat unc-txt">10 uncovered</span>
     <span class="stat">146 raw lines</span>
     <span class="stat">0.34% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:47.260%"></span><span class="seg unc" style="width:7.534%"></span><span class="seg nil" style="width:45.205%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:82.456%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:17.544%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src__components__notebook__CellOutput_tsx.html">CellOutput.tsx</a> <a href="src__components__notebook__MarkdownCell_tsx.html">MarkdownCell.tsx</a> <a href="src__lib__mathjaxRenderer_ts.html">mathjaxRenderer.ts</a> <a href="src__lib__notebookExport_tsx.html">notebookExport.tsx</a></div>
 </header>
-<table class="src"><tr class="cov"><td class="ln">1</td><td class="code">// Lazy DOMPurify wrappers for UNTRUSTED strings that get innerHTML&#x27;d into the</td></tr>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Lazy DOMPurify wrappers for UNTRUSTED strings that get innerHTML&#x27;d into the</td></tr>
 <tr class="nil"><td class="ln">2</td><td class="code">// privileged window from a shared .eigendeck:</td></tr>
-<tr class="cov"><td class="ln">3</td><td class="code">//   - sanitizeSvg: the math-render cache (audit C-4) and static notebook</td></tr>
-<tr class="cov"><td class="ln">4</td><td class="code">//     image/svg+xml output (matplotlib).</td></tr>
-<tr class="cov"><td class="ln">5</td><td class="code">//   - sanitizeHtml: static notebook text/html output (pandas tables, styled</td></tr>
-<tr class="cov"><td class="ln">6</td><td class="code">//     divs) and rendered markdown (audit C-1/C-2/C-5).</td></tr>
-<tr class="cov"><td class="ln">7</td><td class="code">//   - outputHasExecutable: routes a notebook output — static content is</td></tr>
-<tr class="cov"><td class="ln">8</td><td class="code">//     sanitized inline (here); executable content (Plotly etc.) is instead</td></tr>
-<tr class="unc"><td class="ln">9</td><td class="code">//     mounted in an opaque-origin iframe (docs/NOTEBOOK-ISOLATION.md), never</td></tr>
-<tr class="unc"><td class="ln">10</td><td class="code">//     sanitized-then-inlined, so it stays interactive AND contained.</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">//   - sanitizeSvg: the math-render cache (audit C-4) and static notebook</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">//     image/svg+xml output (matplotlib).</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">//   - sanitizeHtml: static notebook text/html output (pandas tables, styled</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">//     divs) and rendered markdown (audit C-1/C-2/C-5).</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">//   - outputHasExecutable: routes a notebook output — static content is</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">//     sanitized inline (here); executable content (Plotly etc.) is instead</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">//     mounted in an opaque-origin iframe (docs/NOTEBOOK-ISOLATION.md), never</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">//     sanitized-then-inlined, so it stays interactive AND contained.</td></tr>
 <tr class="nil"><td class="ln">11</td><td class="code">//</td></tr>
 <tr class="nil"><td class="ln">12</td><td class="code">// DOMPurify strips &lt;script&gt;, event handlers, and javascript: refs while keeping</td></tr>
-<tr class="cov"><td class="ln">13</td><td class="code">// tables/headings/links/img and the &lt;svg&gt;/&lt;path&gt;/&lt;use xlink:href=&quot;#…&quot;&gt;/&lt;defs&gt; a</td></tr>
-<tr class="cov"><td class="ln">14</td><td class="code">// real MathJax render needs. Lazy-imported (decks without math/notebooks don&#x27;t</td></tr>
-<tr class="cov"><td class="ln">15</td><td class="code">// pay for it) and needs a DOM (the app webview / jsdom).</td></tr>
-<tr class="unc"><td class="ln">16</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">17</td><td class="code">type AttrHookData = { attrName: string; attrValue: string; keepAttr: boolean };</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">// tables/headings/links/img and the &lt;svg&gt;/&lt;path&gt;/&lt;use xlink:href=&quot;#…&quot;&gt;/&lt;defs&gt; a</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">// real MathJax render needs. Lazy-imported (decks without math/notebooks don&#x27;t</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">// pay for it) and needs a DOM (the app webview / jsdom).</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">type AttrHookData = { attrName: string; attrValue: string; keepAttr: boolean };</td></tr>
 <tr class="nil"><td class="ln">18</td><td class="code">type Purify = {</td></tr>
 <tr class="nil"><td class="ln">19</td><td class="code">  sanitize: (s: string, cfg?: Record&lt;string, unknown&gt;) =&gt; string;</td></tr>
-<tr class="cov"><td class="ln">20</td><td class="code">  addHook?: (entry: string, cb: (node: unknown, data: AttrHookData) =&gt; void) =&gt; void;</td></tr>
-<tr class="unc"><td class="ln">21</td><td class="code">};</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">  addHook?: (entry: string, cb: (node: unknown, data: AttrHookData) =&gt; void) =&gt; void;</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">};</td></tr>
 <tr class="cov"><td class="ln">22</td><td class="code">let _purify: Promise&lt;Purify | null&gt; | null = null;</td></tr>
-<tr class="cov"><td class="ln">23</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">24</td><td class="code">function getPurify(): Promise&lt;Purify | null&gt; {</td></tr>
-<tr class="cov"><td class="ln">25</td><td class="code">  if (!_purify) {</td></tr>
-<tr class="cov"><td class="ln">26</td><td class="code">    _purify = import(&#x27;dompurify&#x27;)</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">  if (!_purify) {</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">    _purify = import(&#x27;dompurify&#x27;)</td></tr>
 <tr class="nil"><td class="ln">27</td><td class="code">      .then((m) =&gt; {</td></tr>
 <tr class="cov"><td class="ln">28</td><td class="code">        const p = (m.default ?? m) as Purify;</td></tr>
 <tr class="nil"><td class="ln">29</td><td class="code">        // DOMPurify needs a DOM to filter (it&#x27;s an inert stub without one). Gate on</td></tr>
 <tr class="nil"><td class="ln">30</td><td class="code">        // the DOM directly rather than probing sanitize()&#x27;s return — a build that</td></tr>
-<tr class="cov"><td class="ln">31</td><td class="code">        // changed the stub&#x27;s return value could otherwise flip us fail-open.</td></tr>
-<tr class="cov"><td class="ln">32</td><td class="code">        if (typeof p?.sanitize !== &#x27;function&#x27; || typeof document === &#x27;undefined&#x27;) return null;</td></tr>
-<tr class="cov"><td class="ln">33</td><td class="code">        // MathJax references glyph &lt;path&gt;s via &lt;use&gt;, which the svg profile drops</td></tr>
-<tr class="cov"><td class="ln">34</td><td class="code">        // as an external-content vector. Re-allow it (see SVG_CFG) but constrain</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">        // changed the stub&#x27;s return value could otherwise flip us fail-open.</td></tr>
+<tr class="part"><td class="ln">32</td><td class="code">        if (typeof p?.sanitize !== &#x27;function&#x27; || typeof document === &#x27;undefined&#x27;) return null;</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">        // MathJax references glyph &lt;path&gt;s via &lt;use&gt;, which the svg profile drops</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">        // as an external-content vector. Re-allow it (see SVG_CFG) but constrain</td></tr>
 <tr class="nil"><td class="ln">35</td><td class="code">        // its href to in-document fragment refs (#id) — that&#x27;s all MathJax emits,</td></tr>
-<tr class="cov"><td class="ln">36</td><td class="code">        // and it can&#x27;t reach external/data: SVG (the actual &lt;use&gt; XSS).</td></tr>
-<tr class="cov"><td class="ln">37</td><td class="code">        p.addHook?.(&#x27;uponSanitizeAttribute&#x27;, (node, data) =&gt; {</td></tr>
-<tr class="cov"><td class="ln">38</td><td class="code">          if ((data.attrName === &#x27;href&#x27; || data.attrName === &#x27;xlink:href&#x27;) &amp;&amp; !data.attrValue.startsWith(&#x27;#&#x27;)) {</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">        // and it can&#x27;t reach external/data: SVG (the actual &lt;use&gt; XSS).</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">        p.addHook?.(&#x27;uponSanitizeAttribute&#x27;, (node, data) =&gt; {</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">          if ((data.attrName === &#x27;href&#x27; || data.attrName === &#x27;xlink:href&#x27;) &amp;&amp; !data.attrValue.startsWith(&#x27;#&#x27;)) {</td></tr>
 <tr class="nil"><td class="ln">39</td><td class="code">            // SVG elements that PULL external content (&lt;use&gt;/&lt;image&gt;/&lt;feImage&gt;) may</td></tr>
 <tr class="nil"><td class="ln">40</td><td class="code">            // only reference in-document fragments (#id) — an external/data: ref is</td></tr>
 <tr class="nil"><td class="ln">41</td><td class="code">            // the SVG-include XSS class. A normal &lt;a href=&quot;https://…&quot;&gt; in html output</td></tr>
-<tr class="cov"><td class="ln">42</td><td class="code">            // is fine, so constrain only the content-pulling elements.</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">            // is fine, so constrain only the content-pulling elements.</td></tr>
 <tr class="cov"><td class="ln">43</td><td class="code">            const tag = (node as Element)?.tagName?.toLowerCase?.();</td></tr>
 <tr class="cov"><td class="ln">44</td><td class="code">            if (tag === &#x27;use&#x27; || tag === &#x27;image&#x27; || tag === &#x27;feimage&#x27;) data.keepAttr = false;</td></tr>
-<tr class="cov"><td class="ln">45</td><td class="code">          }</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">          }</td></tr>
 <tr class="nil"><td class="ln">46</td><td class="code">        });</td></tr>
-<tr class="cov"><td class="ln">47</td><td class="code">        // Any link that survives opens externally with no window.opener handle.</td></tr>
-<tr class="cov"><td class="ln">48</td><td class="code">        p.addHook?.(&#x27;afterSanitizeAttributes&#x27;, (node) =&gt; {</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">        // Any link that survives opens externally with no window.opener handle.</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">        p.addHook?.(&#x27;afterSanitizeAttributes&#x27;, (node) =&gt; {</td></tr>
 <tr class="cov"><td class="ln">49</td><td class="code">          const el = node as Element;</td></tr>
-<tr class="cov"><td class="ln">50</td><td class="code">          if (el?.tagName?.toLowerCase?.() === &#x27;a&#x27; &amp;&amp; el.getAttribute(&#x27;href&#x27;)) {</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">          if (el?.tagName?.toLowerCase?.() === &#x27;a&#x27; &amp;&amp; el.getAttribute(&#x27;href&#x27;)) {</td></tr>
 <tr class="cov"><td class="ln">51</td><td class="code">            el.setAttribute(&#x27;target&#x27;, &#x27;_blank&#x27;);</td></tr>
 <tr class="cov"><td class="ln">52</td><td class="code">            el.setAttribute(&#x27;rel&#x27;, &#x27;noopener noreferrer&#x27;);</td></tr>
-<tr class="unc"><td class="ln">53</td><td class="code">          }</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">          }</td></tr>
 <tr class="nil"><td class="ln">54</td><td class="code">        });</td></tr>
 <tr class="cov"><td class="ln">55</td><td class="code">        return p;</td></tr>
-<tr class="unc"><td class="ln">56</td><td class="code">      })</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code">      })</td></tr>
 <tr class="unc"><td class="ln">57</td><td class="code">      .catch(() =&gt; null);</td></tr>
 <tr class="nil"><td class="ln">58</td><td class="code">  }</td></tr>
 <tr class="cov"><td class="ln">59</td><td class="code">  return _purify;</td></tr>
 <tr class="nil"><td class="ln">60</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">61</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">61</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">62</td><td class="code">const SVG_CFG: Record&lt;string, unknown&gt; = {</td></tr>
 <tr class="cov"><td class="ln">63</td><td class="code">  USE_PROFILES: { svg: true, svgFilters: true },</td></tr>
 <tr class="cov"><td class="ln">64</td><td class="code">  ADD_TAGS: [&#x27;use&#x27;],</td></tr>
-<tr class="nil"><td class="ln">65</td><td class="code">  ADD_ATTR: [&#x27;xlink:href&#x27;, &#x27;href&#x27;],</td></tr>
-<tr class="unc"><td class="ln">66</td><td class="code">};</td></tr>
+<tr class="cov"><td class="ln">65</td><td class="code">  ADD_ATTR: [&#x27;xlink:href&#x27;, &#x27;href&#x27;],</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code">};</td></tr>
 <tr class="nil"><td class="ln">67</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">68</td><td class="code">/**</td></tr>
-<tr class="cov"><td class="ln">69</td><td class="code"> * Sanitize an untrusted SVG string. Empty in → &#x27;&#x27; out. Fails CLOSED: if the</td></tr>
-<tr class="cov"><td class="ln">70</td><td class="code"> * sanitizer can&#x27;t load (no DOM), returns &#x27;&#x27; rather than passing raw SVG through.</td></tr>
-<tr class="cov"><td class="ln">71</td><td class="code"> * That only happens in non-webview contexts (CLI/SSR), which don&#x27;t render the</td></tr>
-<tr class="cov"><td class="ln">72</td><td class="code"> * math cache anyway, so real math display is unaffected.</td></tr>
-<tr class="cov"><td class="ln">73</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code"> * Sanitize an untrusted SVG string. Empty in → &#x27;&#x27; out. Fails CLOSED: if the</td></tr>
+<tr class="nil"><td class="ln">70</td><td class="code"> * sanitizer can&#x27;t load (no DOM), returns &#x27;&#x27; rather than passing raw SVG through.</td></tr>
+<tr class="nil"><td class="ln">71</td><td class="code"> * That only happens in non-webview contexts (CLI/SSR), which don&#x27;t render the</td></tr>
+<tr class="nil"><td class="ln">72</td><td class="code"> * math cache anyway, so real math display is unaffected.</td></tr>
+<tr class="nil"><td class="ln">73</td><td class="code"> */</td></tr>
 <tr class="nil"><td class="ln">74</td><td class="code">export async function sanitizeSvg(svg: string | undefined | null): Promise&lt;string&gt; {</td></tr>
 <tr class="cov"><td class="ln">75</td><td class="code">  if (!svg) return &#x27;&#x27;;</td></tr>
 <tr class="cov"><td class="ln">76</td><td class="code">  const purify = await getPurify();</td></tr>
-<tr class="cov"><td class="ln">77</td><td class="code">  if (!purify) return &#x27;&#x27;;</td></tr>
+<tr class="part"><td class="ln">77</td><td class="code">  if (!purify) return &#x27;&#x27;;</td></tr>
 <tr class="cov"><td class="ln">78</td><td class="code">  return purify.sanitize(svg, SVG_CFG);</td></tr>
 <tr class="nil"><td class="ln">79</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">80</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">81</td><td class="code">// HTML profile + inline svg (a table cell may embed an svg icon). Scripts, event</td></tr>
 <tr class="nil"><td class="ln">82</td><td class="code">// handlers, iframes, and javascript:/data:text-html URLs are dropped.</td></tr>
 <tr class="cov"><td class="ln">83</td><td class="code">const HTML_CFG: Record&lt;string, unknown&gt; = {</td></tr>
-<tr class="nil"><td class="ln">84</td><td class="code">  USE_PROFILES: { html: true, svg: true, svgFilters: true },</td></tr>
-<tr class="nil"><td class="ln">85</td><td class="code">  ADD_TAGS: [&#x27;use&#x27;],</td></tr>
-<tr class="nil"><td class="ln">86</td><td class="code">  ADD_ATTR: [&#x27;xlink:href&#x27;, &#x27;target&#x27;],</td></tr>
+<tr class="cov"><td class="ln">84</td><td class="code">  USE_PROFILES: { html: true, svg: true, svgFilters: true },</td></tr>
+<tr class="cov"><td class="ln">85</td><td class="code">  ADD_TAGS: [&#x27;use&#x27;],</td></tr>
+<tr class="cov"><td class="ln">86</td><td class="code">  ADD_ATTR: [&#x27;xlink:href&#x27;, &#x27;target&#x27;],</td></tr>
 <tr class="nil"><td class="ln">87</td><td class="code">};</td></tr>
 <tr class="nil"><td class="ln">88</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">89</td><td class="code">/**</td></tr>
@@ -108,9 +109,9 @@
 <tr class="nil"><td class="ln">91</td><td class="code"> * Empty in → &#x27;&#x27; out. Fails CLOSED (returns &#x27;&#x27; if the sanitizer can&#x27;t load).</td></tr>
 <tr class="nil"><td class="ln">92</td><td class="code"> */</td></tr>
 <tr class="nil"><td class="ln">93</td><td class="code">export async function sanitizeHtml(html: string | undefined | null): Promise&lt;string&gt; {</td></tr>
-<tr class="cov"><td class="ln">94</td><td class="code">  if (!html) return &#x27;&#x27;;</td></tr>
+<tr class="part"><td class="ln">94</td><td class="code">  if (!html) return &#x27;&#x27;;</td></tr>
 <tr class="cov"><td class="ln">95</td><td class="code">  const purify = await getPurify();</td></tr>
-<tr class="cov"><td class="ln">96</td><td class="code">  if (!purify) return &#x27;&#x27;;</td></tr>
+<tr class="part"><td class="ln">96</td><td class="code">  if (!purify) return &#x27;&#x27;;</td></tr>
 <tr class="cov"><td class="ln">97</td><td class="code">  return purify.sanitize(html, HTML_CFG);</td></tr>
 <tr class="nil"><td class="ln">98</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">99</td><td class="code">&nbsp;</td></tr>
@@ -125,7 +126,7 @@
 <tr class="unc"><td class="ln">108</td><td class="code">  return _purifySync.sanitize(html, HTML_CFG);</td></tr>
 <tr class="nil"><td class="ln">109</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">110</td><td class="code">export function sanitizeSvgSync(svg: string | undefined | null): string {</td></tr>
-<tr class="cov"><td class="ln">111</td><td class="code">  if (!svg || !_purifySync) return &#x27;&#x27;;</td></tr>
+<tr class="part"><td class="ln">111</td><td class="code">  if (!svg || !_purifySync) return &#x27;&#x27;;</td></tr>
 <tr class="cov"><td class="ln">112</td><td class="code">  return _purifySync.sanitize(svg, SVG_CFG);</td></tr>
 <tr class="nil"><td class="ln">113</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">114</td><td class="code">&nbsp;</td></tr>
@@ -146,16 +147,16 @@
 <tr class="nil"><td class="ln">129</td><td class="code">export function outputHasExecutable(html: string | undefined | null): boolean {</td></tr>
 <tr class="cov"><td class="ln">130</td><td class="code">  if (!html || html.indexOf(&#x27;&lt;&#x27;) &lt; 0) return false;</td></tr>
 <tr class="nil"><td class="ln">131</td><td class="code">  let doc: Document;</td></tr>
-<tr class="cov"><td class="ln">132</td><td class="code">  try { doc = new DOMParser().parseFromString(html, &#x27;text/html&#x27;); } catch { return true; }</td></tr>
+<tr class="part"><td class="ln">132</td><td class="code">  try { doc = new DOMParser().parseFromString(html, &#x27;text/html&#x27;); } catch { return true; }</td></tr>
 <tr class="nil"><td class="ln">133</td><td class="code">  // Scan the WHOLE tree, not just body: a fragment that starts with &lt;script&gt;</td></tr>
 <tr class="nil"><td class="ln">134</td><td class="code">  // (or &lt;link&gt;/&lt;meta&gt;) is hoisted into &lt;head&gt; by the parser, so a body-only scan</td></tr>
 <tr class="nil"><td class="ln">135</td><td class="code">  // would miss it and wrongly route executable output to the inline sanitizer.</td></tr>
-<tr class="cov"><td class="ln">136</td><td class="code">  for (const el of Array.from(doc.documentElement?.getElementsByTagName(&#x27;*&#x27;) || [])) {</td></tr>
+<tr class="nil"><td class="ln">136</td><td class="code">  for (const el of Array.from(doc.documentElement?.getElementsByTagName(&#x27;*&#x27;) || [])) {</td></tr>
 <tr class="cov"><td class="ln">137</td><td class="code">    if (EXEC_TAGS.has(el.tagName.toLowerCase())) return true;</td></tr>
-<tr class="cov"><td class="ln">138</td><td class="code">    for (const attr of Array.from(el.attributes)) {</td></tr>
+<tr class="nil"><td class="ln">138</td><td class="code">    for (const attr of Array.from(el.attributes)) {</td></tr>
 <tr class="cov"><td class="ln">139</td><td class="code">      const name = attr.name.toLowerCase();</td></tr>
 <tr class="cov"><td class="ln">140</td><td class="code">      if (name.startsWith(&#x27;on&#x27;)) return true;</td></tr>
-<tr class="cov"><td class="ln">141</td><td class="code">      if ((name === &#x27;href&#x27; || name === &#x27;src&#x27; || name === &#x27;xlink:href&#x27;)</td></tr>
+<tr class="nil"><td class="ln">141</td><td class="code">      if ((name === &#x27;href&#x27; || name === &#x27;src&#x27; || name === &#x27;xlink:href&#x27;)</td></tr>
 <tr class="cov"><td class="ln">142</td><td class="code">          &amp;&amp; /^\s*(javascript:|data:text\/html)/i.test(attr.value)) return true;</td></tr>
 <tr class="nil"><td class="ln">143</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">144</td><td class="code">  }</td></tr>

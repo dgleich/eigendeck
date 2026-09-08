@@ -5,38 +5,39 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/useEscapeKey.ts </h1>
   <div class="stats">
-    <span class="stat"><b>22%</b> covered</span>
-    <span class="stat">4/18 executable</span>
-    <span class="stat unc-txt">14 uncovered</span>
+    <span class="stat"><b>38%</b> covered</span>
+    <span class="stat">5/13 statements</span>
+    <span class="stat unc-txt">8 uncovered</span>
     <span class="stat">24 raw lines</span>
     <span class="stat">0.06% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:16.667%"></span><span class="seg unc" style="width:58.333%"></span><span class="seg nil" style="width:25.000%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:38.462%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:61.538%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a></div>
 </header>
-<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">import { useEffect, useRef } from &#x27;react&#x27;;</td></tr>
+<table class="src"><tr class="cov"><td class="ln">1</td><td class="code">import { useEffect, useRef } from &#x27;react&#x27;;</td></tr>
 <tr class="nil"><td class="ln">2</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">3</td><td class="code">// Close-on-Escape for in-app &quot;fake&quot; modals (not native dialogs, so they need</td></tr>
-<tr class="cov"><td class="ln">4</td><td class="code">// their own key handling — #120). Listens at the window in the CAPTURE phase</td></tr>
-<tr class="cov"><td class="ln">5</td><td class="code">// while `active`, so Escape dismisses the modal regardless of which child has</td></tr>
-<tr class="cov"><td class="ln">6</td><td class="code">// focus (e.g. an autoFocus text input that would otherwise swallow it) and</td></tr>
-<tr class="unc"><td class="ln">7</td><td class="code">// before the editor&#x27;s own Escape handling runs. Only re-subscribes when</td></tr>
-<tr class="unc"><td class="ln">8</td><td class="code">// `active` toggles; the latest callback is read via a ref.</td></tr>
-<tr class="unc"><td class="ln">9</td><td class="code">export function useEscapeKey(active: boolean, onEscape: () =&gt; void): void {</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// Close-on-Escape for in-app &quot;fake&quot; modals (not native dialogs, so they need</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// their own key handling — #120). Listens at the window in the CAPTURE phase</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// while `active`, so Escape dismisses the modal regardless of which child has</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">// focus (e.g. an autoFocus text input that would otherwise swallow it) and</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">// before the editor&#x27;s own Escape handling runs. Only re-subscribes when</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">// `active` toggles; the latest callback is read via a ref.</td></tr>
+<tr class="part"><td class="ln">9</td><td class="code">export function useEscapeKey(active: boolean, onEscape: () =&gt; void): void {</td></tr>
 <tr class="unc"><td class="ln">10</td><td class="code">  const cb = useRef(onEscape);</td></tr>
 <tr class="unc"><td class="ln">11</td><td class="code">  cb.current = onEscape;</td></tr>
-<tr class="unc"><td class="ln">12</td><td class="code">  useEffect(() =&gt; {</td></tr>
-<tr class="unc"><td class="ln">13</td><td class="code">    if (!active) return;</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">    if (!active) return;</td></tr>
 <tr class="unc"><td class="ln">14</td><td class="code">    const handler = (e: KeyboardEvent) =&gt; {</td></tr>
 <tr class="unc"><td class="ln">15</td><td class="code">      if (e.key === &#x27;Escape&#x27;) {</td></tr>
-<tr class="unc"><td class="ln">16</td><td class="code">        e.preventDefault();</td></tr>
-<tr class="unc"><td class="ln">17</td><td class="code">        e.stopPropagation();</td></tr>
-<tr class="unc"><td class="ln">18</td><td class="code">        cb.current();</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">        e.preventDefault();</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">        e.stopPropagation();</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">        cb.current();</td></tr>
 <tr class="nil"><td class="ln">19</td><td class="code">      }</td></tr>
 <tr class="nil"><td class="ln">20</td><td class="code">    };</td></tr>
-<tr class="unc"><td class="ln">21</td><td class="code">    window.addEventListener(&#x27;keydown&#x27;, handler, true);</td></tr>
-<tr class="unc"><td class="ln">22</td><td class="code">    return () =&gt; window.removeEventListener(&#x27;keydown&#x27;, handler, true);</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">    window.addEventListener(&#x27;keydown&#x27;, handler, true);</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">    return () =&gt; window.removeEventListener(&#x27;keydown&#x27;, handler, true);</td></tr>
 <tr class="nil"><td class="ln">23</td><td class="code">  }, [active]);</td></tr>
 <tr class="nil"><td class="ln">24</td><td class="code">}</td></tr></table>
 </body></html>

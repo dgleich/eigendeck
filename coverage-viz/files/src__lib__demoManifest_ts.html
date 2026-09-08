@@ -5,54 +5,55 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/demoManifest.ts </h1>
   <div class="stats">
-    <span class="stat"><b>100%</b> covered</span>
-    <span class="stat">43/43 executable</span>
-    <span class="stat unc-txt">0 uncovered</span>
+    <span class="stat"><b>97%</b> covered</span>
+    <span class="stat">31/32 statements</span>
+    <span class="stat unc-txt">1 uncovered</span>
     <span class="stat">79 raw lines</span>
     <span class="stat">0.18% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:54.430%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:45.570%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:96.875%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:3.125%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src__lib__demoBridge_ts.html">demoBridge.ts</a> <a href="src__lib__demoMount_ts.html">demoMount.ts</a> <a href="src__lib__demoNetReport_ts.html">demoNetReport.ts</a></div>
 </header>
-<table class="src"><tr class="cov"><td class="ln">1</td><td class="code">// Demo network manifest. A demo declares which hosts it needs and WHY, in a JSON</td></tr>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Demo network manifest. A demo declares which hosts it needs and WHY, in a JSON</td></tr>
 <tr class="nil"><td class="ln">2</td><td class="code">// block, so we can (a) GATE its internet — no manifest, no network — and (b)</td></tr>
-<tr class="cov"><td class="ln">3</td><td class="code">// SURFACE it in the security panel (&quot;this demo uses api.x for live quotes&quot;).</td></tr>
-<tr class="cov"><td class="ln">4</td><td class="code">//</td></tr>
-<tr class="cov"><td class="ln">5</td><td class="code">//   &lt;script type=&quot;application/eigendeck-manifest+json&quot;&gt;</td></tr>
-<tr class="cov"><td class="ln">6</td><td class="code">//   { &quot;network&quot;: [ { &quot;host&quot;: &quot;api.stockdata.example&quot;, &quot;purpose&quot;: &quot;Live stock quotes&quot; } ] }</td></tr>
-<tr class="cov"><td class="ln">7</td><td class="code">//   &lt;/script&gt;</td></tr>
-<tr class="cov"><td class="ln">8</td><td class="code">//</td></tr>
-<tr class="cov"><td class="ln">9</td><td class="code">// Declared ≠ granted: the manifest scopes what the demo CAN reach (its declared</td></tr>
-<tr class="cov"><td class="ln">10</td><td class="code">// hosts become the injected connect-src allowlist); a host it didn&#x27;t declare is</td></tr>
-<tr class="cov"><td class="ln">11</td><td class="code">// blocked. The global master + per-deck switches still sit on top.</td></tr>
-<tr class="cov"><td class="ln">12</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// SURFACE it in the security panel (&quot;this demo uses api.x for live quotes&quot;).</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">//   &lt;script type=&quot;application/eigendeck-manifest+json&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">//   { &quot;network&quot;: [ { &quot;host&quot;: &quot;api.stockdata.example&quot;, &quot;purpose&quot;: &quot;Live stock quotes&quot; } ] }</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">//   &lt;/script&gt;</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">// Declared ≠ granted: the manifest scopes what the demo CAN reach (its declared</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">// hosts become the injected connect-src allowlist); a host it didn&#x27;t declare is</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">// blocked. The global master + per-deck switches still sit on top.</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">13</td><td class="code">export interface DemoNetEntry { host: string; purpose: string }</td></tr>
 <tr class="nil"><td class="ln">14</td><td class="code">export interface DemoManifest { network: DemoNetEntry[] }</td></tr>
-<tr class="cov"><td class="ln">15</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">16</td><td class="code">const MANIFEST_RE =</td></tr>
 <tr class="cov"><td class="ln">17</td><td class="code">  /&lt;script[^&gt;]*type=[&quot;&#x27;]application\/eigendeck-manifest\+json[&quot;&#x27;][^&gt;]*&gt;([\s\S]*?)&lt;\/script&gt;/i;</td></tr>
 <tr class="nil"><td class="ln">18</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">19</td><td class="code">/** Parse a demo&#x27;s manifest from its HTML. Tolerant: null on absent/invalid JSON. */</td></tr>
-<tr class="cov"><td class="ln">20</td><td class="code">export function parseDemoManifest(html: string | undefined | null): DemoManifest | null {</td></tr>
-<tr class="cov"><td class="ln">21</td><td class="code">  if (!html) return null;</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">export function parseDemoManifest(html: string | undefined | null): DemoManifest | null {</td></tr>
+<tr class="part"><td class="ln">21</td><td class="code">  if (!html) return null;</td></tr>
 <tr class="cov"><td class="ln">22</td><td class="code">  const m = html.match(MANIFEST_RE);</td></tr>
 <tr class="cov"><td class="ln">23</td><td class="code">  if (!m) return null;</td></tr>
-<tr class="cov"><td class="ln">24</td><td class="code">  try {</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">  try {</td></tr>
 <tr class="cov"><td class="ln">25</td><td class="code">    const obj = JSON.parse(m[1]) as { network?: unknown };</td></tr>
 <tr class="cov"><td class="ln">26</td><td class="code">    const net = Array.isArray(obj?.network) ? obj.network : [];</td></tr>
 <tr class="cov"><td class="ln">27</td><td class="code">    const network: DemoNetEntry[] = [];</td></tr>
-<tr class="cov"><td class="ln">28</td><td class="code">    for (const e of net as Array&lt;{ host?: unknown; purpose?: unknown }&gt;) {</td></tr>
-<tr class="cov"><td class="ln">29</td><td class="code">      if (e &amp;&amp; typeof e.host === &#x27;string&#x27; &amp;&amp; e.host.trim()) {</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">    for (const e of net as Array&lt;{ host?: unknown; purpose?: unknown }&gt;) {</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">      if (e &amp;&amp; typeof e.host === &#x27;string&#x27; &amp;&amp; e.host.trim()) {</td></tr>
 <tr class="cov"><td class="ln">30</td><td class="code">        network.push({ host: e.host.trim(), purpose: typeof e.purpose === &#x27;string&#x27; ? e.purpose : &#x27;&#x27; });</td></tr>
 <tr class="nil"><td class="ln">31</td><td class="code">      }</td></tr>
-<tr class="cov"><td class="ln">32</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code">    }</td></tr>
 <tr class="cov"><td class="ln">33</td><td class="code">    return { network };</td></tr>
 <tr class="cov"><td class="ln">34</td><td class="code">  } catch { return null; }</td></tr>
-<tr class="cov"><td class="ln">35</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">36</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">37</td><td class="code">/** Cap on distinct hosts a single demo can declare — bounds the size of the</td></tr>
-<tr class="cov"><td class="ln">38</td><td class="code"> *  injected CSP string so a pathological manifest can&#x27;t bloat it. */</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code"> *  injected CSP string so a pathological manifest can&#x27;t bloat it. */</td></tr>
 <tr class="cov"><td class="ln">39</td><td class="code">export const MAX_MANIFEST_HOSTS = 32;</td></tr>
 <tr class="nil"><td class="ln">40</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">41</td><td class="code">/** The distinct, VALID hosts a demo declared (capped), or [] if none / no manifest.</td></tr>
@@ -79,7 +80,7 @@
 <tr class="nil"><td class="ln">62</td><td class="code">  // length keeps the regex linear (no pathological backtracking on a huge input).</td></tr>
 <tr class="nil"><td class="ln">63</td><td class="code">  // 253 = DNS max name; +scheme/port headroom.</td></tr>
 <tr class="cov"><td class="ln">64</td><td class="code">  return typeof h === &#x27;string&#x27; &amp;&amp; h.length &gt; 0 &amp;&amp; h.length &lt;= 260</td></tr>
-<tr class="nil"><td class="ln">65</td><td class="code">    &amp;&amp; (ORIGIN_RE.test(h) || HOSTNAME_RE.test(h));</td></tr>
+<tr class="cov"><td class="ln">65</td><td class="code">    &amp;&amp; (ORIGIN_RE.test(h) || HOSTNAME_RE.test(h));</td></tr>
 <tr class="nil"><td class="ln">66</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">67</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">68</td><td class="code">/** Map declared hosts to a CSP source list. A bare host → https + secure-ws for it;</td></tr>
@@ -87,7 +88,7 @@
 <tr class="nil"><td class="ln">70</td><td class="code"> *  so they can never inject into the CSP. */</td></tr>
 <tr class="nil"><td class="ln">71</td><td class="code">export function hostsToCspSources(hosts: string[]): string {</td></tr>
 <tr class="cov"><td class="ln">72</td><td class="code">  const out: string[] = [];</td></tr>
-<tr class="cov"><td class="ln">73</td><td class="code">  for (const h of hosts) {</td></tr>
+<tr class="nil"><td class="ln">73</td><td class="code">  for (const h of hosts) {</td></tr>
 <tr class="cov"><td class="ln">74</td><td class="code">    if (!isValidManifestHost(h)) continue;               // reject injection / wildcards / junk</td></tr>
 <tr class="cov"><td class="ln">75</td><td class="code">    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(h)) out.push(h); // full origin, verbatim</td></tr>
 <tr class="cov"><td class="ln">76</td><td class="code">    else out.push(`https://${h}`, `wss://${h}`);         // bare host → https + wss</td></tr>

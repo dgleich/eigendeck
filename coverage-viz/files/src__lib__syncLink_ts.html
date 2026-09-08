@@ -5,97 +5,98 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/lib/syncLink.ts </h1>
   <div class="stats">
-    <span class="stat"><b>95%</b> covered</span>
-    <span class="stat">74/78 executable</span>
-    <span class="stat unc-txt">4 uncovered</span>
+    <span class="stat"><b>100%</b> covered</span>
+    <span class="stat">48/48 statements</span>
+    <span class="stat unc-txt">0 uncovered</span>
     <span class="stat">144 raw lines</span>
     <span class="stat">0.34% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:51.389%"></span><span class="seg unc" style="width:2.778%"></span><span class="seg nil" style="width:45.833%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:100.000%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:0.000%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
   <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__lib__pasteClip_ts.html">pasteClip.ts</a></div>
 </header>
-<table class="src"><tr class="cov"><td class="ln">1</td><td class="code">// Pure delta helpers for the two element relationships:</td></tr>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Pure delta helpers for the two element relationships:</td></tr>
 <tr class="nil"><td class="ln">2</td><td class="code">//   - sync  (syncId)  — &quot;the same element shown on several slides&quot;</td></tr>
-<tr class="unc"><td class="ln">3</td><td class="code">//   - link  (linkId)  — &quot;animate between two elements across slides&quot;</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">//   - link  (linkId)  — &quot;animate between two elements across slides&quot;</td></tr>
 <tr class="nil"><td class="ln">4</td><td class="code">// plus the remembered-group fields (_syncId/_linkId) used to re-join after a</td></tr>
 <tr class="nil"><td class="ln">5</td><td class="code">// temporary free/unlink.</td></tr>
-<tr class="cov"><td class="ln">6</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">//</td></tr>
 <tr class="nil"><td class="ln">7</td><td class="code">// These return a Partial&lt;SlideElement&gt; describing ONLY the four</td></tr>
 <tr class="nil"><td class="ln">8</td><td class="code">// sync/link/identity fields. They are the single source of truth for the</td></tr>
-<tr class="unc"><td class="ln">9</td><td class="code">// remember/restore dance, replacing ~10 hand-built `{ syncId, _syncId, ... }`</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">// remember/restore dance, replacing ~10 hand-built `{ syncId, _syncId, ... }`</td></tr>
 <tr class="nil"><td class="ln">10</td><td class="code">// literals scattered across components (which had diverged — see the</td></tr>
 <tr class="nil"><td class="ln">11</td><td class="code">// link-asymmetry bug #30 and the PropertiesPanel &quot;Unlink&quot; that forgot to</td></tr>
-<tr class="unc"><td class="ln">12</td><td class="code">// remember _linkId). No store, no side effects: trivially unit-testable.</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">// remember _linkId). No store, no side effects: trivially unit-testable.</td></tr>
 <tr class="nil"><td class="ln">13</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">14</td><td class="code">import type { Slide, SlideElement } from &#x27;../types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
-<tr class="cov"><td class="ln">15</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">16</td><td class="code">export type SyncLinkDelta = Partial&lt;</td></tr>
 <tr class="nil"><td class="ln">17</td><td class="code">  Pick&lt;SlideElement, &#x27;syncId&#x27; | &#x27;_syncId&#x27; | &#x27;linkId&#x27; | &#x27;_linkId&#x27;&gt;</td></tr>
-<tr class="cov"><td class="ln">18</td><td class="code">&gt;;</td></tr>
-<tr class="cov"><td class="ln">19</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">20</td><td class="code">/** Identity / linkage keys that must NEVER propagate from one synced instance</td></tr>
-<tr class="cov"><td class="ln">21</td><td class="code"> *  to its peers (each instance keeps its own ids; only data syncs). Consumed</td></tr>
-<tr class="cov"><td class="ln">22</td><td class="code"> *  by the store&#x27;s sync-propagation strip. */</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">&gt;;</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">/** Identity / linkage keys that must NEVER propagate from one synced instance</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code"> *  to its peers (each instance keeps its own ids; only data syncs). Consumed</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code"> *  by the store&#x27;s sync-propagation strip. */</td></tr>
 <tr class="cov"><td class="ln">23</td><td class="code">export const IDENTITY_KEYS = [&#x27;id&#x27;, &#x27;syncId&#x27;, &#x27;_syncId&#x27;, &#x27;linkId&#x27;, &#x27;_linkId&#x27;] as const;</td></tr>
-<tr class="cov"><td class="ln">24</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">25</td><td class="code">/** Free a synced element: drop its syncId but remember it so the element can</td></tr>
-<tr class="cov"><td class="ln">26</td><td class="code"> *  re-sync later. `{}` (no change) when it isn&#x27;t synced. */</td></tr>
-<tr class="cov"><td class="ln">27</td><td class="code">export function freeDelta(el: Pick&lt;SlideElement, &#x27;syncId&#x27;&gt;): SyncLinkDelta {</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code"> *  re-sync later. `{}` (no change) when it isn&#x27;t synced. */</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">export function freeDelta(el: Pick&lt;SlideElement, &#x27;syncId&#x27;&gt;): SyncLinkDelta {</td></tr>
 <tr class="cov"><td class="ln">28</td><td class="code">  return el.syncId ? { syncId: undefined, _syncId: el.syncId } : {};</td></tr>
-<tr class="cov"><td class="ln">29</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">30</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">31</td><td class="code">/** Re-sync a freed element: restore the remembered syncId. `{}` when there&#x27;s</td></tr>
-<tr class="cov"><td class="ln">32</td><td class="code"> *  nothing remembered. */</td></tr>
-<tr class="cov"><td class="ln">33</td><td class="code">export function resyncDelta(el: Pick&lt;SlideElement, &#x27;_syncId&#x27;&gt;): SyncLinkDelta {</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">/** Re-sync a freed element: restore the remembered syncId. `{}` when there&#x27;s</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code"> *  nothing remembered. */</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">export function resyncDelta(el: Pick&lt;SlideElement, &#x27;_syncId&#x27;&gt;): SyncLinkDelta {</td></tr>
 <tr class="cov"><td class="ln">34</td><td class="code">  return el._syncId ? { syncId: el._syncId, _syncId: undefined } : {};</td></tr>
-<tr class="cov"><td class="ln">35</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">36</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">37</td><td class="code">/** Unlink an animated element: drop its linkId but remember it for re-linking.</td></tr>
-<tr class="cov"><td class="ln">38</td><td class="code"> *  Always remembers (the old PropertiesPanel &quot;Unlink&quot; forgot, stranding the</td></tr>
-<tr class="cov"><td class="ln">39</td><td class="code"> *  element with no way back). `{}` when it isn&#x27;t linked. */</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">/** Unlink an animated element: drop its linkId but remember it for re-linking.</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code"> *  Always remembers (the old PropertiesPanel &quot;Unlink&quot; forgot, stranding the</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code"> *  element with no way back). `{}` when it isn&#x27;t linked. */</td></tr>
 <tr class="nil"><td class="ln">40</td><td class="code">export function unlinkDelta(el: Pick&lt;SlideElement, &#x27;linkId&#x27;&gt;): SyncLinkDelta {</td></tr>
 <tr class="cov"><td class="ln">41</td><td class="code">  return el.linkId ? { linkId: undefined, _linkId: el.linkId } : {};</td></tr>
-<tr class="cov"><td class="ln">42</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">43</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">44</td><td class="code">/** Re-link a previously-unlinked element: restore the remembered linkId. */</td></tr>
-<tr class="cov"><td class="ln">45</td><td class="code">export function relinkDelta(el: Pick&lt;SlideElement, &#x27;_linkId&#x27;&gt;): SyncLinkDelta {</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">export function relinkDelta(el: Pick&lt;SlideElement, &#x27;_linkId&#x27;&gt;): SyncLinkDelta {</td></tr>
 <tr class="cov"><td class="ln">46</td><td class="code">  return el._linkId ? { linkId: el._linkId, _linkId: undefined } : {};</td></tr>
-<tr class="cov"><td class="ln">47</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">48</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">49</td><td class="code">/** Fully detach a copy from all groups — live AND remembered — so it stands</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">/** Fully detach a copy from all groups — live AND remembered — so it stands</td></tr>
 <tr class="nil"><td class="ln">50</td><td class="code"> *  alone (Cmd+D duplicate / paste). */</td></tr>
-<tr class="cov"><td class="ln">51</td><td class="code">export function detachDelta(): SyncLinkDelta {</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">export function detachDelta(): SyncLinkDelta {</td></tr>
 <tr class="cov"><td class="ln">52</td><td class="code">  return { syncId: undefined, _syncId: undefined, linkId: undefined, _linkId: undefined };</td></tr>
-<tr class="cov"><td class="ln">53</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">54</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">55</td><td class="code">/** After elements are removed (a slide or element is deleted), a sync or link</td></tr>
-<tr class="cov"><td class="ln">56</td><td class="code"> *  group can be left with a SINGLE member — there&#x27;s nothing to sync or animate</td></tr>
-<tr class="unc"><td class="ln">57</td><td class="code"> *  with anymore. That lone id is an orphan: it still lights the &quot;synced&quot; border</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code"> *  group can be left with a SINGLE member — there&#x27;s nothing to sync or animate</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code"> *  with anymore. That lone id is an orphan: it still lights the &quot;synced&quot; border</td></tr>
 <tr class="nil"><td class="ln">58</td><td class="code"> *  and the inspector&#x27;s sync UI even though the element is effectively standalone</td></tr>
-<tr class="cov"><td class="ln">59</td><td class="code"> *  (e.g. duplicate a slide, then delete the copy — the original kept its syncId).</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code"> *  (e.g. duplicate a slide, then delete the copy — the original kept its syncId).</td></tr>
 <tr class="nil"><td class="ln">60</td><td class="code"> *</td></tr>
-<tr class="cov"><td class="ln">61</td><td class="code"> *  This strips the orphaned id — sync and link independently — from every lone</td></tr>
-<tr class="cov"><td class="ln">62</td><td class="code"> *  group across the deck, leaving genuine multi-member groups untouched. A group</td></tr>
-<tr class="cov"><td class="ln">63</td><td class="code"> *  is counted by its identity (`syncId ?? _syncId`, `linkId ?? _linkId`) so a</td></tr>
-<tr class="cov"><td class="ln">64</td><td class="code"> *  member that&#x27;s only *remembering* the group still keeps a partner alive — the</td></tr>
+<tr class="nil"><td class="ln">61</td><td class="code"> *  This strips the orphaned id — sync and link independently — from every lone</td></tr>
+<tr class="nil"><td class="ln">62</td><td class="code"> *  group across the deck, leaving genuine multi-member groups untouched. A group</td></tr>
+<tr class="nil"><td class="ln">63</td><td class="code"> *  is counted by its identity (`syncId ?? _syncId`, `linkId ?? _linkId`) so a</td></tr>
+<tr class="nil"><td class="ln">64</td><td class="code"> *  member that&#x27;s only *remembering* the group still keeps a partner alive — the</td></tr>
 <tr class="nil"><td class="ln">65</td><td class="code"> *  SAME membership the sync badge uses, so border + badge stay consistent.</td></tr>
-<tr class="cov"><td class="ln">66</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code"> *</td></tr>
 <tr class="nil"><td class="ln">67</td><td class="code"> *  Pure; returns a NEW slides array only when something changed (so the store&#x27;s</td></tr>
 <tr class="nil"><td class="ln">68</td><td class="code"> *  referential-equality checks don&#x27;t see spurious updates). */</td></tr>
 <tr class="nil"><td class="ln">69</td><td class="code">export function pruneOrphanedGroups(slides: Slide[]): Slide[] {</td></tr>
 <tr class="cov"><td class="ln">70</td><td class="code">  const syncCount = new Map&lt;string, number&gt;();</td></tr>
 <tr class="cov"><td class="ln">71</td><td class="code">  const linkCount = new Map&lt;string, number&gt;();</td></tr>
-<tr class="cov"><td class="ln">72</td><td class="code">  for (const s of slides) for (const el of s.elements) {</td></tr>
+<tr class="nil"><td class="ln">72</td><td class="code">  for (const s of slides) for (const el of s.elements) {</td></tr>
 <tr class="cov"><td class="ln">73</td><td class="code">    const sid = el.syncId ?? el._syncId;</td></tr>
 <tr class="cov"><td class="ln">74</td><td class="code">    if (sid) syncCount.set(sid, (syncCount.get(sid) ?? 0) + 1);</td></tr>
 <tr class="cov"><td class="ln">75</td><td class="code">    const lid = el.linkId ?? el._linkId;</td></tr>
 <tr class="cov"><td class="ln">76</td><td class="code">    if (lid) linkCount.set(lid, (linkCount.get(lid) ?? 0) + 1);</td></tr>
 <tr class="nil"><td class="ln">77</td><td class="code">  }</td></tr>
 <tr class="cov"><td class="ln">78</td><td class="code">  let changed = false;</td></tr>
-<tr class="cov"><td class="ln">79</td><td class="code">  const next = slides.map((s) =&gt; {</td></tr>
+<tr class="nil"><td class="ln">79</td><td class="code">  const next = slides.map((s) =&gt; {</td></tr>
 <tr class="cov"><td class="ln">80</td><td class="code">    let slideChanged = false;</td></tr>
-<tr class="cov"><td class="ln">81</td><td class="code">    const elements = s.elements.map((el) =&gt; {</td></tr>
+<tr class="nil"><td class="ln">81</td><td class="code">    const elements = s.elements.map((el) =&gt; {</td></tr>
 <tr class="cov"><td class="ln">82</td><td class="code">      const sid = el.syncId ?? el._syncId;</td></tr>
 <tr class="cov"><td class="ln">83</td><td class="code">      const lid = el.linkId ?? el._linkId;</td></tr>
 <tr class="cov"><td class="ln">84</td><td class="code">      const dropSync = sid != null &amp;&amp; syncCount.get(sid) === 1;</td></tr>
@@ -124,7 +125,7 @@
 <tr class="nil"><td class="ln">107</td><td class="code">export function pasteElementDelta(</td></tr>
 <tr class="nil"><td class="ln">108</td><td class="code">  el: Pick&lt;SlideElement, &#x27;syncId&#x27;&gt;, sameSlide: boolean,</td></tr>
 <tr class="nil"><td class="ln">109</td><td class="code">): { delta: SyncLinkDelta; link: boolean } {</td></tr>
-<tr class="cov"><td class="ln">110</td><td class="code">  if (!sameSlide &amp;&amp; el.syncId) {</td></tr>
+<tr class="nil"><td class="ln">110</td><td class="code">  if (!sameSlide &amp;&amp; el.syncId) {</td></tr>
 <tr class="cov"><td class="ln">111</td><td class="code">    return { delta: { _syncId: undefined, _linkId: undefined }, link: false };</td></tr>
 <tr class="nil"><td class="ln">112</td><td class="code">  }</td></tr>
 <tr class="cov"><td class="ln">113</td><td class="code">  return { delta: detachDelta(), link: !sameSlide };</td></tr>
@@ -153,7 +154,7 @@
 <tr class="cov"><td class="ln">136</td><td class="code">  const sharedLinkId = source.linkId || source._linkId || target.linkId || target._linkId || newId();</td></tr>
 <tr class="nil"><td class="ln">137</td><td class="code">  // Distinct live/remembered group ids being merged INTO sharedLinkId — every</td></tr>
 <tr class="nil"><td class="ln">138</td><td class="code">  // element carrying one must be re-pointed so no prior partner is stranded.</td></tr>
-<tr class="cov"><td class="ln">139</td><td class="code">  const mergeIds = [...new Set(</td></tr>
+<tr class="nil"><td class="ln">139</td><td class="code">  const mergeIds = [...new Set(</td></tr>
 <tr class="nil"><td class="ln">140</td><td class="code">    [source.linkId, source._linkId, target.linkId, target._linkId]</td></tr>
 <tr class="cov"><td class="ln">141</td><td class="code">      .filter((id): id is string =&gt; !!id &amp;&amp; id !== sharedLinkId),</td></tr>
 <tr class="nil"><td class="ln">142</td><td class="code">  )];</td></tr>

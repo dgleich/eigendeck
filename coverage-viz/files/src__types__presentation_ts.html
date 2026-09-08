@@ -5,13 +5,14 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/types/presentation.ts </h1>
   <div class="stats">
-    <span class="stat"><b>79%</b> covered</span>
-    <span class="stat">57/72 executable</span>
-    <span class="stat unc-txt">15 uncovered</span>
+    <span class="stat"><b>73%</b> covered</span>
+    <span class="stat">35/48 statements</span>
+    <span class="stat unc-txt">13 uncovered</span>
     <span class="stat">598 raw lines</span>
     <span class="stat">1.40% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:9.532%"></span><span class="seg unc" style="width:2.508%"></span><span class="seg nil" style="width:87.960%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:72.917%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:27.083%"></span></span>
+  <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__lib__textBox_mjs.html">textBox.mjs</a> <a href="src__lib__textPresets_mjs.html">textPresets.mjs</a> <a href="src__lib__textSizes_mjs.html">textSizes.mjs</a> <a href="src__lib__textStyle_mjs.html">textStyle.mjs</a></div>
   <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__components__HistoryPanel_tsx.html">HistoryPanel.tsx</a> <a href="src__components__LinkOverlay_tsx.html">LinkOverlay.tsx</a> <a href="src__components__PresentMode_tsx.html">PresentMode.tsx</a> <a href="src__components__PresentSlide_tsx.html">PresentSlide.tsx</a> <a href="src__components__PropertiesPanel_tsx.html">PropertiesPanel.tsx</a> <a href="src__components__SettingsModal_tsx.html">SettingsModal.tsx</a> <a href="src__components__SlideEditor_tsx.html">SlideEditor.tsx</a> <a href="src__components__SlideElementRenderer_tsx.html">SlideElementRenderer.tsx</a> <a href="src__components__SlideSidebar_tsx.html">SlideSidebar.tsx</a> <a href="src__components__SlideThumbnail_tsx.html">SlideThumbnail.tsx</a> <a href="src__components__SpeakerMode_tsx.html">SpeakerMode.tsx</a> <a href="src__components__TextElementSvg_tsx.html">TextElementSvg.tsx</a> <a href="src__components__VideoThumb_tsx.html">VideoThumb.tsx</a> <a href="src__components__notebook__NotebookContent_tsx.html">NotebookContent.tsx</a> <a href="src__lib__assetUsage_ts.html">assetUsage.ts</a> <a href="src__lib__clipboardModel_ts.html">clipboardModel.ts</a> <a href="src__lib__demoThemeInject_ts.html">demoThemeInject.ts</a> <a href="src__lib__elementClipboard_ts.html">elementClipboard.ts</a> <a href="src__lib__elementLifecycle_ts.html">elementLifecycle.ts</a> <a href="src__lib__multiMonitor_ts.html">multiMonitor.ts</a> <a href="src__lib__normalizePresentation_ts.html">normalizePresentation.ts</a> <a href="src__lib__notebookFonts_ts.html">notebookFonts.ts</a> <a href="src__lib__notebookMigrate_ts.html">notebookMigrate.ts</a> <a href="src__lib__offsetElement_ts.html">offsetElement.ts</a> <a href="src__lib__pasteClip_ts.html">pasteClip.ts</a> <a href="src__lib__pdfCapture_ts.html">pdfCapture.ts</a> <a href="src__lib__presentTransition_ts.html">presentTransition.ts</a> <a href="src__lib__previewCache_ts.html">previewCache.ts</a> <a href="src__lib__printLayer_ts.html">printLayer.ts</a> <a href="src__lib__printSlideHtml_ts.html">printSlideHtml.ts</a> <a href="src__lib__serverHealth_ts.html">serverHealth.ts</a> <a href="src__lib__snapshotAll_ts.html">snapshotAll.ts</a> <a href="src__lib__syncLink_ts.html">syncLink.ts</a> <a href="src__presenter_tsx.html">presenter.tsx</a> <a href="src__security_tsx.html">security.tsx</a> <a href="src__store__db_ts.html">db.ts</a> <a href="src__store__fileOps_ts.html">fileOps.ts</a></div>
 </header>
@@ -27,32 +28,32 @@
 <tr class="nil"><td class="ln">10</td><td class="code">export { DEFAULT_TEXT_SIZES, resolveNamedSize, effectiveTextPresetSize, effectiveFontSize };</td></tr>
 <tr class="nil"><td class="ln">11</td><td class="code">// Text inner-box layout (line-height + padding), shared with the static exports.</td></tr>
 <tr class="cov"><td class="ln">12</td><td class="code">export { textPresetBoxCss, textPaddingCss } from &#x27;../lib/textBox.mjs&#x27;;<a class="jump" href="src__lib__textBox_mjs.html" title="src/lib/textBox.mjs">→ textBox.mjs</a></td></tr>
-<tr class="cov"><td class="ln">13</td><td class="code">// Text visual-style helpers (fill / effect / box-shadow), shared with the exports.</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">// Text visual-style helpers (fill / effect / box-shadow), shared with the exports.</td></tr>
 <tr class="cov"><td class="ln">14</td><td class="code">export { textBackgroundCss, textBackgroundResolved, mixHex, TINT_STRENGTH, textEffectCss, textShadowCss, textBoxShadowCss, resolveColor, boxShadowExtents } from &#x27;../lib/textStyle.mjs&#x27;;<a class="jump" href="src__lib__textStyle_mjs.html" title="src/lib/textStyle.mjs">→ textStyle.mjs</a></td></tr>
-<tr class="cov"><td class="ln">15</td><td class="code">// Per-preset style table (label/size/font/weight/style/color), shared with the exports.</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">// Per-preset style table (label/size/font/weight/style/color), shared with the exports.</td></tr>
 <tr class="cov"><td class="ln">16</td><td class="code">export { TEXT_PRESET_STYLES } from &#x27;../lib/textPresets.mjs&#x27;;<a class="jump" href="src__lib__textPresets_mjs.html" title="src/lib/textPresets.mjs">→ textPresets.mjs</a></td></tr>
 <tr class="cov"><td class="ln">17</td><td class="code">export type { TextPresetStyle } from &#x27;../lib/textPresets.mjs&#x27;;<a class="jump" href="src__lib__textPresets_mjs.html" title="src/lib/textPresets.mjs">→ textPresets.mjs</a></td></tr>
-<tr class="cov"><td class="ln">18</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">19</td><td class="code">export interface ElementPosition {</td></tr>
-<tr class="cov"><td class="ln">20</td><td class="code">  x: number;</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">&nbsp;</td></tr>
+<tr class="part"><td class="ln">19</td><td class="code">export interface ElementPosition {</td></tr>
+<tr class="part"><td class="ln">20</td><td class="code">  x: number;</td></tr>
 <tr class="cov"><td class="ln">21</td><td class="code">  y: number;</td></tr>
-<tr class="cov"><td class="ln">22</td><td class="code">  width: number;</td></tr>
+<tr class="part"><td class="ln">22</td><td class="code">  width: number;</td></tr>
 <tr class="cov"><td class="ln">23</td><td class="code">  height: number;</td></tr>
-<tr class="cov"><td class="ln">24</td><td class="code">}</td></tr>
-<tr class="cov"><td class="ln">25</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">26</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">27</td><td class="code">// ============================================</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">// ============================================</td></tr>
 <tr class="nil"><td class="ln">28</td><td class="code">// Text box presets</td></tr>
 <tr class="nil"><td class="ln">29</td><td class="code">// ============================================</td></tr>
-<tr class="cov"><td class="ln">30</td><td class="code">&nbsp;</td></tr>
-<tr class="nil"><td class="ln">31</td><td class="code">export type TextPreset = &#x27;title&#x27; | &#x27;body&#x27; | &#x27;textbox&#x27; | &#x27;annotation&#x27; | &#x27;footnote&#x27; | &#x27;hype&#x27;;</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">31</td><td class="code">export type TextPreset = &#x27;title&#x27; | &#x27;body&#x27; | &#x27;textbox&#x27; | &#x27;annotation&#x27; | &#x27;footnote&#x27; | &#x27;hype&#x27;;</td></tr>
 <tr class="nil"><td class="ln">32</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">33</td><td class="code">// TEXT_PRESET_STYLES (the per-preset style table) lives in lib/textPresets.mjs so</td></tr>
 <tr class="nil"><td class="ln">34</td><td class="code">// it is shared with the CLI export across the .mjs/.ts boundary; re-exported at</td></tr>
 <tr class="nil"><td class="ln">35</td><td class="code">// the top of this file.</td></tr>
 <tr class="nil"><td class="ln">36</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">37</td><td class="code">// textPresetBoxCss + textPaddingCss (the text inner-box layout) live in</td></tr>
-<tr class="cov"><td class="ln">38</td><td class="code">// lib/textBox.mjs so they are shared with the static HTML exports across the</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">// lib/textBox.mjs so they are shared with the static HTML exports across the</td></tr>
 <tr class="nil"><td class="ln">39</td><td class="code">// .mjs/.ts boundary, and are re-exported at the top of this file.</td></tr>
 <tr class="nil"><td class="ln">40</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">41</td><td class="code">// effectiveTextPresetSize + effectiveFontSize are defined in lib/textSizes.mjs</td></tr>
@@ -60,41 +61,41 @@
 <tr class="nil"><td class="ln">43</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">44</td><td class="code">// ============================================</td></tr>
 <tr class="nil"><td class="ln">45</td><td class="code">// Unified element types</td></tr>
-<tr class="cov"><td class="ln">46</td><td class="code">// ============================================</td></tr>
+<tr class="nil"><td class="ln">46</td><td class="code">// ============================================</td></tr>
 <tr class="nil"><td class="ln">47</td><td class="code">&nbsp;</td></tr>
-<tr class="nil"><td class="ln">48</td><td class="code">interface BaseElement {</td></tr>
-<tr class="nil"><td class="ln">49</td><td class="code">  id: string;</td></tr>
-<tr class="nil"><td class="ln">50</td><td class="code">  position: ElementPosition;</td></tr>
-<tr class="nil"><td class="ln">51</td><td class="code">  linkId?: string;   // animation link: animate between positions in presenter</td></tr>
-<tr class="nil"><td class="ln">52</td><td class="code">  syncId?: string;   // content link: sync position/text across slides</td></tr>
-<tr class="nil"><td class="ln">53</td><td class="code">  _linkId?: string;  // stored linkId when temporarily unlinked (for re-linking)</td></tr>
-<tr class="nil"><td class="ln">54</td><td class="code">  _syncId?: string;  // stored syncId when temporarily unsynced (for re-syncing)</td></tr>
+<tr class="cov"><td class="ln">48</td><td class="code">interface BaseElement {</td></tr>
+<tr class="cov"><td class="ln">49</td><td class="code">  id: string;</td></tr>
+<tr class="cov"><td class="ln">50</td><td class="code">  position: ElementPosition;</td></tr>
+<tr class="cov"><td class="ln">51</td><td class="code">  linkId?: string;   // animation link: animate between positions in presenter</td></tr>
+<tr class="cov"><td class="ln">52</td><td class="code">  syncId?: string;   // content link: sync position/text across slides</td></tr>
+<tr class="cov"><td class="ln">53</td><td class="code">  _linkId?: string;  // stored linkId when temporarily unlinked (for re-linking)</td></tr>
+<tr class="cov"><td class="ln">54</td><td class="code">  _syncId?: string;  // stored syncId when temporarily unsynced (for re-syncing)</td></tr>
 <tr class="nil"><td class="ln">55</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">56</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">57</td><td class="code">export type VerticalAlign = &#x27;top&#x27; | &#x27;middle&#x27; | &#x27;bottom&#x27;;</td></tr>
 <tr class="nil"><td class="ln">58</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">59</td><td class="code">export interface TextElement extends BaseElement {</td></tr>
-<tr class="nil"><td class="ln">60</td><td class="code">  type: &#x27;text&#x27;;</td></tr>
-<tr class="nil"><td class="ln">61</td><td class="code">  preset: TextPreset;</td></tr>
-<tr class="nil"><td class="ln">62</td><td class="code">  html: string;</td></tr>
+<tr class="cov"><td class="ln">60</td><td class="code">  type: &#x27;text&#x27;;</td></tr>
+<tr class="cov"><td class="ln">61</td><td class="code">  preset: TextPreset;</td></tr>
+<tr class="cov"><td class="ln">62</td><td class="code">  html: string;</td></tr>
 <tr class="nil"><td class="ln">63</td><td class="code">  // Optional overrides (if user customizes beyond the preset)</td></tr>
 <tr class="nil"><td class="ln">64</td><td class="code">  /** Named size override for THIS element. Picks from the deck&#x27;s</td></tr>
 <tr class="nil"><td class="ln">65</td><td class="code">   *  type scale rather than the preset&#x27;s default. &#x27;title&#x27; and &#x27;hype&#x27;</td></tr>
 <tr class="nil"><td class="ln">66</td><td class="code">   *  are intentionally excluded — title is reserved for title text</td></tr>
 <tr class="nil"><td class="ln">67</td><td class="code">   *  elements (which already get title size from their preset), and</td></tr>
 <tr class="nil"><td class="ln">68</td><td class="code">   *  hype is a decoration style, not a size to opt into. */</td></tr>
-<tr class="nil"><td class="ln">69</td><td class="code">  fontSizeName?: Exclude&lt;NamedSize, &#x27;title&#x27; | &#x27;hype&#x27;&gt;;</td></tr>
+<tr class="cov"><td class="ln">69</td><td class="code">  fontSizeName?: Exclude&lt;NamedSize, &#x27;title&#x27; | &#x27;hype&#x27;&gt;;</td></tr>
 <tr class="nil"><td class="ln">70</td><td class="code">  /** Explicit numeric override. Beats fontSizeName when both set. */</td></tr>
-<tr class="nil"><td class="ln">71</td><td class="code">  fontSize?: number;</td></tr>
-<tr class="nil"><td class="ln">72</td><td class="code">  fontFamily?: string;</td></tr>
-<tr class="nil"><td class="ln">73</td><td class="code">  color?: string;</td></tr>
-<tr class="nil"><td class="ln">74</td><td class="code">  verticalAlign?: VerticalAlign;</td></tr>
+<tr class="cov"><td class="ln">71</td><td class="code">  fontSize?: number;</td></tr>
+<tr class="cov"><td class="ln">72</td><td class="code">  fontFamily?: string;</td></tr>
+<tr class="cov"><td class="ln">73</td><td class="code">  color?: string;</td></tr>
+<tr class="cov"><td class="ln">74</td><td class="code">  verticalAlign?: VerticalAlign;</td></tr>
 <tr class="nil"><td class="ln">75</td><td class="code">  /** Fill behind the text (e.g. a caption panel over a busy background). A CSS</td></tr>
 <tr class="nil"><td class="ln">76</td><td class="code">   *  color; combined with backgroundOpacity at render. Unset = transparent. */</td></tr>
-<tr class="nil"><td class="ln">77</td><td class="code">  backgroundColor?: string;</td></tr>
+<tr class="cov"><td class="ln">77</td><td class="code">  backgroundColor?: string;</td></tr>
 <tr class="nil"><td class="ln">78</td><td class="code">  /** Opacity of backgroundColor, 0–1 (default 1). Lets text sit on a</td></tr>
 <tr class="nil"><td class="ln">79</td><td class="code">   *  translucent panel without fading the text itself. */</td></tr>
-<tr class="nil"><td class="ln">80</td><td class="code">  backgroundOpacity?: number;</td></tr>
+<tr class="cov"><td class="ln">80</td><td class="code">  backgroundOpacity?: number;</td></tr>
 <tr class="nil"><td class="ln">81</td><td class="code">  /** Themed box fill (#132 &quot;card&quot;): tint the fill RELATIVE TO THE SLIDE THEME</td></tr>
 <tr class="nil"><td class="ln">82</td><td class="code">   *  instead of a fixed color. &#x27;accent&#x27; mixes the theme&#x27;s accent into the slide</td></tr>
 <tr class="nil"><td class="ln">83</td><td class="code">   *  background (~15%), so a card stays colored AND contrasting on ANY theme; a</td></tr>
@@ -105,56 +106,56 @@
 <tr class="nil"><td class="ln">88</td><td class="code">  /** Optional text decoration for legibility over busy backgrounds (#73):</td></tr>
 <tr class="nil"><td class="ln">89</td><td class="code">   *  &#x27;shadow&#x27; = a soft drop shadow; &#x27;glow&#x27; = a high-contrast halo (color is</td></tr>
 <tr class="nil"><td class="ln">90</td><td class="code">   *  auto-chosen opposite the text luminance). Unset = none. */</td></tr>
-<tr class="nil"><td class="ln">91</td><td class="code">  textEffect?: &#x27;shadow&#x27; | &#x27;glow&#x27;;</td></tr>
+<tr class="cov"><td class="ln">91</td><td class="code">  textEffect?: &#x27;shadow&#x27; | &#x27;glow&#x27;;</td></tr>
 <tr class="nil"><td class="ln">92</td><td class="code">  /** Drop shadow on the box itself (the background panel) — independent of</td></tr>
 <tr class="nil"><td class="ln">93</td><td class="code">   *  textEffect. Only meaningful when backgroundColor is set; the inspector only</td></tr>
 <tr class="nil"><td class="ln">94</td><td class="code">   *  offers it then. Unset = no box shadow. */</td></tr>
 <tr class="nil"><td class="ln">95</td><td class="code">  boxShadow?: boolean;</td></tr>
 <tr class="nil"><td class="ln">96</td><td class="code">  /** Corner radius (px, slide coords) of the background panel — lets a tinted</td></tr>
-<tr class="cov"><td class="ln">97</td><td class="code">   *  fill read as a rounded card. Only meaningful when backgroundColor is set;</td></tr>
-<tr class="cov"><td class="ln">98</td><td class="code">   *  the inspector only offers it then. Unset/0 = square corners. Mirrors the</td></tr>
-<tr class="cov"><td class="ln">99</td><td class="code">   *  image element&#x27;s borderRadius so both round consistently across render</td></tr>
-<tr class="cov"><td class="ln">100</td><td class="code">   *  paths (editor, present/presenter, export). */</td></tr>
+<tr class="nil"><td class="ln">97</td><td class="code">   *  fill read as a rounded card. Only meaningful when backgroundColor is set;</td></tr>
+<tr class="nil"><td class="ln">98</td><td class="code">   *  the inspector only offers it then. Unset/0 = square corners. Mirrors the</td></tr>
+<tr class="nil"><td class="ln">99</td><td class="code">   *  image element&#x27;s borderRadius so both round consistently across render</td></tr>
+<tr class="nil"><td class="ln">100</td><td class="code">   *  paths (editor, present/presenter, export). */</td></tr>
 <tr class="cov"><td class="ln">101</td><td class="code">  borderRadius?: number;</td></tr>
-<tr class="cov"><td class="ln">102</td><td class="code">  /** Per-side inner padding (px, slide coords) overriding the preset&#x27;s default</td></tr>
+<tr class="nil"><td class="ln">102</td><td class="code">  /** Per-side inner padding (px, slide coords) overriding the preset&#x27;s default</td></tr>
 <tr class="nil"><td class="ln">103</td><td class="code">   *  (8/12, or 0 for footnote). Pairs with backgroundColor + borderRadius to give</td></tr>
 <tr class="nil"><td class="ln">104</td><td class="code">   *  a tinted rounded card breathing room. The inspector edits all four with an</td></tr>
-<tr class="cov"><td class="ln">105</td><td class="code">   *  optional &quot;link&quot; toggle. Unset = preset default. */</td></tr>
-<tr class="nil"><td class="ln">106</td><td class="code">  padding?: { top: number; right: number; bottom: number; left: number };</td></tr>
+<tr class="nil"><td class="ln">105</td><td class="code">   *  optional &quot;link&quot; toggle. Unset = preset default. */</td></tr>
+<tr class="cov"><td class="ln">106</td><td class="code">  padding?: { top: number; right: number; bottom: number; left: number };</td></tr>
 <tr class="nil"><td class="ln">107</td><td class="code">  /** Rotation in degrees (clockwise) for the whole text box — the background</td></tr>
-<tr class="cov"><td class="ln">108</td><td class="code">   *  panel tilts with the text (e.g. an angled sticky-note Hype callout, #8).</td></tr>
-<tr class="cov"><td class="ln">109</td><td class="code">   *  Unset/0 = upright. */</td></tr>
+<tr class="nil"><td class="ln">108</td><td class="code">   *  panel tilts with the text (e.g. an angled sticky-note Hype callout, #8).</td></tr>
+<tr class="nil"><td class="ln">109</td><td class="code">   *  Unset/0 = upright. */</td></tr>
 <tr class="cov"><td class="ln">110</td><td class="code">  rotation?: number;</td></tr>
-<tr class="cov"><td class="ln">111</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">111</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">112</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">113</td><td class="code">// textBackgroundCss / textEffectCss / textShadowCss / textBoxShadowCss (the text</td></tr>
-<tr class="unc"><td class="ln">114</td><td class="code">// visual-style helpers) live in lib/textStyle.mjs so they&#x27;re shared with the</td></tr>
-<tr class="unc"><td class="ln">115</td><td class="code">// static HTML exports across the .mjs/.ts boundary; re-exported at the top.</td></tr>
-<tr class="unc"><td class="ln">116</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">117</td><td class="code">/**</td></tr>
-<tr class="unc"><td class="ln">118</td><td class="code"> * Parse a pasted color palette (#2) into a normalized list of #rrggbb hex</td></tr>
+<tr class="nil"><td class="ln">114</td><td class="code">// visual-style helpers) live in lib/textStyle.mjs so they&#x27;re shared with the</td></tr>
+<tr class="nil"><td class="ln">115</td><td class="code">// static HTML exports across the .mjs/.ts boundary; re-exported at the top.</td></tr>
+<tr class="nil"><td class="ln">116</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">117</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">118</td><td class="code"> * Parse a pasted color palette (#2) into a normalized list of #rrggbb hex</td></tr>
 <tr class="nil"><td class="ln">119</td><td class="code"> * strings. Accepts colors separated by commas / whitespace / newlines /</td></tr>
 <tr class="nil"><td class="ln">120</td><td class="code"> * semicolons, with or without a leading &#x27;#&#x27;, in 3- or 6-digit hex. Expands</td></tr>
 <tr class="nil"><td class="ln">121</td><td class="code"> * shorthand (#abc → #aabbcc), lowercases, dedupes (order-preserving), and</td></tr>
 <tr class="nil"><td class="ln">122</td><td class="code"> * caps the count so a giant paste can&#x27;t blow up the toolbar.</td></tr>
 <tr class="nil"><td class="ln">123</td><td class="code"> */</td></tr>
 <tr class="nil"><td class="ln">124</td><td class="code">export function parsePalette(input: string, max = 24): string[] {</td></tr>
-<tr class="cov"><td class="ln">125</td><td class="code">  if (!input) return [];</td></tr>
-<tr class="cov"><td class="ln">126</td><td class="code">  const out: string[] = [];</td></tr>
-<tr class="cov"><td class="ln">127</td><td class="code">  const seen = new Set&lt;string&gt;();</td></tr>
-<tr class="cov"><td class="ln">128</td><td class="code">  for (const raw of input.split(/[\s,;]+/)) {</td></tr>
-<tr class="cov"><td class="ln">129</td><td class="code">    const tok = raw.trim().replace(/^#/, &#x27;&#x27;);</td></tr>
-<tr class="cov"><td class="ln">130</td><td class="code">    let hex: string | null = null;</td></tr>
-<tr class="cov"><td class="ln">131</td><td class="code">    if (/^[0-9a-fA-F]{6}$/.test(tok)) hex = tok.toLowerCase();</td></tr>
-<tr class="cov"><td class="ln">132</td><td class="code">    else if (/^[0-9a-fA-F]{3}$/.test(tok)) hex = tok.toLowerCase().split(&#x27;&#x27;).map((c) =&gt; c + c).join(&#x27;&#x27;);</td></tr>
-<tr class="cov"><td class="ln">133</td><td class="code">    if (!hex) continue;</td></tr>
-<tr class="cov"><td class="ln">134</td><td class="code">    const norm = &#x27;#&#x27; + hex;</td></tr>
-<tr class="cov"><td class="ln">135</td><td class="code">    if (seen.has(norm)) continue;</td></tr>
-<tr class="cov"><td class="ln">136</td><td class="code">    seen.add(norm);</td></tr>
-<tr class="cov"><td class="ln">137</td><td class="code">    out.push(norm);</td></tr>
-<tr class="cov"><td class="ln">138</td><td class="code">    if (out.length &gt;= max) break;</td></tr>
+<tr class="nil"><td class="ln">125</td><td class="code">  if (!input) return [];</td></tr>
+<tr class="nil"><td class="ln">126</td><td class="code">  const out: string[] = [];</td></tr>
+<tr class="nil"><td class="ln">127</td><td class="code">  const seen = new Set&lt;string&gt;();</td></tr>
+<tr class="nil"><td class="ln">128</td><td class="code">  for (const raw of input.split(/[\s,;]+/)) {</td></tr>
+<tr class="nil"><td class="ln">129</td><td class="code">    const tok = raw.trim().replace(/^#/, &#x27;&#x27;);</td></tr>
+<tr class="nil"><td class="ln">130</td><td class="code">    let hex: string | null = null;</td></tr>
+<tr class="nil"><td class="ln">131</td><td class="code">    if (/^[0-9a-fA-F]{6}$/.test(tok)) hex = tok.toLowerCase();</td></tr>
+<tr class="nil"><td class="ln">132</td><td class="code">    else if (/^[0-9a-fA-F]{3}$/.test(tok)) hex = tok.toLowerCase().split(&#x27;&#x27;).map((c) =&gt; c + c).join(&#x27;&#x27;);</td></tr>
+<tr class="nil"><td class="ln">133</td><td class="code">    if (!hex) continue;</td></tr>
+<tr class="nil"><td class="ln">134</td><td class="code">    const norm = &#x27;#&#x27; + hex;</td></tr>
+<tr class="nil"><td class="ln">135</td><td class="code">    if (seen.has(norm)) continue;</td></tr>
+<tr class="nil"><td class="ln">136</td><td class="code">    seen.add(norm);</td></tr>
+<tr class="nil"><td class="ln">137</td><td class="code">    out.push(norm);</td></tr>
+<tr class="nil"><td class="ln">138</td><td class="code">    if (out.length &gt;= max) break;</td></tr>
 <tr class="nil"><td class="ln">139</td><td class="code">  }</td></tr>
-<tr class="cov"><td class="ln">140</td><td class="code">  return out;</td></tr>
+<tr class="nil"><td class="ln">140</td><td class="code">  return out;</td></tr>
 <tr class="nil"><td class="ln">141</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">142</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">143</td><td class="code">export interface ImageElement extends BaseElement {</td></tr>
@@ -507,7 +508,7 @@
 <tr class="nil"><td class="ln">490</td><td class="code">  // footnote. The footnote renders TIGHT (no padding, single line-height — see</td></tr>
 <tr class="nil"><td class="ln">491</td><td class="code">  // textPresetBoxCss), so its 24px text fits a slim 30px box flush on the 60px</td></tr>
 <tr class="nil"><td class="ln">492</td><td class="code">  // bottom margin.</td></tr>
-<tr class="cov"><td class="ln">493</td><td class="code">  const defaults: Record&lt;TextPreset, ElementPosition&gt; = {</td></tr>
+<tr class="nil"><td class="ln">493</td><td class="code">  const defaults: Record&lt;TextPreset, ElementPosition&gt; = {</td></tr>
 <tr class="nil"><td class="ln">494</td><td class="code">    title:      { x: 60,  y: 60,   width: 1800, height: 180 },</td></tr>
 <tr class="nil"><td class="ln">495</td><td class="code">    body:       { x: 60,  y: 240,  width: 1800, height: 750 },</td></tr>
 <tr class="nil"><td class="ln">496</td><td class="code">    textbox:    { x: 210, y: 330,  width: 810,  height: 330 },</td></tr>
@@ -516,7 +517,7 @@
 <tr class="nil"><td class="ln">499</td><td class="code">    hype:       { x: 720, y: 360,  width: 570,  height: 360 },</td></tr>
 <tr class="nil"><td class="ln">500</td><td class="code">  };</td></tr>
 <tr class="nil"><td class="ln">501</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">502</td><td class="code">  const defaultText: Record&lt;TextPreset, string&gt; = {</td></tr>
+<tr class="nil"><td class="ln">502</td><td class="code">  const defaultText: Record&lt;TextPreset, string&gt; = {</td></tr>
 <tr class="nil"><td class="ln">503</td><td class="code">    title: &#x27;Title&#x27;,</td></tr>
 <tr class="nil"><td class="ln">504</td><td class="code">    body: &#x27;&#x27;,</td></tr>
 <tr class="nil"><td class="ln">505</td><td class="code">    textbox: &#x27;Text&#x27;,</td></tr>
@@ -525,7 +526,7 @@
 <tr class="nil"><td class="ln">508</td><td class="code">    hype: &#x27;HYPE!&#x27;,</td></tr>
 <tr class="nil"><td class="ln">509</td><td class="code">  };</td></tr>
 <tr class="nil"><td class="ln">510</td><td class="code">&nbsp;</td></tr>
-<tr class="cov"><td class="ln">511</td><td class="code">  return {</td></tr>
+<tr class="nil"><td class="ln">511</td><td class="code">  return {</td></tr>
 <tr class="nil"><td class="ln">512</td><td class="code">    id: crypto.randomUUID(),</td></tr>
 <tr class="nil"><td class="ln">513</td><td class="code">    type: &#x27;text&#x27;,</td></tr>
 <tr class="nil"><td class="ln">514</td><td class="code">    preset,</td></tr>
@@ -539,7 +540,7 @@
 <tr class="nil"><td class="ln">522</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">523</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">524</td><td class="code">export function createDefaultPresentation(): Presentation {</td></tr>
-<tr class="cov"><td class="ln">525</td><td class="code">  return {</td></tr>
+<tr class="nil"><td class="ln">525</td><td class="code">  return {</td></tr>
 <tr class="nil"><td class="ln">526</td><td class="code">    title: &#x27;Untitled Presentation&#x27;,</td></tr>
 <tr class="nil"><td class="ln">527</td><td class="code">    theme: &#x27;white&#x27;,</td></tr>
 <tr class="nil"><td class="ln">528</td><td class="code">    slides: [</td></tr>
@@ -568,7 +569,7 @@
 <tr class="nil"><td class="ln">551</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">552</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">553</td><td class="code">export function createBlankSlide(): Slide {</td></tr>
-<tr class="cov"><td class="ln">554</td><td class="code">  return {</td></tr>
+<tr class="nil"><td class="ln">554</td><td class="code">  return {</td></tr>
 <tr class="nil"><td class="ln">555</td><td class="code">    id: crypto.randomUUID(),</td></tr>
 <tr class="nil"><td class="ln">556</td><td class="code">    elements: [</td></tr>
 <tr class="nil"><td class="ln">557</td><td class="code">      createTextElement(&#x27;title&#x27;),</td></tr>
@@ -584,33 +585,33 @@
 <tr class="nil"><td class="ln">567</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">568</td><td class="code">/** Get the display slide number for a given slide index (groups share a number) */</td></tr>
 <tr class="nil"><td class="ln">569</td><td class="code">export function getSlideNumber(slides: Slide[], index: number): number {</td></tr>
-<tr class="cov"><td class="ln">570</td><td class="code">  let num = 0;</td></tr>
-<tr class="cov"><td class="ln">571</td><td class="code">  for (let i = 0; i &lt;= index; i++) {</td></tr>
-<tr class="cov"><td class="ln">572</td><td class="code">    const slide = slides[i];</td></tr>
-<tr class="cov"><td class="ln">573</td><td class="code">    const prev = i &gt; 0 ? slides[i - 1] : null;</td></tr>
+<tr class="nil"><td class="ln">570</td><td class="code">  let num = 0;</td></tr>
+<tr class="nil"><td class="ln">571</td><td class="code">  for (let i = 0; i &lt;= index; i++) {</td></tr>
+<tr class="nil"><td class="ln">572</td><td class="code">    const slide = slides[i];</td></tr>
+<tr class="nil"><td class="ln">573</td><td class="code">    const prev = i &gt; 0 ? slides[i - 1] : null;</td></tr>
 <tr class="nil"><td class="ln">574</td><td class="code">    // Increment number if this slide starts a new group or has no group</td></tr>
-<tr class="cov"><td class="ln">575</td><td class="code">    if (!slide.groupId || !prev || prev.groupId !== slide.groupId) {</td></tr>
-<tr class="cov"><td class="ln">576</td><td class="code">      num++;</td></tr>
+<tr class="nil"><td class="ln">575</td><td class="code">    if (!slide.groupId || !prev || prev.groupId !== slide.groupId) {</td></tr>
+<tr class="nil"><td class="ln">576</td><td class="code">      num++;</td></tr>
 <tr class="nil"><td class="ln">577</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">578</td><td class="code">  }</td></tr>
-<tr class="cov"><td class="ln">579</td><td class="code">  return num;</td></tr>
+<tr class="nil"><td class="ln">579</td><td class="code">  return num;</td></tr>
 <tr class="nil"><td class="ln">580</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">581</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">582</td><td class="code">/** Check if a slide is a child (not the first) in its group */</td></tr>
 <tr class="nil"><td class="ln">583</td><td class="code">export function isGroupChild(slides: Slide[], index: number): boolean {</td></tr>
-<tr class="unc"><td class="ln">584</td><td class="code">  const slide = slides[index];</td></tr>
-<tr class="unc"><td class="ln">585</td><td class="code">  if (!slide.groupId) return false;</td></tr>
-<tr class="unc"><td class="ln">586</td><td class="code">  if (index === 0) return false;</td></tr>
-<tr class="unc"><td class="ln">587</td><td class="code">  return slides[index - 1].groupId === slide.groupId;</td></tr>
+<tr class="nil"><td class="ln">584</td><td class="code">  const slide = slides[index];</td></tr>
+<tr class="nil"><td class="ln">585</td><td class="code">  if (!slide.groupId) return false;</td></tr>
+<tr class="nil"><td class="ln">586</td><td class="code">  if (index === 0) return false;</td></tr>
+<tr class="nil"><td class="ln">587</td><td class="code">  return slides[index - 1].groupId === slide.groupId;</td></tr>
 <tr class="nil"><td class="ln">588</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">589</td><td class="code">&nbsp;</td></tr>
 <tr class="nil"><td class="ln">590</td><td class="code">/** Get all slide indices in the same group */</td></tr>
 <tr class="nil"><td class="ln">591</td><td class="code">export function getGroupIndices(slides: Slide[], index: number): number[] {</td></tr>
-<tr class="unc"><td class="ln">592</td><td class="code">  const slide = slides[index];</td></tr>
-<tr class="unc"><td class="ln">593</td><td class="code">  if (!slide.groupId) return [index];</td></tr>
-<tr class="unc"><td class="ln">594</td><td class="code">  return slides.reduce&lt;number[]&gt;((acc, s, i) =&gt; {</td></tr>
-<tr class="unc"><td class="ln">595</td><td class="code">    if (s.groupId === slide.groupId) acc.push(i);</td></tr>
-<tr class="unc"><td class="ln">596</td><td class="code">    return acc;</td></tr>
+<tr class="nil"><td class="ln">592</td><td class="code">  const slide = slides[index];</td></tr>
+<tr class="nil"><td class="ln">593</td><td class="code">  if (!slide.groupId) return [index];</td></tr>
+<tr class="nil"><td class="ln">594</td><td class="code">  return slides.reduce&lt;number[]&gt;((acc, s, i) =&gt; {</td></tr>
+<tr class="nil"><td class="ln">595</td><td class="code">    if (s.groupId === slide.groupId) acc.push(i);</td></tr>
+<tr class="nil"><td class="ln">596</td><td class="code">    return acc;</td></tr>
 <tr class="nil"><td class="ln">597</td><td class="code">  }, []);</td></tr>
 <tr class="nil"><td class="ln">598</td><td class="code">}</td></tr></table>
 </body></html>
