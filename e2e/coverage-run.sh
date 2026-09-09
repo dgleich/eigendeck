@@ -39,7 +39,7 @@ step "3/6  instrumented app binary + unit-test profraws"
   # even warns about this). `cargo test` under the show-env env emits profraws
   # directly, which `cargo llvm-cov report` (step 6) then collects.
   cargo test --lib -- --include-ignored --test-threads=1
-)
+); UNIT_RC=$?
 
 step "4/6  full e2e suite (instrumented dist + binary)"
 PROFDIR="$(cd src-tauri && eval "$(cargo llvm-cov show-env --export-prefix)" && dirname "$LLVM_PROFILE_FILE")"
@@ -49,7 +49,7 @@ rm -f "$PROFDIR"/e2e-*.profraw
 E2E_APP="$BIN_DIR/debug/eigendeck" E2E_CLI="$BIN_DIR/debug/eigendeck-cli" \
   COVERAGE_INSTRUMENT=1 COV_NYC_DIR="$ROOT/.nyc_output" \
   LLVM_PROFILE_FILE="$PROFDIR/e2e-%p%c.profraw" \
-  bash e2e/run-all.sh
+  bash e2e/run-all.sh; E2E_RC=$?
 echo "frontend page maps: $(ls .nyc_output 2>/dev/null | wc -l)   rust e2e profraw: $(ls "$PROFDIR"/e2e-*.profraw 2>/dev/null | wc -l)"
 
 step "5/6  FRONTEND unified coverage (unit + real-WebKit e2e)"
@@ -64,3 +64,8 @@ step "6/6  RUST coverage (unit + e2e handlers)"
 )
 echo; echo "==== coverage-run complete ===="
 echo "  frontend → coverage-unified/  |  rust → coverage-rust-e2e.lcov"
+echo "  rust unit tests rc=$UNIT_RC   e2e suite rc=$E2E_RC"
+# Reports are written regardless (so CI can upload them), but the job must go
+# red when the suite it measured did not pass: a green coverage job over a
+# failing suite is worse than no job.
+if [ "$UNIT_RC" -ne 0 ] || [ "$E2E_RC" -ne 0 ]; then exit 1; fi

@@ -5,14 +5,15 @@
 # it constantly. Each block below is a real thing someone does with the CLI, not a
 # one-off "touch this line" call — that's what actually drives the branches.
 #
-# Usage: bash e2e/cli-coverage.sh [out-lcov]      (default: $HOME/rust-lcov.info)
+# Usage: bash e2e/cli-coverage.sh [out-lcov]   (default: gitignore/rust-lcov-cli.info)
 # Fork-bomb safety (docs/e2e-coverage.md): the only `cargo llvm-cov` calls are
 # `clean` (before show-env) and `report` (no compile). Everything that compiles is
 # a plain `cargo build`/`cargo test` under the show-env env.
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export PATH="$HOME/.cargo/bin:$PATH"
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$HOME/el-target}"
-OUT_LCOV="${1:-$HOME/rust-lcov.info}"
+OUT_LCOV="${1:-$ROOT/gitignore/rust-lcov-cli.info}"
+mkdir -p "$ROOT/gitignore"
 S="$(mktemp -d)"
 
 # ── fixtures: a few real asset files + an empty seed + an orphan-link deck ──────
@@ -51,7 +52,11 @@ echo "== clean + build instrumented CLI =="
 cargo llvm-cov clean --workspace
 eval "$(cargo llvm-cov show-env --export-prefix)"
 cargo build --bin eigendeck-cli 2>&1 | tail -1
-cargo test --lib -- --include-ignored --test-threads=1 >/dev/null 2>&1 && echo "  unit tests ok" || echo "  unit tests: some failures (continuing)"
+if cargo test --lib -- --include-ignored --test-threads=1 >/dev/null 2>&1; then
+  echo "  unit tests ok"; UNIT_RC=0
+else
+  echo "  unit tests: FAILED (continuing to measure; exit code will be non-zero)"; UNIT_RC=1
+fi
 BIN="$CARGO_TARGET_DIR/debug/eigendeck-cli"
 [ -x "$BIN" ] || { echo "FATAL: CLI not built at $BIN"; exit 2; }
 
@@ -137,3 +142,10 @@ cargo llvm-cov report --summary-only 2>/dev/null | grep -E 'cli\.rs|storage|lib\
 cargo llvm-cov report --lcov --output-path "$OUT_LCOV" 2>/dev/null
 echo "lcov written: $OUT_LCOV  ($(grep -c '^SF:' "$OUT_LCOV" 2>/dev/null) files)"
 rm -rf "$S"
+# This script exists to measure cli.rs. If the binary was not instrumented or
+# the workflows never ran it, the lcov has no cli.rs record and the number is
+# meaningless; fail loudly instead of writing an empty report.
+if ! grep -q '^SF:.*cli\.rs$' "$OUT_LCOV" 2>/dev/null; then
+  echo "FATAL: $OUT_LCOV has no cli.rs record"; exit 1
+fi
+exit "$UNIT_RC"
