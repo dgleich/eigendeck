@@ -153,7 +153,8 @@ const dragRes = await exec(sid, `
   const e = s.presentation.slides[0].elements.find(x=>x.id==='e-body');
   return JSON.stringify(e.position);`);
 const dragAfter = (dragRes && dragRes.startsWith('{')) ? JSON.parse(dragRes) : null;
-soft('drag e-body moved it', dragAfter && (dragAfter.x !== dragBefore.x || dragAfter.y !== dragBefore.y), dragRes);
+if (!(dragAfter && (dragAfter.x !== dragBefore.x || dragAfter.y !== dragBefore.y))) fail(`drag e-body did not move it (${dragRes})`);
+console.log('  ✓ drag e-body moved it');
 
 // 2b. resize e-image via its .el-resize-handle.
 await selectEl('e-image');
@@ -172,7 +173,8 @@ const szRes = await exec(sid, `
   const e = s.presentation.slides[0].elements.find(x=>x.id==='e-image');
   return JSON.stringify(e.position);`);
 const szAfter = (szRes && szRes.startsWith('{')) ? JSON.parse(szRes) : null;
-soft('resize e-image changed w/h', szAfter && (szAfter.width !== szBefore.width || szAfter.height !== szBefore.height), szRes);
+if (!(szAfter && (szAfter.width !== szBefore.width || szAfter.height !== szBefore.height))) fail(`resize e-image did not change w/h (${szRes})`);
+console.log('  ✓ resize e-image changed w/h');
 
 // 2c. drag an arrow control handle on the curved arrow.
 await selectEl('e-arrow-curve');
@@ -272,7 +274,8 @@ const zBefore = Number(await exec(sid, "const s=window.__eigendeck.store.getStat
 soft('menu "Bring to Front" clicked', await menuItemClick('Bring to Front'));
 await sleep(250);
 const zAfter = Number(await exec(sid, "const s=window.__eigendeck.store.getState();return s.presentation.slides[0].elements.findIndex(e=>e.id==='e-cover');"));
-soft('Bring to Front raised z-order', zAfter >= zBefore);
+if (!(zAfter > zBefore)) fail(`Bring to Front did not raise z-order (${zBefore} -> ${zAfter})`);
+console.log('  ✓ Bring to Front raised z-order');
 await dismissMenu();
 
 // delete via menu on a throwaway element we add first (don't destroy fixture elements).
@@ -284,7 +287,8 @@ await sleep(300);
 soft('menu "Delete" clicked', await menuItemClick('Delete'));
 await sleep(300);
 const scratchGone = await exec(sid, "const s=window.__eigendeck.store.getState();return !s.presentation.slides[0].elements.some(e=>e.id==='e-scratch');");
-soft('Delete removed the element', scratchGone);
+if (!scratchGone) fail('menu Delete did not remove the element');
+console.log('  ✓ Delete removed the element');
 await dismissMenu();
 
 // canvas background context menu → "Add Body".
@@ -298,7 +302,8 @@ soft('canvas context menu opened', await exec(sid, "return !!document.querySelec
 soft('menu "Add Body" clicked', await menuItemClick('Add Body'));
 await sleep(300);
 const nAfter = Number(await exec(sid, "return window.__eigendeck.store.getState().presentation.slides[0].elements.length;"));
-soft('Add Body inserted an element', nAfter === nBefore + 1);
+if (nAfter !== nBefore + 1) fail(`Add Body did not insert an element (${nBefore} -> ${nAfter})`);
+console.log('  ✓ Add Body inserted an element');
 await dismissMenu();
 
 // ── 5. inline text-format toolbar (enter edit mode, select all, Bold + color) ─
@@ -407,9 +412,11 @@ if (problems.length) {
   console.error(`IX: ${problems.length} soft problem(s):`);
   for (const p of problems) console.error('   • ' + p);
 }
-// Hard-fail only if TOO MANY soft steps failed (a broken build/rig), else pass:
-// the exercise is about breadth + no-crash, and individual optional controls are
-// allowed to be absent. A large failure count means something structural broke.
-if (problems.length > 8) fail(`too many interaction steps failed (${problems.length}) — likely a structural break`);
+// Only the documented-optional steps remain soft: the optional inspector buttons
+// (arrow heads/size, text vertical-align), the text-format toolbar (edit mode may
+// not open on every element), and the Settings and Security window content (second
+// windows whose render can lag headlessly). A larger failure count means something
+// structural broke.
+if (problems.length > 3) fail(`too many interaction steps failed (${problems.length}) — likely a structural break`);
 console.log('IX_PASS: interaction exercise drove per-type inspector, pointer gestures (drag/resize/arrow/marquee), context-menu actions, text toolbar, Settings + Security windows — no crash');
 process.exit(0);

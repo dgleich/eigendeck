@@ -98,9 +98,9 @@ await toggle('toggle-snap-grid flipped snapToGrid', 'toggle-snap-grid', '!!s.sna
 await menu(sid, 'select-all'); await sleep(300);
 soft('select-all made a multi/element selection', /multi|element/.test(String(await st(sid, "JSON.stringify(s.selectedObject||{})"))));
 await menu(sid, 'debug-console'); await sleep(200);
-soft('debug-console fired (no crash)', true);
+console.log('  · debug-console fired');
 await menu(sid, 'toggle-decorations'); await sleep(300);
-soft('toggle-decorations fired (no crash)', true);
+console.log('  · toggle-decorations fired');
 
 // ── 2. Inspector tab menu commands ───────────────────────────────────────────
 console.log('\n[2] properties-tab menu commands');
@@ -116,14 +116,17 @@ for (const [id, tab] of [['slide-properties', 'slide'], ['deck-properties', 'pre
 console.log('\n[3] slide new / duplicate / delete');
 let n = await nSlides(sid);
 await menu(sid, 'slide-new');
-soft('slide-new added a slide', await waitFor(sid, 's.presentation.slides.length', n + 1), `stayed ${await nSlides(sid)}`);
+if (!await waitFor(sid, 's.presentation.slides.length', n + 1)) fail(`slide-new did not add a slide (stayed ${await nSlides(sid)})`);
+console.log('  ✓ slide-new added a slide');
 n = await nSlides(sid);
 await exec(sid, "window.__eigendeck.store.getState().selectSlide(0);"); await sleep(150);
 await menu(sid, 'slide-duplicate');
-soft('slide-duplicate added a slide', await waitFor(sid, 's.presentation.slides.length', n + 1), `stayed ${await nSlides(sid)}`);
+if (!await waitFor(sid, 's.presentation.slides.length', n + 1)) fail(`slide-duplicate did not add a slide (stayed ${await nSlides(sid)})`);
+console.log('  ✓ slide-duplicate added a slide');
 n = await nSlides(sid);
 await menu(sid, 'slide-delete');
-soft('slide-delete removed a slide', await waitFor(sid, 's.presentation.slides.length', n - 1), `stayed ${await nSlides(sid)}`);
+if (!await waitFor(sid, 's.presentation.slides.length', n - 1)) fail(`slide-delete did not remove a slide (stayed ${await nSlides(sid)})`);
+console.log('  ✓ slide-delete removed a slide');
 
 // ── 4. Insert dispatcher: dialog-free element inserts grow the slide ─────────
 console.log('\n[4] insert dispatcher (element count grows)');
@@ -138,7 +141,7 @@ for (const kind of inserts) {
   soft(`insert-${kind} added an element`, ok, `count stayed ${await nEls(sid, 0)}`);
   await sleep(120);
 }
-soft(`majority of dialog-free inserts worked (${grew}/${inserts.length})`, grew >= inserts.length - 1);
+if (grew !== inserts.length) fail(`only ${grew}/${inserts.length} dialog-free inserts added an element`);
 
 // ── 5. Present flow: enter (single-window) -> nav -> exit ────────────────────
 // Run EARLY, in a clean single-window state: the present + toolbar assertions
@@ -158,17 +161,20 @@ await exec(sid, "try{localStorage.setItem('eigendeck:pref:tryProjectorMode','fal
 await exec(sid, "window.__eigendeck.store.getState().selectSlide(0);"); await sleep(200);
 await menu(sid, 'present');
 const entered = await waitFor(sid, '!!s.isPresenting', true, 25);
-soft('present entered present mode', entered);
-if (entered) {
+if (!entered) fail('present menu did not enter present mode');
+console.log('  ✓ present entered present mode');
+{
   await sleep(900);   // PresentMode mounts + attaches the nav-key message listener
   const i0 = await curIdx(sid);
   await navKey(sid, 'ArrowRight');
   const advanced = await waitFor(sid, 's.currentSlideIndex', i0 + 1, 20);
-  soft('present ArrowRight advanced a slide', advanced, `idx ${await curIdx(sid)} (from ${i0})`);
+  if (!advanced) fail(`present ArrowRight did not advance a slide (idx ${await curIdx(sid)} from ${i0})`);
+  console.log('  ✓ present ArrowRight advanced a slide');
   await navKey(sid, 'ArrowLeft');
   await waitFor(sid, 's.currentSlideIndex', i0, 15);
   await exitPresent(sid);
-  soft('present exited back to editor', (await st(sid, '!!s.isPresenting')) === false && (await execT(sid, "return !!document.querySelector('.slide-canvas')")) === true);
+  if (!((await st(sid, '!!s.isPresenting')) === false && (await execT(sid, "return !!document.querySelector('.slide-canvas')")) === true)) fail('present did not exit back to editor');
+  console.log('  ✓ present exited back to editor');
 }
 // test-present-single: single-window present entry point (no projector window).
 await sleep(300);
@@ -186,6 +192,28 @@ soft('toolbar:action add-slide added a slide', await waitFor(sid, 's.presentatio
 const UNIQUE_TITLE = 'Journey-Saved-' + Date.now();
 await emitEvent(sid, 'toolbar:field', `{id:'title',value:${JSON.stringify(UNIQUE_TITLE)}}`);
 soft('toolbar:field title updated the deck title', await waitFor(sid, 's.presentation.title', UNIQUE_TITLE, 20), `title '${await st(sid, 's.presentation.title')}'`);
+
+// ── 6b. Menu save (fileOps save-in-place, no dialog) ─────────────────────────
+// Fire the menu `save` HERE, promptly after the fresh title edit and BEFORE any
+// secondary window opens. Two reasons: (a) the 1s debounced auto-flush would
+// otherwise have already written the earlier edits, leaving an explicit Save with
+// no pending delta and the deck-file mtime unchanged; firing Save right after a
+// fresh edit guarantees it has work to flush. (b) global menu-event delivery to
+// this window's listener degrades once Settings/Security/projector windows are
+// open (sections 8-9), so a Save fired after them may never reach saveProject.
+console.log('\n[6b] menu save (save-in-place, mtime bump)');
+const deckFile = `${DECK}`;
+// The deck is a WAL-mode SQLite file: a save-in-place flush lands in the -wal
+// sidecar and only a checkpoint rewrites the main .eigendeck file, so "did the
+// menu save write the deck" must look at the newest of the file AND its
+// -wal/-shm sidecars, not the main file alone.
+const deckMtime = () => Math.max(...['', '-wal', '-shm'].map((s) => { try { return statSync(deckFile + s).mtimeMs; } catch { return 0; } }));
+const mtimeBefore = deckMtime();
+const liveSlides = await nSlides(sid);
+await menu(sid, 'save'); await sleep(1500);
+const mtimeAfter = deckMtime();
+if (!(mtimeAfter > mtimeBefore)) fail(`menu save did not write the deck (mtime before=${mtimeBefore} after=${mtimeAfter})`);
+console.log('  ✓ save updated the deck file mtime');
 
 // ── 7. Snapshots + asset GC menu commands (no-crash branch coverage) ─────────
 console.log('\n[7] snapshots + gc-assets');
@@ -221,16 +249,11 @@ for (const id of ['screen-share-present', 'presenter']) {
   soft(`${id} fired + present mode off`, (await st(sid, '!!s.isPresenting')) === false);
 }
 
-// ── 10. Save round-trip (fileOps: save-in-place, no dialog) ──────────────────
+// ── 10. Save round-trip (reopen + compare) ───────────────────────────────────
+// The menu save already happened in section 6b (before the window-openers). Here
+// we tear the session down and reopen to prove the write round-tripped: the deck
+// is not blank, its title change persisted, and the slide count matches.
 console.log('\n[10] save round-trip (reopen + compare)');
-const deckFile = `${DECK}`;
-const mtimeBefore = (() => { try { return statSync(deckFile).mtimeMs; } catch { return 0; } })();
-const liveSlides = await nSlides(sid);
-await menu(sid, 'save'); await sleep(1500);
-// also flush-then-save through the seam to be certain the write landed
-await exec(sid, "return window.__eigendeck.save();"); await sleep(1200);
-const mtimeAfter = (() => { try { return statSync(deckFile).mtimeMs; } catch { return 0; } })();
-soft('save updated the deck file mtime', mtimeAfter >= mtimeBefore && mtimeAfter > 0, `before=${mtimeBefore} after=${mtimeAfter}`);
 
 // Snapshot the crash sentinel from the FIRST session before we tear it down for
 // the reopen. Benign youtube/network errors (the embed + missing linked assets)
@@ -248,10 +271,14 @@ if (!sid2 || !await waitSeam(sid2)) fail('reopen/seam after save');
 const reSlides = await nSlides(sid2);
 const reTitle = await st(sid2, 's.presentation.title');
 const reEls0 = await nEls(sid2, 0);
-soft('reopened deck is not blank (slides persisted)', reSlides >= 3, `got ${reSlides}`);
-soft('reopened deck slide 0 has elements', reEls0 >= 1, `got ${reEls0}`);
-soft('title change round-tripped through save', reTitle === UNIQUE_TITLE, `got '${reTitle}'`);
-soft('reopened slide count matches saved live count', reSlides === liveSlides, `live=${liveSlides} reopened=${reSlides}`);
+if (!(reSlides >= 3)) fail(`reopened deck is blank (slides persisted): got ${reSlides}`);
+console.log('  ✓ reopened deck is not blank (slides persisted)');
+if (!(reEls0 >= 1)) fail(`reopened deck slide 0 has no elements: got ${reEls0}`);
+console.log('  ✓ reopened deck slide 0 has elements');
+if (reTitle !== UNIQUE_TITLE) fail(`title change did not round-trip through save: got '${reTitle}'`);
+console.log('  ✓ title change round-tripped through save');
+if (reSlides !== liveSlides) fail(`reopened slide count does not match saved live count: live=${liveSlides} reopened=${reSlides}`);
+console.log('  ✓ reopened slide count matches saved live count');
 
 // ── 11. no-crash invariant ───────────────────────────────────────────────────
 console.log('\n[11] invariants');
@@ -266,8 +293,12 @@ if (problems.length) {
   console.error(`JOURNEY: ${problems.length} soft problem(s):`);
   for (const p of problems) console.error('   • ' + p);
 }
-// Breadth + no-crash test: individual optional commands may be absent, but a big
-// pile of failures means something structural broke.
-if (problems.length > 8) fail(`too many journey steps failed (${problems.length}) — likely a structural break`);
+// Only the documented-optional steps remain soft: the window-opener ids in
+// section 7 (snapshots / gc-assets), the picker/dialog-backed insert ids in
+// section 8 (demo / notebook), and the window-open + screen-share ids in
+// section 9 (settings, customize-toolbar, deck-security, security,
+// screen-share-present, presenter). Each is guarded because global-emit
+// delivery degrades once secondary windows are open (see the header comment).
+if (problems.length > 3) fail(`too many journey steps failed (${problems.length}) — likely a structural break`);
 console.log('JOURNEY_PASS: swept menu-event commands (view/panels, slide new/dup/delete, insert dispatcher, snapshots/gc, window-open branches, present enter/nav/exit, native toolbar), plus a fileOps save round-trip — no crash');
 process.exit(0);

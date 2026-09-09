@@ -12,7 +12,7 @@
 #   • amiss raster image referencing an assetId that has NO row in the DB — drives
 #          assetRenderer's fetch-failure fallback (placeholder tile) AND
 #          AssetSection's null-meta "Not yet stored" branch.
-import base64, json, sys
+import base64, json, os, sys
 
 # 1x1 transparent PNG
 PNG_B64 = ("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgYGAAAAAEAAH2"
@@ -60,7 +60,13 @@ def minimal_pdf():
     return bytes(out)
 
 
-def deck():
+def deck(out):
+    # An externalPath pointing at a file that is unambiguously absent: an ABSOLUTE
+    # path under a "vanished" directory next to the output deck that never exists.
+    # A relative path (e.g. "images/dot.png") is resolved against the deck dir and
+    # the missing-source scan did not reliably flag it; an absolute dangling path
+    # exercises the #74 missing-source detection branch deterministically.
+    vanished = os.path.join(os.path.dirname(os.path.abspath(out)), "vanished", "dot.png")
     elements = [
         {"id": "ap", "type": "image", "kind": "raster", "assetId": PNG_ID,
          "position": {"x": 80, "y": 80, "width": 300, "height": 240}},
@@ -82,7 +88,7 @@ def deck():
              "data": PNG_B64,
              # An externalPath whose file does NOT exist on disk — exercises the
              # linked-source UI + the missing-source detection branch (#74).
-             "externalPath": "images/dot.png",
+             "externalPath": vanished,
              "externalMtime": "2026-01-01T00:00:00.000Z"},
             {"assetId": SVG_ID, "mime": "image/svg+xml", "path": "images/shape.svg",
              "data": b64(SVG_STR)},
@@ -96,5 +102,5 @@ def deck():
 if __name__ == "__main__":
     out = sys.argv[1] if len(sys.argv) > 1 else "/tmp/asset_layer.json"
     with open(out, "w") as f:
-        json.dump(deck(), f)
+        json.dump(deck(out), f)
     print(f"wrote {out}")
