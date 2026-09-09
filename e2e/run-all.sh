@@ -102,12 +102,12 @@ MANIFEST=(
   "insert-dup-keys-probe.mjs|empty.eigendeck||$EMPTY"   
   "paste-text-probe.mjs|empty.eigendeck||$EMPTY"   # #161 paste plain/styled text → text element (color kept, font-size dropped)
   "paste-file-probe.mjs|empty.eigendeck||$EMPTY"   # #160 paste a copied FILE (uri-list) → insert as an image asset
-  # coverage spike (paste handler): exercise SlideEditor's ~470-line handlePaste
-  # block via synthetic ClipboardEvents — an image FILE (insertPastedAsset), rich
-  # HTML block → HTML→PNG screenshot (insertRichHtmlScreenshot/captureHtmlToPng),
-  # text/uri-list + x-special/gnome-copied-files file-urls (insertPastedFilePaths),
-  # plain text, and a canvas marquee. No-crash sentinel + element-type assertions.
-  # Lifts SlideEditor.tsx ~23→53% lines over a non-paste editor baseline.
+  # editor-paste: drives SlideEditor's ~470-line handlePaste block via synthetic
+  # ClipboardEvents and asserts hard that each vector inserts the right element —
+  # an image FILE (insertPastedAsset), a rich HTML block that screenshots to a PNG
+  # (insertRichHtmlScreenshot/captureHtmlToPng), text/uri-list +
+  # x-special/gnome-copied-files file-urls (insertPastedFilePaths), and plain text —
+  # plus a canvas marquee and a no-uncaught-error sentinel.
   "editor-paste-probe.mjs|empty.eigendeck||$EMPTY"
   "internal-paste-probe.mjs|ip.eigendeck||import_json $EXFIX/internal-paste-deck.json"   # copy/paste redesign: private-flavor round-trip + stale guard
   "image-link-probe.mjs|imglink.eigendeck||import_json $EXFIX/image-link-deck.json"   # copy/paste redesign: image copy -> paste + cross-slide link
