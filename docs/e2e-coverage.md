@@ -18,6 +18,8 @@ Istanbul-instrumenting the bundle and harvesting hits from the running app.
    exists) streams the map to a collector on an interval + on `pagehide`. This is
    engine-agnostic — no V8/CDP dependency — so it works in the real WebKitGTK app.
    Zero per-probe changes: every one of the ~120 probes contributes automatically.
+   Probes call `quit()` from `e2e/_ui.mjs`, which awaits `window.__covFlush()` so
+   the final interval window is not lost.
 3. **Collect** — `run-probe.sh`, when `COVERAGE_INSTRUMENT=1`, serves dist via
    `e2e/coverage-server.mjs` instead of `python -m http.server`; it accepts the
    beacons and writes one `cov-<page>.json` per page to `$COV_NYC_DIR`
@@ -42,9 +44,15 @@ bash e2e/run-all.sh                      # or: E2E_FILTER='fontsize|zorder' bash
 # 3. merge → coverage-e2e/ (add COV_WITH_VITEST=1 for the unified number)
 npx vitest run --coverage            # only needed for the unified fold (writes coverage-final.json)
 COV_WITH_VITEST=1 node e2e/coverage-merge.mjs
+
+# 4. build the interlinked source map
+python3 scripts/gen_coverage_viz.py coverage-rust-e2e.lcov   # interlinked source map → coverage-viz/ (gitignored)
 ```
 
 ## Results (full suite)
+
+These numbers are from one run on one machine; expect a point or two of variation
+between runs (secondary windows and timing), so compare trends, not decimals.
 
 The full instrumented suite (125 checks: all 123 probes + python + R live kernels)
 passed green under instrumentation and produced 169 page maps. Merged:
@@ -90,8 +98,10 @@ selects via real pointer events, drives arrow control points, fires context-menu
 actions through the menu DOM, exercises the inline text toolbar, and clicks through
 the Settings + Security windows. That single probe took `PropertiesPanel.tsx` 12→55%,
 `SlideElementRenderer.tsx` up to 57%, and lifted the unified line number 60.0→61.6%
-(functions 59.7→62.7% — interaction handlers are functions). It asserts a no-crash
-invariant rather than pinning every detail, so it's an *exercise*, not a unit spec.
+(functions 59.7→62.7% — interaction handlers are functions). It now asserts its
+load-bearing steps hard (drag/resize move the element, Bring-to-Front raises the
+z-order, Delete/Add-Body change the element count) with a small soft budget only
+for documented-optional controls, plus a no-uncaught-error sentinel.
 
 ### The user-journey probe
 
@@ -176,13 +186,16 @@ picture.
 - The container is memory-shared; a `run-probe` SIGKILL means the app's Rust
   profile is flushed via LLVM continuous mode (`%c` in LLVM_PROFILE_FILE).
 
-## Not yet in CI
+## CI
 
-`.github/workflows/coverage-e2e.yml` is written (manual/weekly, `apt-get update`
-first, CARGO_BUILD_JOBS capped) but `workflow_dispatch` can only be triggered once
-the workflow file lands on the default branch — so it activates when this branch
-merges. The instrumented run is slower than plain e2e, so it stays a dedicated
-opt-in job, not per-PR. Other remaining lows are cross-context: `lib/mathjax.ts`
-renders in an iframe pool (separate JS context, its own `__coverage__`), so the
-main-thread orchestration shows but the render itself doesn't; same for
-demo/notebook output iframes.
+`.github/workflows/coverage-e2e.yml` runs this pipeline weekly and on
+`workflow_dispatch`. It now exits non-zero when the suite it measures fails (the
+Rust unit tests or the e2e run), rather than reporting a green coverage job over a
+red suite. After `coverage-run.sh` it builds the interlinked source map and uploads
+`coverage-unified/`, `coverage-rust-e2e.lcov`, `coverage-viz/`, and `coverage/` as
+artifacts. The instrumented run is slower than plain e2e, so it stays a dedicated
+opt-in job, not per-PR. It has never executed on a runner, so its first run after
+this branch merges must be watched. Some remaining lows are cross-context:
+`lib/mathjax.ts` renders in an iframe pool (separate JS context, its own
+`__coverage__`), so the main-thread orchestration shows but the render itself does
+not. The same holds for demo and notebook output iframes.
