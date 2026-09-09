@@ -10,7 +10,7 @@
 // Exercise-style + resilient: a crash sentinel + a few HARD invariants (AssetSection
 // renders for a stored asset; the missing asset shows "Not yet stored" + a canvas
 // placeholder), the rest guarded soft so one absent control can't fail the run.
-import { openApp, waitSeam, exec, sleep, quit } from './_ui.mjs';
+import { openApp, waitSeam, exec, sleep, quit, makeSoft, installErrorSentinel, readErrorSentinel } from './_ui.mjs';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -19,20 +19,12 @@ const HAVE_PDFIUM = existsSync(join(ROOT, 'src-tauri', 'resources', 'pdfium', 'l
 
 const APP = process.env.E2E_APP, DECK = process.env.E2E_DECK;
 const fail = (m) => { console.error('ASSET_FAIL:', m); process.exit(1); };
-const problems = [];
-const soft = (label, cond, detail) => {
-  if (cond) { console.log(`  ✓ ${label}`); }
-  else { problems.push(`${label}${detail ? ' — ' + detail : ''}`); console.log(`  · SKIP ${label}${detail ? ' (' + detail + ')' : ''}`); }
-};
+const { soft, problems } = makeSoft();
 
 const sid = await openApp(APP, DECK);
 if (!sid || !await waitSeam(sid)) fail('open/seam');
 
-await exec(sid, `
-  window.__assetErrors = [];
-  window.addEventListener('error', (e) => window.__assetErrors.push('error: ' + (e.message || e.type)));
-  window.addEventListener('unhandledrejection', (e) => window.__assetErrors.push('reject: ' + (e.reason && e.reason.message || e.reason)));
-`);
+await installErrorSentinel(sid, '__assetErrors');
 
 await exec(sid, "const s=window.__eigendeck.store.getState();s.selectSlide(0);if(!s.showProperties)s.toggleProperties();");
 // Let the sidebar thumbnails + canvas image boxes render (drives assetRenderer
@@ -174,7 +166,7 @@ soft('missing asset renders the placeholder (no <img>, kind label shown)', !miss
 
 // ── 10. invariants ────────────────────────────────────────────────────────────
 console.log('\n[10] invariants');
-const errs = JSON.parse(await exec(sid, "return JSON.stringify(window.__assetErrors||[])"));
+const errs = await readErrorSentinel(sid, '__assetErrors');
 // Missing-asset fetch failures surface as rejections/console — those are the
 // EXPECTED fallback path, not app crashes; filter them + benign network noise.
 const realErrs = errs.filter((e) => !/network|Failed to fetch|ERR_/i.test(e));

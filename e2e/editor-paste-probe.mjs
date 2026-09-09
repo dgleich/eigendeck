@@ -17,7 +17,7 @@
 //
 //   PROBE=e2e/editor-paste-probe.mjs E2E_DECK=<deck> bash e2e/run-probe.sh
 import { writeFileSync } from 'fs';
-import { BASE, sleep, exec, openApp, waitSeam, quit, pasteInto } from './_ui.mjs';
+import { BASE, sleep, exec, openApp, waitSeam, quit, pasteInto, installErrorSentinel, readErrorSentinel, marqueeDrag } from './_ui.mjs';
 
 const APP = process.env.E2E_APP, DECK = process.env.E2E_DECK;
 const fail = (m) => { console.error('EDITORPASTE_FAIL:', m); process.exit(1); };
@@ -35,12 +35,7 @@ if (!sid || !(await waitSeam(sid))) fail('open session / seam never ready');
 await exec(sid, 'window.__eigendeck.store.getState().selectSlide(0);');
 
 // No-uncaught-error sentinel — collect real errors/rejections across all pastes.
-await exec(sid, `
-  window.__pasteErrs = [];
-  window.addEventListener('error', (e) => window.__pasteErrs.push('error: ' + (e && (e.message || e.error))));
-  window.addEventListener('unhandledrejection', (e) => window.__pasteErrs.push('reject: ' + (e && e.reason && (e.reason.message || e.reason))));
-  return true;
-`);
+await installErrorSentinel(sid, '__pasteErrs');
 
 const slide0 = async () => JSON.parse(await exec(sid, `
   const s = window.__eigendeck.store.getState().presentation.slides[0];
@@ -140,23 +135,14 @@ if (countType(els, 'text') === txtBefore + 1) {
 
 // ── F. marquee drag on the canvas background (guarded squeeze) ──
 try {
-  const marq = await exec(sid, `
-    const c = document.querySelector('.slide-canvas');
-    if (!c) return 'no-canvas';
-    const r = c.getBoundingClientRect();
-    const opt = (x, y) => ({ clientX: x, clientY: y, bubbles: true, pointerId: 1, button: 0 });
-    // pointerdown must land on the canvas ITSELF (target===currentTarget), so aim a
-    // corner unlikely to hit an element.
-    c.dispatchEvent(new PointerEvent('pointerdown', opt(r.left + 3, r.top + 3)));
-    for (let i = 1; i <= 6; i++) window.dispatchEvent(new PointerEvent('pointermove', opt(r.left + 3 + i * 20, r.top + 3 + i * 20)));
-    window.dispatchEvent(new PointerEvent('pointerup', opt(r.left + 130, r.top + 130)));
-    return 'ok';
-  `);
-  console.log(`  F ${marq === 'ok' ? 'OK' : 'skip'} — canvas-background marquee gesture (${marq})`);
+  // A background marquee from a corner unlikely to hit an element (canvas-relative
+  // px; the shared helper dispatches pointerdown on the canvas itself).
+  const marq = await marqueeDrag(sid, 3, 3, 130, 130);
+  console.log(`  F ${marq && marq !== 'no-canvas' ? 'OK' : 'skip'} — canvas-background marquee gesture (${JSON.stringify(marq)})`);
 } catch (e) { console.log('  F skip — marquee gesture threw (guarded):', String(e)); }
 
 // ── sentinel: no uncaught error/rejection across all the paste paths ──
-const errs = await exec(sid, 'return window.__pasteErrs || [];');
+const errs = await readErrorSentinel(sid, '__pasteErrs');
 if (Array.isArray(errs) && errs.length) fail(`uncaught error(s) during paste exercise: ${JSON.stringify(errs)}`);
 console.log('  sentinel OK — no uncaught error/rejection during the paste exercise');
 

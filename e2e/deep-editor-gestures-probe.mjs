@@ -11,25 +11,17 @@
 // Exercise-style + resilient: a crash sentinel + a handful of HARD invariants
 // (nudge deltas, z-order top/bottom, group co-move, keyboard delete removes),
 // with the rest as guarded soft steps so one absent control can't fail the run.
-import { openApp, waitSeam, exec, sleep, quit } from './_ui.mjs';
+import { openApp, waitSeam, exec, sleep, quit, makeSoft, installErrorSentinel, readErrorSentinel } from './_ui.mjs';
 
 const APP = process.env.E2E_APP, DECK = process.env.E2E_DECK;
 const fail = (m) => { console.error('DEEP_FAIL:', m); process.exit(1); };
-const problems = [];
-const soft = (label, cond, detail) => {
-  if (cond) { console.log(`  ✓ ${label}`); }
-  else { problems.push(`${label}${detail ? ' — ' + detail : ''}`); console.log(`  · SKIP ${label}${detail ? ' (' + detail + ')' : ''}`); }
-};
+const { soft, problems } = makeSoft();
 
 const sid = await openApp(APP, DECK);
 if (!sid || !await waitSeam(sid)) fail('open/seam');
 
 // Crash sentinel — an uncaught error / rejection during the run is a hard fail.
-await exec(sid, `
-  window.__deepErrors = [];
-  window.addEventListener('error', (e) => window.__deepErrors.push('error: ' + (e.message || e.type)));
-  window.addEventListener('unhandledrejection', (e) => window.__deepErrors.push('reject: ' + (e.reason && e.reason.message || e.reason)));
-`);
+await installErrorSentinel(sid, '__deepErrors');
 
 await exec(sid, "const s=window.__eigendeck.store.getState();s.selectSlide(0);if(!s.showProperties)s.toggleProperties();");
 await sleep(1000);
@@ -252,7 +244,7 @@ soft('Cmd+D duplicated the element', nAfter === nBefore + 1, `${nBefore} -> ${nA
 
 // ── 12. invariants ────────────────────────────────────────────────────────────
 console.log('\n[12] invariants');
-const errs = JSON.parse(await exec(sid, "return JSON.stringify(window.__deepErrors||[])"));
+const errs = await readErrorSentinel(sid, '__deepErrors');
 const realErrs = errs.filter((e) => !/network|Failed to fetch|load|ERR_/i.test(e));
 if (realErrs.length) fail('uncaught errors during gestures: ' + JSON.stringify(realErrs.slice(0, 5)));
 console.log(`  ✓ no uncaught app errors (${errs.length} events, ${realErrs.length} non-benign)`);

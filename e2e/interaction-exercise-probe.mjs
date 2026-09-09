@@ -9,22 +9,17 @@
 // open/observe, per seam discipline). Assert invariants + no-crash rather than
 // pinning every pixel; optional controls are guarded so one missing control
 // doesn't fail the run.
-import { openApp, waitSeam, exec, quit, sleep, handles as uiHandles, switchTo as uiSwitchTo, findMainHandle, openSecurityWindow, waitForText, closeSecurityWindow } from './_ui.mjs';
+import { openApp, waitSeam, exec, quit, sleep, handles as uiHandles, switchTo as uiSwitchTo, findMainHandle, openSecurityWindow, waitForText, closeSecurityWindow, makeSoft, installErrorSentinel, readErrorSentinel, pointerDrag, marqueeDrag } from './_ui.mjs';
 const APP = process.env.E2E_APP, DECK = process.env.E2E_DECK;
 const fail = (m) => { console.error('IX_FAIL:', m); process.exit(1); };
-const problems = [];
-const soft = (label, cond, detail) => { if (cond) { console.log(`  ✓ ${label}`); } else { problems.push(`${label}${detail ? ' — ' + detail : ''}`); console.log(`  · SKIP ${label}${detail ? ' (' + detail + ')' : ''}`); } };
+const { soft, problems } = makeSoft();
 
 const sid = await openApp(APP, DECK);
 if (!sid || !await waitSeam(sid)) fail('open/seam');
 
 // Install a crash sentinel: any uncaught error or unhandledrejection during the
 // run is a hard failure (this is the "no-crash" invariant the exercise asserts).
-await exec(sid, `
-  window.__ixErrors = [];
-  window.addEventListener('error', (e) => window.__ixErrors.push('error: ' + (e.message || e.type)));
-  window.addEventListener('unhandledrejection', (e) => window.__ixErrors.push('reject: ' + (e.reason && e.reason.message || e.reason)));
-`);
+await installErrorSentinel(sid, '__ixErrors');
 
 await exec(sid, "window.__eigendeck.store.getState().selectSlide(0);");
 await sleep(1200);
@@ -140,20 +135,8 @@ console.log('\n[2] real pointer gestures (drag / resize / arrow control point / 
 // 2a. drag a text element via a real pointer gesture through the renderer.
 await selectEl('e-body');
 const dragBefore = JSON.parse(await exec(sid, "const s=window.__eigendeck.store.getState();const e=s.presentation.slides[0].elements.find(x=>x.id==='e-body');return JSON.stringify(e.position);"));
-const dragRes = await exec(sid, `
-  const node = document.querySelector('[data-element-id="e-body"]');
-  if (!node) return 'no-node';
-  const r = node.getBoundingClientRect();
-  const x0 = r.left + r.width/2, y0 = r.top + r.height/2;
-  const opt = (x,y,extra={}) => ({ clientX:x, clientY:y, bubbles:true, pointerId:1, button:0, ...extra });
-  node.dispatchEvent(new PointerEvent('pointerdown', opt(x0,y0)));
-  for (let i=1;i<=6;i++) window.dispatchEvent(new PointerEvent('pointermove', opt(x0 + 20*i, y0 + 8*i)));
-  window.dispatchEvent(new PointerEvent('pointerup', opt(x0 + 120, y0 + 48)));
-  const s = window.__eigendeck.store.getState();
-  const e = s.presentation.slides[0].elements.find(x=>x.id==='e-body');
-  return JSON.stringify(e.position);`);
-const dragAfter = (dragRes && dragRes.startsWith('{')) ? JSON.parse(dragRes) : null;
-if (!(dragAfter && (dragAfter.x !== dragBefore.x || dragAfter.y !== dragBefore.y))) fail(`drag e-body did not move it (${dragRes})`);
+const dragAfter = await pointerDrag(sid, 'e-body', 120, 48);
+if (!(dragAfter && typeof dragAfter === 'object' && (dragAfter.x !== dragBefore.x || dragAfter.y !== dragBefore.y))) fail(`drag e-body did not move it (${JSON.stringify(dragAfter)})`);
 console.log('  ✓ drag e-body moved it');
 
 // 2b. resize e-image via its .el-resize-handle.
@@ -199,22 +182,12 @@ soft('drag arrow control/endpoint changed geometry', arrAfter && JSON.stringify(
 // 2d. marquee-select multiple elements by dragging on the canvas background.
 await exec(sid, "window.__eigendeck.store.getState().selectObject({type:'slide'});");
 await sleep(150);
-const marqRes = await exec(sid, `
-  const canvas = document.querySelector('.slide-canvas');
-  if (!canvas) return 'no-canvas';
-  const rect = canvas.getBoundingClientRect();
-  const scale = rect.width / 1920;
-  const sx = rect.left + 8*scale, sy = rect.top + 8*scale;   // logical (8,8) — background
-  const ex = rect.left + 1400*scale, ey = rect.top + 340*scale; // sweep across top row
-  const opt = (x,y) => ({ clientX:x, clientY:y, bubbles:true, cancelable:true, pointerId:1, button:0 });
-  canvas.dispatchEvent(new PointerEvent('pointerdown', opt(sx,sy)));
-  for (let i=1;i<=8;i++) window.dispatchEvent(new PointerEvent('pointermove', opt(sx + (ex-sx)*i/8, sy + (ey-sy)*i/8)));
-  window.dispatchEvent(new PointerEvent('pointerup', opt(ex,ey)));
-  const o = window.__eigendeck.store.getState().selectedObject;
-  return JSON.stringify(o);`);
-const marqSel = (marqRes && marqRes.startsWith('{')) ? JSON.parse(marqRes) : null;
-const marqueeMulti = marqSel && marqSel.type === 'multi' && (marqSel.ids || []).length >= 2;
-soft('marquee drag selected ≥2 elements', marqueeMulti, marqRes);
+// Canvas → screen scale, so the shared marqueeDrag gets canvas-relative SCREEN px:
+// logical (8,8) [background] sweeping across the top row to logical (1400,340).
+const ixScale = Number(await exec(sid, "const c=document.querySelector('.slide-canvas');return c?c.getBoundingClientRect().width/1920:0;"));
+const marqSel = await marqueeDrag(sid, 8 * ixScale, 8 * ixScale, 1400 * ixScale, 340 * ixScale);
+const marqueeMulti = marqSel && typeof marqSel === 'object' && marqSel.type === 'multi' && (marqSel.ids || []).length >= 2;
+soft('marquee drag selected ≥2 elements', marqueeMulti, JSON.stringify(marqSel));
 
 // ── 3. multi-select align + distribute in the inspector ─────────────────────
 console.log('\n[3] multi-select align + distribute');
@@ -395,7 +368,7 @@ await sleep(300);
 
 // ── 8. no-crash invariant + final sanity ────────────────────────────────────
 console.log('\n[8] invariants');
-const errs = JSON.parse(await exec(sid, "return JSON.stringify(window.__ixErrors||[])"));
+const errs = await readErrorSentinel(sid, '__ixErrors');
 // Filter out benign network errors from the youtube embed / missing asset (not app crashes).
 const realErrs = errs.filter((e) => !/youtube|ytimg|network|Failed to fetch|load|ERR_/i.test(e));
 if (realErrs.length) fail('uncaught errors during interaction: ' + JSON.stringify(realErrs.slice(0, 5)));

@@ -256,3 +256,62 @@ export async function revokeViaUI(sid, mainH) {
   for (let i = 0; i < 15; i++) { await sleep(700); const rep = await trustReport(sid); if (rep && !rep.trusted) return true; }
   return false;
 }
+
+// ── shared exercise helpers (used by the breadth probes) ─────────────────────
+// Crash sentinel: collect uncaught errors + unhandled rejections into window[key].
+export async function installErrorSentinel(sid, key = '__e2eErrors') {
+  await exec(sid, `
+    window[${JSON.stringify(key)}] = window[${JSON.stringify(key)}] || [];
+    window.addEventListener('error', (e) => window[${JSON.stringify(key)}].push(String(e && (e.message || e.error) || e)));
+    window.addEventListener('unhandledrejection', (e) => window[${JSON.stringify(key)}].push(String(e && (e.reason && (e.reason.message || e.reason)) || e)));
+  `);
+}
+export async function readErrorSentinel(sid, key = '__e2eErrors') {
+  const raw = await exec(sid, `return JSON.stringify(window[${JSON.stringify(key)}] || [])`);
+  try { return JSON.parse(raw || '[]'); } catch { return []; }
+}
+// Soft check: logs and records, never exits. Pair with a small budget + a hard
+// fail() for the load-bearing steps.
+export function makeSoft() {
+  const problems = [];
+  const soft = (label, ok, detail = '') => {
+    if (ok) console.log(`  ✓ ${label}`);
+    else { problems.push(`${label}${detail ? ' — ' + detail : ''}`); console.log(`  · SKIP ${label}${detail ? ' (' + detail + ')' : ''}`); }
+    return !!ok;
+  };
+  return { soft, problems };
+}
+// Real pointer drag of an element by (dx, dy) SCREEN px. Returns the element's
+// position afterwards, or a string reason.
+export async function pointerDrag(sid, elementId, dx, dy) {
+  return exec(sid, `
+    const node = document.querySelector('[data-element-id=${JSON.stringify(elementId)}]');
+    if (!node) return 'no-node';
+    const r = node.getBoundingClientRect();
+    const x0 = r.left + r.width / 2, y0 = r.top + r.height / 2;
+    const opt = (x, y) => ({ clientX: x, clientY: y, bubbles: true, pointerId: 1, button: 0 });
+    node.dispatchEvent(new PointerEvent('pointerdown', opt(x0, y0)));
+    const N = 6;
+    for (let i = 1; i <= N; i++) window.dispatchEvent(new PointerEvent('pointermove', opt(x0 + dx * i / N, y0 + dy * i / N)));
+    window.dispatchEvent(new PointerEvent('pointerup', opt(x0 + dx, y0 + dy)));
+    const s = window.__eigendeck.store.getState();
+    const el = s.presentation.slides[s.currentSlideIndex]?.elements.find(e => e.id === ${JSON.stringify(elementId)});
+    return el ? el.position : 'gone';
+  `);
+}
+// Marquee from empty canvas space (x0,y0) to (x1,y1) in canvas-relative SCREEN px.
+// `selector` picks the drag surface (defaults to .slide-canvas). Returns the
+// selection object afterwards.
+export async function marqueeDrag(sid, x0, y0, x1, y1, selector = '.slide-canvas') {
+  return exec(sid, `
+    const canvas = document.querySelector(${JSON.stringify(selector)});
+    if (!canvas) return 'no-canvas';
+    const r = canvas.getBoundingClientRect();
+    const opt = (x, y) => ({ clientX: r.left + x, clientY: r.top + y, bubbles: true, pointerId: 1, button: 0 });
+    canvas.dispatchEvent(new PointerEvent('pointerdown', opt(${x0}, ${y0})));
+    const N = 6;
+    for (let i = 1; i <= N; i++) window.dispatchEvent(new PointerEvent('pointermove', opt(${x0} + (${x1} - ${x0}) * i / N, ${y0} + (${y1} - ${y0}) * i / N)));
+    window.dispatchEvent(new PointerEvent('pointerup', opt(${x1}, ${y1})));
+    return window.__eigendeck.store.getState().selectedObject;
+  `);
+}

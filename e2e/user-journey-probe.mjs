@@ -28,16 +28,12 @@
 // so those menu ids are intentionally NOT fired. The plain `save` id writes to
 // the deck's existing path WITHOUT a dialog (the deck is opened from a real
 // path via the launch arg), which is how we cover the fileOps save path.
-import { openApp, waitSeam, exec, sleep, quit } from './_ui.mjs';
+import { openApp, waitSeam, exec, sleep, quit, makeSoft, installErrorSentinel, readErrorSentinel } from './_ui.mjs';
 import { statSync } from 'node:fs';
 
 const APP = process.env.E2E_APP, DECK = process.env.E2E_DECK;
 const fail = (m) => { console.error('JOURNEY_FAIL:', m); process.exit(1); };
-const problems = [];
-const soft = (label, cond, detail) => {
-  if (cond) { console.log(`  ✓ ${label}`); }
-  else { problems.push(`${label}${detail ? ' — ' + detail : ''}`); console.log(`  · SKIP ${label}${detail ? ' (' + detail + ')' : ''}`); }
-};
+const { soft, problems } = makeSoft();
 
 // exec with a hard timeout, so a hypothetically-wedged UI thread (e.g. a native
 // dialog we didn't anticipate) can't hang the whole probe forever.
@@ -65,11 +61,7 @@ if (!sid || !await waitSeam(sid)) fail('open/seam');
 // Crash sentinel — any uncaught error / unhandledrejection during the walk is a
 // hard failure (the "no-crash" invariant). Benign youtube/network errors from
 // the embed + missing linked assets are filtered at the end.
-await exec(sid, `
-  window.__jErrors = [];
-  window.addEventListener('error', (e) => window.__jErrors.push('error: ' + (e.message || e.type)));
-  window.addEventListener('unhandledrejection', (e) => window.__jErrors.push('reject: ' + (e.reason && e.reason.message || e.reason)));
-`);
+await installErrorSentinel(sid, '__jErrors');
 // Force single-window present (projector mode defaults ON, would open a 2nd
 // window on 'present' — getPreference reads localStorage, wiped fresh per run).
 await exec(sid, "try{localStorage.setItem('eigendeck:pref:tryProjectorMode','false');}catch(e){}");
@@ -258,7 +250,7 @@ console.log('\n[10] save round-trip (reopen + compare)');
 // Snapshot the crash sentinel from the FIRST session before we tear it down for
 // the reopen. Benign youtube/network errors (the embed + missing linked assets)
 // are not app crashes — filter them.
-const rawErrs = JSON.parse(await exec(sid, "return JSON.stringify(window.__jErrors||[])") || '[]');
+const rawErrs = await readErrorSentinel(sid, '__jErrors');
 const realErrs = rawErrs.filter((e) => !/youtube|ytimg|network|Failed to fetch|load|ERR_|pdfium|dialog/i.test(e));
 console.log(`  crash sentinel: ${rawErrs.length} total events, ${realErrs.length} non-benign`);
 await quit(sid);
