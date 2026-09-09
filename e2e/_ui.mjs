@@ -28,7 +28,21 @@ export async function waitSeam(sid) {
   for (let i = 0; i < 25; i++) { await sleep(800); if (await exec(sid, "return !!(window.__eigendeck&&window.__eigendeck.store.getState().projectPath)")) return true; }
   return false;
 }
-export async function quit(sid) { await fetch(`${BASE}/session/${sid}`, { method: 'DELETE' }).catch(() => {}); }
+// Flush the coverage beacon (instrumented builds only; a no-op otherwise) for
+// the CURRENT window before tearing the session down, so the final <=1.5 s of
+// hits is not dropped. Bounded: a hung collector must not hang the probe.
+export async function flushCoverage(sid) {
+  try {
+    await Promise.race([
+      execA(sid, "const d=arguments[arguments.length-1];(window.__covFlush?window.__covFlush():Promise.resolve()).then(()=>d(true),()=>d(false))"),
+      sleep(3000),
+    ]);
+  } catch { /* session may already be gone */ }
+}
+export async function quit(sid) {
+  await flushCoverage(sid);
+  await fetch(`${BASE}/session/${sid}`, { method: 'DELETE' }).catch(() => {});
+}
 export async function handles(sid) { return (await get(`/session/${sid}/window/handles`))?.value || []; }
 export async function switchTo(sid, h) { await post(`/session/${sid}/window`, { handle: h }); }
 // The MAIN window is the only one carrying the __eigendeck seam (the Security window
