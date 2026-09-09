@@ -16,7 +16,13 @@ import { PresentMode } from './components/PresentMode';
 import { usePresentationStore } from './store/presentation';
 import { initRuntime } from './lib/runtime';
 import { warmMathCacheFromSqlite } from './lib/mathjaxRenderer';
+import { installCoverageBeacon } from './lib/coverageBeacon';
 import './App.css';
+
+// E2E coverage: this window has its own window.__coverage__; stream it to the
+// collector so the presenter/PresentMode code it exercises is measured (no-op in
+// normal builds). See src/lib/coverageBeacon.ts.
+installCoverageBeacon();
 
 // Same boot as the main window (fonts + server discovery).
 initRuntime();

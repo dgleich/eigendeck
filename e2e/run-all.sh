@@ -102,6 +102,13 @@ MANIFEST=(
   "insert-dup-keys-probe.mjs|empty.eigendeck||$EMPTY"   
   "paste-text-probe.mjs|empty.eigendeck||$EMPTY"   # #161 paste plain/styled text → text element (color kept, font-size dropped)
   "paste-file-probe.mjs|empty.eigendeck||$EMPTY"   # #160 paste a copied FILE (uri-list) → insert as an image asset
+  # editor-paste: drives SlideEditor's ~470-line handlePaste block via synthetic
+  # ClipboardEvents and asserts hard that each vector inserts the right element —
+  # an image FILE (insertPastedAsset), a rich HTML block that screenshots to a PNG
+  # (insertRichHtmlScreenshot/captureHtmlToPng), text/uri-list +
+  # x-special/gnome-copied-files file-urls (insertPastedFilePaths), and plain text —
+  # plus a canvas marquee and a no-uncaught-error sentinel.
+  "editor-paste-probe.mjs|empty.eigendeck||$EMPTY"
   "internal-paste-probe.mjs|ip.eigendeck||import_json $EXFIX/internal-paste-deck.json"   # copy/paste redesign: private-flavor round-trip + stale guard
   "image-link-probe.mjs|imglink.eigendeck||import_json $EXFIX/image-link-deck.json"   # copy/paste redesign: image copy -> paste + cross-slide link
   "caret-double-paste-probe.mjs|caret-paste.eigendeck||import_json $EXFIX/caret-paste-deck.json"   # editing + paste must NOT create a canvas element (double-paste guard)
@@ -126,6 +133,35 @@ MANIFEST=(
   "settings-window-probe.mjs|examples/intro-slide.eigendeck||"
   "keyboard-shortcuts-probe.mjs|examples/intro-slide.eigendeck||"
   "context-menu-target-probe.mjs|examples/intro-slide.eigendeck||"
+  # interaction-exercise: drives the REAL UI (genuine pointer gestures, per-type
+  # inspector sections, the right-click context menu, the text toolbar, the
+  # Settings/Security windows) and asserts hard: a pointer drag moves an element,
+  # the resize handle changes its w/h, context-menu Bring to Front STRICTLY raises
+  # z-order, menu Delete removes an element, and canvas Add Body inserts one. The
+  # optional inspector buttons, the text toolbar, and the Settings/Security window
+  # content stay soft.
+  "interaction-exercise-probe.mjs|ix.eigendeck||python3 $EXFIX/make_interaction_deck.py \$DECKDIR/ix.json; import_json \$DECKDIR/ix.json"
+  # user-journey: fires the REAL native-menu router via emitted menu-events and
+  # asserts hard: slide new/dup/delete change the count, all 10 dialog-free inserts
+  # add an element, present enter/advance/exit, the toolbar:action/field listeners,
+  # and a menu `save` that writes the deck (WAL-sidecar mtime bump) and round-trips
+  # title + slide count through a fresh session. Window-openers, pickers and
+  # screen-share are soft (menu-event delivery degrades once secondary windows exist).
+  "user-journey-probe.mjs|journey.eigendeck||python3 $EXFIX/make_journey_deck.py \$DECKDIR/journey.json; import_json \$DECKDIR/journey.json"
+  # deep-editor-gestures: drives the COLD keyboard + multi-select + group-drag +
+  # snap paths and asserts hard: keyboard nudge deltas (1px / 10px, all four
+  # directions), z-order to-top/bottom, Cmd+A select-all → real-pointer GROUP drag
+  # (moveElementsBy) + group nudge co-move, and keyboard delete (single + multi)
+  # removes. Shift-click additive select, the resize handle and a snap-to-grid drag
+  # stay soft. Targets App.tsx keydown branches + SlideElementRenderer's DraggableBox.
+  "deep-editor-gestures-probe.mjs|de.eigendeck||python3 $EXFIX/make_deep_editor_deck.py \$DECKDIR/de.json; import_json \$DECKDIR/de.json"
+  # asset-layer: mounts AssetSection for a stored raster asset and asserts hard: the
+  # AssetSection body renders (source / versions / usage), the svg element renders
+  # an <img>, the pdf element renders via pdfium when the dylib is present, and the
+  # MISSING asset shows "Not yet stored" + a canvas placeholder (no <img>). The
+  # version-row hover preview, the resize-to-image box change, and the #74
+  # missing-source banner (absent on an untrusted deck by design) stay soft.
+  "asset-layer-probe.mjs|al.eigendeck||python3 $EXFIX/make_asset_layer_deck.py \$DECKDIR/al.json; import_json \$DECKDIR/al.json"
   "demo-mount-gate-probe.mjs|empty.eigendeck||$EMPTY"
 
   # ── sync / link / promote round-trips (built fixture decks) ─────────────
@@ -287,7 +323,7 @@ for entry in "${MANIFEST[@]}"; do
   # with a GROWING backoff so a retry lands AFTER the bad window, not inside it.
   rc=1; tries=3
   for try in $(seq 1 $tries); do
-    env $extra_expanded PROBE="$ROOT/e2e/$probe" E2E_DECK="$DECK" bash "$ROOT/e2e/run-probe.sh" 2>&1 | tail -4
+    env $extra_expanded PROBE="$ROOT/e2e/$probe" E2E_DECK="$DECK" bash "$ROOT/e2e/run-probe.sh" 2>&1 | tail -30
     rc=${PIPESTATUS[0]}
     [ "$rc" -eq 0 ] && break
     if [ "$try" -lt "$tries" ]; then

@@ -28,7 +28,21 @@ export async function waitSeam(sid) {
   for (let i = 0; i < 25; i++) { await sleep(800); if (await exec(sid, "return !!(window.__eigendeck&&window.__eigendeck.store.getState().projectPath)")) return true; }
   return false;
 }
-export async function quit(sid) { await fetch(`${BASE}/session/${sid}`, { method: 'DELETE' }).catch(() => {}); }
+// Flush the coverage beacon (instrumented builds only; a no-op otherwise) for
+// the CURRENT window before tearing the session down, so the final <=1.5 s of
+// hits is not dropped. Bounded: a hung collector must not hang the probe.
+export async function flushCoverage(sid) {
+  try {
+    await Promise.race([
+      execA(sid, "const d=arguments[arguments.length-1];(window.__covFlush?window.__covFlush():Promise.resolve()).then(()=>d(true),()=>d(false))"),
+      sleep(3000),
+    ]);
+  } catch { /* session may already be gone */ }
+}
+export async function quit(sid) {
+  await flushCoverage(sid);
+  await fetch(`${BASE}/session/${sid}`, { method: 'DELETE' }).catch(() => {});
+}
 export async function handles(sid) { return (await get(`/session/${sid}/window/handles`))?.value || []; }
 export async function switchTo(sid, h) { await post(`/session/${sid}/window`, { handle: h }); }
 // The MAIN window is the only one carrying the __eigendeck seam (the Security window
@@ -88,6 +102,38 @@ export async function dragElementToX(sid, elementId, targetX) {
     const afterState = window.__eigendeck.store.getState();
     const after = afterState.presentation.slides[afterState.currentSlideIndex]?.elements.find(x => x.id === '${elementId}');
     return after ? after.position.x : 'gone';
+  `);
+}
+
+// Dispatch a synthetic `paste` ClipboardEvent with a populated DataTransfer at the
+// REAL SlideEditor handler (window-level 'paste' listener). WebKitGTK honors a
+// hand-built ClipboardEvent + DataTransfer, so this drives handlePaste with no OS
+// clipboard. `opts`: { text, html, uriList, gnome, files:[{b64,name,type}] }. The
+// DataTransfer/File/ClipboardEvent must be built INSIDE the page, so this ships
+// `opts` in and constructs them there. `selector` picks the dispatch target
+// (defaults to <body>; the event bubbles to the window listener either way).
+export async function pasteInto(sid, selector, opts = {}) {
+  const o = {
+    text: opts.text || '', html: opts.html || '',
+    uriList: opts.uriList || '', gnome: opts.gnome || '',
+    files: opts.files || [],
+  };
+  return exec(sid, `
+    const o = ${JSON.stringify(o)};
+    const dt = new DataTransfer();
+    if (o.text) dt.setData('text/plain', o.text);
+    if (o.html) dt.setData('text/html', o.html);
+    if (o.uriList) dt.setData('text/uri-list', o.uriList);
+    if (o.gnome) dt.setData('x-special/gnome-copied-files', o.gnome);
+    for (const f of o.files) {
+      const bin = atob(f.b64); const arr = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      dt.items.add(new File([arr], f.name, { type: f.type }));
+    }
+    const sel = ${JSON.stringify(selector)};
+    const target = sel ? document.querySelector(sel) : document.body;
+    (target || document.body).dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+    return true;
   `);
 }
 
@@ -209,4 +255,63 @@ export async function revokeViaUI(sid, mainH) {
   await exec(sid, "import('@tauri-apps/api/event').then(m=>m.emit('eigendeck:security-changed')).catch(()=>{});");
   for (let i = 0; i < 15; i++) { await sleep(700); const rep = await trustReport(sid); if (rep && !rep.trusted) return true; }
   return false;
+}
+
+// ── shared exercise helpers (used by the breadth probes) ─────────────────────
+// Crash sentinel: collect uncaught errors + unhandled rejections into window[key].
+export async function installErrorSentinel(sid, key = '__e2eErrors') {
+  await exec(sid, `
+    window[${JSON.stringify(key)}] = window[${JSON.stringify(key)}] || [];
+    window.addEventListener('error', (e) => window[${JSON.stringify(key)}].push(String(e && (e.message || e.error) || e)));
+    window.addEventListener('unhandledrejection', (e) => window[${JSON.stringify(key)}].push(String(e && (e.reason && (e.reason.message || e.reason)) || e)));
+  `);
+}
+export async function readErrorSentinel(sid, key = '__e2eErrors') {
+  const raw = await exec(sid, `return JSON.stringify(window[${JSON.stringify(key)}] || [])`);
+  try { return JSON.parse(raw || '[]'); } catch { return []; }
+}
+// Soft check: logs and records, never exits. Pair with a small budget + a hard
+// fail() for the load-bearing steps.
+export function makeSoft() {
+  const problems = [];
+  const soft = (label, ok, detail = '') => {
+    if (ok) console.log(`  ✓ ${label}`);
+    else { problems.push(`${label}${detail ? ' — ' + detail : ''}`); console.log(`  · SKIP ${label}${detail ? ' (' + detail + ')' : ''}`); }
+    return !!ok;
+  };
+  return { soft, problems };
+}
+// Real pointer drag of an element by (dx, dy) SCREEN px. Returns the element's
+// position afterwards, or a string reason.
+export async function pointerDrag(sid, elementId, dx, dy) {
+  return exec(sid, `
+    const node = document.querySelector('[data-element-id=${JSON.stringify(elementId)}]');
+    if (!node) return 'no-node';
+    const r = node.getBoundingClientRect();
+    const x0 = r.left + r.width / 2, y0 = r.top + r.height / 2;
+    const opt = (x, y) => ({ clientX: x, clientY: y, bubbles: true, pointerId: 1, button: 0 });
+    node.dispatchEvent(new PointerEvent('pointerdown', opt(x0, y0)));
+    const N = 6;
+    for (let i = 1; i <= N; i++) window.dispatchEvent(new PointerEvent('pointermove', opt(x0 + dx * i / N, y0 + dy * i / N)));
+    window.dispatchEvent(new PointerEvent('pointerup', opt(x0 + dx, y0 + dy)));
+    const s = window.__eigendeck.store.getState();
+    const el = s.presentation.slides[s.currentSlideIndex]?.elements.find(e => e.id === ${JSON.stringify(elementId)});
+    return el ? el.position : 'gone';
+  `);
+}
+// Marquee from empty canvas space (x0,y0) to (x1,y1) in canvas-relative SCREEN px.
+// `selector` picks the drag surface (defaults to .slide-canvas). Returns the
+// selection object afterwards.
+export async function marqueeDrag(sid, x0, y0, x1, y1, selector = '.slide-canvas') {
+  return exec(sid, `
+    const canvas = document.querySelector(${JSON.stringify(selector)});
+    if (!canvas) return 'no-canvas';
+    const r = canvas.getBoundingClientRect();
+    const opt = (x, y) => ({ clientX: r.left + x, clientY: r.top + y, bubbles: true, pointerId: 1, button: 0 });
+    canvas.dispatchEvent(new PointerEvent('pointerdown', opt(${x0}, ${y0})));
+    const N = 6;
+    for (let i = 1; i <= N; i++) window.dispatchEvent(new PointerEvent('pointermove', opt(${x0} + (${x1} - ${x0}) * i / N, ${y0} + (${y1} - ${y0}) * i / N)));
+    window.dispatchEvent(new PointerEvent('pointerup', opt(${x1}, ${y1})));
+    return window.__eigendeck.store.getState().selectedObject;
+  `);
 }
