@@ -68,9 +68,10 @@ function assertInvariants(label: string): void {
   // Selection, when it names an element, must reference a live element.
   if (selectedObject && selectedObject.type === 'element') {
     const allIds = new Set(presentation.slides.flatMap((s) => s.elements.map((e) => e.id)));
-    // freeElement remaps ids; the selection is kept in sync by the store, so it
-    // should resolve — but a delete legitimately drops to { type: 'slide' }.
-    expect(allIds.has(selectedObject.id) || true).toBe(true);
+    // The store must never leave a selection pointing at an element that no
+    // longer exists: deletes reset to { type: 'slide' } and freeElement remaps
+    // the selection with the id.
+    expect(allIds.has(selectedObject.id), `${label}: selection ${selectedObject.id} names a live element`).toBe(true);
   }
 }
 
@@ -106,7 +107,7 @@ describe('presentation store — full lifecycle exercise', () => {
     store.addBuildSlide();
     store.addSlide();               // on a grouped slide → inserts after the whole build
     assertInvariants('after growth');
-    expect(usePresentationStore.getState().presentation.slides.length).toBeGreaterThanOrEqual(6);
+    expect(usePresentationStore.getState().presentation.slides.length).toBe(7);
 
     // Grouping / ungrouping.
     store.groupSlides([0, 1, 2]);
@@ -308,6 +309,10 @@ describe('presentation store — full lifecycle exercise', () => {
       ] },
       currentSlideIndex: 0,
     });
+    // The raw setState above swaps the whole deck in, orphaning the element
+    // selection made earlier in this test; reset it so the live-selection
+    // invariant reflects the store, not the test's hand-set state.
+    store.selectSlide(0);
     store.moveElementsBy(['sa'], 20, 20);     // synced arrow → shiftArrow inside sync path
     const sa1 = usePresentationStore.getState().presentation.slides[1].elements[0] as { x1: number };
     expect(sa1.x1).toBe(20);                  // peer arrow moved too
@@ -347,9 +352,14 @@ describe('presentation store — full lifecycle exercise', () => {
       ] },
       currentSlideIndex: 0,
     });
-    store.linkElements('A', 0, 'B');          // same-slide? no — targetSlideIndex 0 == csi → guard no-op
+    store.linkElements('A', 0, 'S');          // same slide → guard no-op
     store.linkElements('A', 1, 'C');          // cross-type (text vs image) → no-op
     store.linkElements('S', 1, 'C');          // synced source → no-op
+    // The three guarded calls above must be pure no-ops: A stays in group g1 and
+    // D/E stay in the separate group g2 (the real merge happens on the next line).
+    const guarded = usePresentationStore.getState().presentation;
+    expect(guarded.slides[0].elements[0].linkId).toBe('g1');   // A unchanged
+    expect(guarded.slides[2].elements[0].linkId).toBe('g2');   // D still a separate group
     store.linkElements('A', 2, 'D');          // real link merging group g2 into g1
     const g = usePresentationStore.getState().presentation;
     // A, B (g1) and D, E (migrated g2) now share ONE linkId.
@@ -565,7 +575,7 @@ describe('presentation store — SQLite write-through exercise', () => {
       return Promise.resolve(undefined);
     }) as unknown as typeof invoke);
     const n = await seedUndoHistory();
-    expect(n).toBeGreaterThanOrEqual(1);        // 3 points → drop latest → 2 seeded
+    expect(n).toBe(2);        // 3 points → drop latest → 2 seeded
     expect(usePresentationStore.temporal.getState().pastStates.length).toBe(n);
 
     // <= 1 timestamp → nothing to seed.

@@ -48,6 +48,11 @@ function existingWindowStub() {
 }
 
 beforeEach(() => {
+  // openSecurityWindow arms a 1500ms fallback and a 15000ms unlisten timer;
+  // without fake timers those keep running past the test that started them and
+  // leak into later tests that assert emitTo call counts. Run every test on
+  // fake timers and clear them afterwards.
+  vi.useFakeTimers();
   vi.clearAllMocks();
   readyHandler = null;
   unlisten = vi.fn();
@@ -63,6 +68,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.clearAllTimers();
   vi.useRealTimers();
 });
 

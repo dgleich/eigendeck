@@ -156,7 +156,7 @@ describe('discoverAllServers', () => {
     expect(setPref).toHaveBeenCalledTimes(1);
   });
 
-  it('does not write when the kernel list is identical and only lastSeenAt would move — actually it does, because lastSeenAt refreshes', async () => {
+  it('writes when only lastSeenAt refreshes (a successful probe always bumps it)', async () => {
     // A successful probe always bumps lastSeenAt, so change-detection fires
     // even when the kernel set is unchanged. This documents that branch.
     getPref.mockReturnValue([server({ availableKernels: ['python3'], lastSeenAt: 1 })]);
