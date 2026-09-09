@@ -9,7 +9,7 @@
 // open/observe, per seam discipline). Assert invariants + no-crash rather than
 // pinning every pixel; optional controls are guarded so one missing control
 // doesn't fail the run.
-import { openApp, waitSeam, exec, post, quit, sleep } from './_ui.mjs';
+import { openApp, waitSeam, exec, quit, sleep, handles as uiHandles, switchTo as uiSwitchTo, findMainHandle, openSecurityWindow, waitForText, closeSecurityWindow } from './_ui.mjs';
 const APP = process.env.E2E_APP, DECK = process.env.E2E_DECK;
 const fail = (m) => { console.error('IX_FAIL:', m); process.exit(1); };
 const problems = [];
@@ -346,9 +346,9 @@ await sleep(300);
 
 // ── 6. Settings window: open + click through its tabs ───────────────────────
 console.log('\n[6] Settings window tabs');
-async function handles() { return (await exec(sid, "return 1")) !== undefined ? (await (await fetch('http://127.0.0.1:4444/session/' + sid + '/window/handles')).json())?.value || [] : []; }
-async function switchTo(h) { await post(`/session/${sid}/window`, { handle: h }); }
-const mainH = (await handles())[0];
+const handles = () => uiHandles(sid);
+const switchTo = (h) => uiSwitchTo(sid, h);
+const mainH = await findMainHandle(sid);
 await exec(sid, "window.__eigendeck.openSettings();");
 let setH = null;
 for (let i = 0; i < 12; i++) { await sleep(700); setH = (await handles()).find((h) => h !== mainH); if (setH) break; }
@@ -375,7 +375,6 @@ if (setH) {
 // ── 7. Security window: open + read its report + click a tab/control ─────────
 console.log('\n[7] Security window');
 try {
-  const { openSecurityWindow, waitForText, closeSecurityWindow } = await import('./_ui.mjs');
   const secH = await openSecurityWindow(sid, mainH);
   if (secH) {
     await switchTo(secH);
