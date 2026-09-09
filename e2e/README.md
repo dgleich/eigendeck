@@ -32,7 +32,54 @@ Fixture builders: `fixtures/make_roundtrip_decks.py` (sync/link),
 `fixtures/make_e2e_decks.py` (`shared` / `copypaste` / `export` / `watch` notebook
 decks).
 
+### Breadth exercise probes (gated)
+
+Wide probes that sweep a whole layer of the real app in one launch. Each has a
+hard core (load-bearing steps call `fail()` directly) with a small `soft()`
+budget for documented-optional steps, so they gate:
+
+- **editor-paste-probe.mjs** (`empty` fixture) — drives the REAL SlideEditor
+  `handlePaste` block via synthetic `ClipboardEvent`s and asserts hard that the
+  expected element appears for each path: an image FILE, a rich-HTML block
+  (HTML→PNG screenshot), a `text/uri-list` file url, an
+  `x-special/gnome-copied-files` url, and plain text. A no-uncaught-error
+  sentinel guards the run; the canvas-background marquee is a guarded squeeze.
+- **interaction-exercise-probe.mjs** (`make_interaction_deck.py`) — drives the
+  REAL UI (pointer gestures, per-type inspector sections, the right-click context
+  menu, the text toolbar, the Settings/Security windows) and asserts hard: a drag
+  moves an element, the resize handle changes its w/h, context-menu Bring to Front
+  STRICTLY raises z-order, menu Delete removes an element, and canvas Add Body
+  inserts one. Optional inspector buttons, the text toolbar and the Settings/
+  Security window content stay soft.
+- **user-journey-probe.mjs** (`make_journey_deck.py`) — fires the REAL native-menu
+  router via emitted menu-events and asserts hard: slide new/dup/delete change the
+  count, all ten dialog-free inserts add an element, present enter/advance/exit,
+  the toolbar:action/field listeners, and a menu `save` that writes the deck
+  (WAL-sidecar mtime bump) and round-trips title + slide count through a fresh
+  session. Window-openers, pickers and screen-share are soft (menu-event delivery
+  degrades once secondary windows exist).
+- **deep-editor-gestures-probe.mjs** (`make_deep_editor_deck.py`) — drives the cold
+  keyboard + multi-select + group-drag + snap paths and asserts hard: keyboard
+  nudge deltas (1px / 10px, all four directions), z-order to-top/bottom, Cmd+A
+  select-all → real-pointer GROUP drag (moveElementsBy) + group nudge co-move, and
+  keyboard delete (single + multi) removes. Shift-click additive select, the resize
+  handle and a snap-to-grid drag stay soft.
+- **asset-layer-probe.mjs** (`make_asset_layer_deck.py`) — mounts AssetSection for a
+  stored raster asset and asserts hard: the AssetSection body renders (source /
+  versions / usage), the svg element renders an `<img>`, the pdf element renders via
+  pdfium when the dylib is present, and the MISSING asset shows "Not yet stored" + a
+  canvas placeholder (no `<img>`). The version-row hover preview, the resize-to-image
+  box change, and the #74 missing-source banner (absent on an untrusted deck by
+  design — the app never reads an untrusted linked file, so it cannot learn it is
+  missing) stay soft.
+
 ### Not yet gated (intentionally excluded)
+
+The rule is about assertions, not breadth. A broad probe is gated once its
+load-bearing steps call `fail()` directly and any `soft()` budget covers only
+steps that are documented as optional (window openers, dialog-gated ids,
+optional inspector controls). The build-hunt probes below stay out because
+they are exploratory and have no such hard core.
 
 These live in `e2e/` but are NOT in `run-all.sh`, by design:
 
@@ -558,3 +605,9 @@ thumbnails, and the common editing ops (switch slide, add text/image/slide, move
 elements, undo/redo). A reference snapshot is `e2e/perf-baseline.json`. A clear jump
 (>~25%) on a metric the fix could plausibly touch = investigate before merging.
 Also run the full gate (`npm run test:e2e`) so no fix introduces a functional regression.
+
+### Coverage
+
+The instrumented run (`COVERAGE_INSTRUMENT=1`) collects real-WebKit line hits
+from every probe through `src/lib/coverageBeacon.ts`. How it works, how to run
+it, and what stays cold headlessly: `docs/e2e-coverage.md`.
