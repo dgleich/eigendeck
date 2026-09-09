@@ -1,6 +1,6 @@
 [package]
 name = "eigendeck"
-version = "26.8.31"
+version = "26.9.9"
 description = "A presentation tool with embedded HTML demos"
 default-run = "eigendeck"
 authors = ["David F. Gleich"]
