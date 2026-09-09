@@ -9,12 +9,12 @@ Inputs:
   - coverage/coverage-final.json            frontend vitest (jsdom) Istanbul map.
       Per file we color from whichever of the two covers it more (coherent, not
       unioned — their statement maps differ).
-  - $HOME/rust-lcov.info (or argv[1])       Rust lcov. For the full picture it is
+  - coverage-rust-e2e.lcov (or argv[1])     Rust lcov. For the full picture it is
       the UNION of two llvm-cov runs (concatenate them — parse_lcov merges dup SF
       blocks by max-per-line):
-        bash e2e/cli-coverage.sh $HOME/rust-lcov-cli.info   # lib + cli.rs (workflows)
-        bash e2e/coverage-run.sh                            # + app invoke-handlers
-        cat coverage-rust-e2e.lcov $HOME/rust-lcov-cli.info > $HOME/rust-lcov.info
+        bash e2e/cli-coverage.sh gitignore/rust-lcov-cli.info   # lib + cli.rs (workflows)
+        bash e2e/coverage-run.sh                                # + app invoke-handlers
+        cat coverage-rust-e2e.lcov gitignore/rust-lcov-cli.info > coverage-rust-e2e.lcov
       cli.rs comes from the CLI workflows; storage.rs/fscmds.rs from the app e2e;
       lib.rs/clip.rs/pdf.rs stay low (native menu / macOS / pdfium — no headless).
 
@@ -33,16 +33,18 @@ Line classification:
   A file absent from every lcov is "not instrumented": its code-ish lines are
   counted as uncovered (heuristic), the rest grey, and it's badged as such.
 
-Usage: python3 scripts/gen_coverage_viz.py [rust-lcov.info]
+Usage: python3 scripts/gen_coverage_viz.py [rust-lcov]   (output: coverage-viz/, gitignored)
 """
 import os, re, html, json, sys
 from collections import defaultdict
 
-REPO = os.environ.get("REPO_ROOT", "/work")
+# Repo root = parent of scripts/. REPO_ROOT overrides for out-of-tree runs.
+REPO = os.environ.get("REPO_ROOT") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(REPO, "coverage-viz")
 FILES_DIR = os.path.join(OUT, "files")
 FRONT_LCOV = os.path.join(REPO, "coverage-e2e", "lcov.info")
-RUST_LCOV = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.expanduser("~"), "rust-lcov.info")
+# Rust lcov: argv[1], else the file coverage-run.sh writes at the repo root.
+RUST_LCOV = sys.argv[1] if len(sys.argv) > 1 else os.path.join(REPO, "coverage-rust-e2e.lcov")
 
 # ── lcov parsing ────────────────────────────────────────────────────────────
 def norm_path(p, rust):

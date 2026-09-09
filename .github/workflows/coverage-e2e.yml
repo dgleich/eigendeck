@@ -63,6 +63,10 @@ jobs:
       - name: Run instrumented e2e coverage
         run: bash e2e/coverage-run.sh
 
+      - name: Generate coverage map (coverage-viz/)
+        if: always()
+        run: python3 scripts/gen_coverage_viz.py coverage-rust-e2e.lcov
+
       - name: Upload coverage reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -71,4 +75,5 @@ jobs:
           path: |
             coverage-unified/
             coverage-rust-e2e.lcov
+            coverage-viz/
             coverage/
