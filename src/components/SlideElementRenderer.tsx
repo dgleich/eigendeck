@@ -762,11 +762,22 @@ function TextContent({
       // Slop before we flag a clip: sub-pixel rounding, descenders, and
       // line-height rounding routinely push scrollHeight a few px past
       // clientHeight even when nothing is visually cut off, so a 1px threshold
-      // fired constantly. Scale the tolerance with the font size (bigger text →
-      // bigger rounding) with a small floor; it stays well under one line, so a
-      // genuinely clipped line (~1.2× font size) is still caught.
-      const slop = Math.max(2, Math.round(fontSize * 0.2));
-      setOverflowing(content.scrollHeight > box.clientHeight + slop || content.scrollWidth > box.clientWidth + slop);
+      // fired constantly (#95). Tolerance scales with the font size, applied as
+      // one of THREE compile-time-LITERAL thresholds.
+      //
+      // PERF-CRITICAL — do NOT "simplify" this back to `+ slop`. Comparing the
+      // live scrollHeight/clientHeight getters against a RUNTIME threshold (a
+      // captured variable, a dataset read, anything non-literal) deoptimizes this
+      // component's render path in WebKit's JIT and ~doubled rapidSlideNav
+      // (16→30 ms) — that was commit 532a3ef. A 4th bucket independently re-trips
+      // the same cliff (a branch-count budget). So: keep the comparisons literal,
+      // put fontSize ONLY in the branch conditions, and never exceed 3 buckets.
+      const sh = content.scrollHeight, ch = box.clientHeight, sw = content.scrollWidth, cw = box.clientWidth;
+      setOverflowing(
+        fontSize >= 64 ? (sh > ch + 13 || sw > cw + 13)
+        : fontSize >= 40 ? (sh > ch + 9 || sw > cw + 9)
+        : (sh > ch + 5 || sw > cw + 5)
+      );
     };
     const raf = requestAnimationFrame(measure);
     document.fonts?.ready.then(() => requestAnimationFrame(measure)).catch(() => {});
