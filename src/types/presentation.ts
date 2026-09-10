@@ -546,6 +546,13 @@ export function createDefaultPresentation(): Presentation {
       // default, so their look is stable if the default ever changes again.
       defaultTitleFont: 'lato',
       defaultBodyFont: 'lato',
+      // Likewise STORE the type scale, so a new deck's sizes are frozen against
+      // any future DEFAULT_TEXT_SIZES change (same rationale as the fonts). Seeded
+      // from the current defaults here; the user's `textSizes` preference can still
+      // override per-deck in createSeededPresentation. Existing decks are untouched
+      // — they carry whatever textSizes they were saved with (usually none →
+      // DEFAULT_TEXT_SIZES, which stays the floor).
+      textSizes: { ...DEFAULT_TEXT_SIZES },
     },
   };
 }
