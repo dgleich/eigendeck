@@ -68,8 +68,30 @@ Verify after: `npx tsc --noEmit`, `npx vitest run`, and that a File→New deck's
   never runs the frontend create*Presentation, so it stamps neither sizes NOR fonts
   (pre-existing gap for fonts). The open-time migration is the safety net. OPEN
   QUESTION for user: also stamp at CLI-creation time (a separate Rust change in
-  cmd_import; to be consistent it'd stamp fonts too)?
-- Title-default 62-vs-72 decision still OPEN (now safe as new-deck-only).
+  cmd_import; to be consistent it'd stamp fonts too)? → RESOLVED below (hard-reject).
+
+### Update 2026-09-11 (cont.) — title 62 for ALL decks + CLI hard-reject
+- **bcc537c** (done): default title lowered **72 → 62** in `DEFAULT_TEXT_SIZES`
+  (the single source), so it applies to EVERY deck without a stored title size
+  (old decks included — a title element carries no explicit fontSize and resolves
+  through DEFAULT_TEXT_SIZES). Two lines fit the 180px box at 62 (2×1.3×62≈161<164),
+  overflowed at 72. `createDefaultPresentation` reverted to storing
+  `{...DEFAULT_TEXT_SIZES}` verbatim. 6 render/export snapshots updated (title px
+  only); LLM-EDITING updated (+ fixed a doc bug: hype default 96→48). User
+  OVERRODE the earlier "keep 72 as the floor" plan.
+- **a3eb04d** (done): CLI `import json` **hard-rejects** decks missing fonts+sizes
+  (user chose reject over inject/warn/bypass-flag). `require_complete_config` in
+  cli.rs (presence/shape check only → no drift; in `cmd_import` ONLY, since
+  `db_import_json` is also a Tauri cmd + the Save path) + 4 unit tests. Stamped
+  all 32 fixtures + added `_deckcfg.py` (`with_defaults`) through all 15 `make_*.py`
+  generators + both showcase build tools (fixed a `ptSans`→`ptsans` typo).
+  Behavior-preserving. Verified: cargo check+clippy clean, 4 tests pass, all
+  fixtures + all generators import, config-less deck rejected (exit 1).
+- **NOT run:** full e2e RIG (import-level validation only) and `cargo fmt` (repo
+  has no rustfmt.toml, CI doesn't enforce it, file is hand-formatted). Run the
+  e2e rig before the next release.
+- Still OPEN from earlier: the 26.9.10 patch (perf-suite rapidSlideNav guard +
+  ffa5249 "variance" correction + JIT-cliff issue) and the welcome-demo revisit.
 
 ## Arc 1 — 26.9.9 RELEASED (done)
 - feat/coverage-viz + feat/e2e-coverage-spike merged to main (e2e coverage
