@@ -50,6 +50,27 @@ change (existing decks untouched).
 Verify after: `npx tsc --noEmit`, `npx vitest run`, and that a File→New deck's
 `config.textSizes` is populated while an opened OLD deck is unchanged.
 
+### Update 2026-09-11 — new decks store sizes (6c90720) + open-time back-fill (de781e0)
+- **6c90720** (done): `createDefaultPresentation` now stamps `textSizes:
+  {...DEFAULT_TEXT_SIZES}`, mirroring fonts. New decks carry the full scale.
+- **de781e0** (done): `ensureStoredTextSizes(config)` in `lib/textSizes.mjs` — an
+  idempotent migration that fills only the named sizes a deck is MISSING with the
+  current defaults (preserves any the deck sets). Wired into the deck-open flow in
+  `store/presentation.ts` right after `migrateLegacyNotebookTokens`, before the
+  untrusted-content normalize. Behavior-preserving; does NOT dirty the deck
+  (`markClean()` follows) → persists on the deck's next save, not on mere open.
+  So OLD decks and CLI-made decks get back-filled the moment they're opened in the
+  app. Same commit fixes a latent 6c90720 bug: `createSeededPresentation` now
+  MERGES the `eigendeck:pref:textSizes` pref over the stored defaults instead of
+  replacing them (a partial pref no longer drops the other four sizes).
+- **CLI does NOT stamp defaults.** `cmd_import` (src-tauri/src/cli.rs ~681) does
+  `db_import_json(content)` → imports the JSON verbatim into a fresh DB → saves; it
+  never runs the frontend create*Presentation, so it stamps neither sizes NOR fonts
+  (pre-existing gap for fonts). The open-time migration is the safety net. OPEN
+  QUESTION for user: also stamp at CLI-creation time (a separate Rust change in
+  cmd_import; to be consistent it'd stamp fonts too)?
+- Title-default 62-vs-72 decision still OPEN (now safe as new-deck-only).
+
 ## Arc 1 — 26.9.9 RELEASED (done)
 - feat/coverage-viz + feat/e2e-coverage-spike merged to main (e2e coverage
   pipeline, whole-tree coverage map, CLI/pdf/fscmds coverage, 13-task cleanup).
