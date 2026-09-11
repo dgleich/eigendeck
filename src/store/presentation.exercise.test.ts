@@ -35,7 +35,6 @@ import {
   type Presentation,
   type TextPreset,
 } from '../types/presentation';
-import { DEFAULT_TEXT_SIZES } from '../lib/textSizes.mjs';
 
 const mockInvoke = vi.mocked(invoke);
 
@@ -459,10 +458,11 @@ describe('presentation store — full lifecycle exercise', () => {
     const p = createSeededPresentation();
     expect(p.config.deckToken).toBeTruthy();
     expect(p.config.mathPreamble).toBe('\\newcommand{\\x}{x}');
-    // New decks now STORE the full default scale (createDefaultPresentation),
-    // and the pref is MERGED over it — only positive numbers kept, junk/neg
-    // dropped, the deck's other sizes preserved at their defaults.
-    expect(p.config.textSizes).toEqual({ ...DEFAULT_TEXT_SIZES, body: 42 });
+    // New decks STORE the full default scale (createDefaultPresentation), and the
+    // pref is MERGED over it — only positive numbers kept, junk/neg dropped, the
+    // deck's other sizes preserved. Assert against that scale (source of truth).
+    const newDeckScale = createDefaultPresentation().config.textSizes;
+    expect(p.config.textSizes).toEqual({ ...newDeckScale, body: 42 });
 
     // Malformed prefs → silently ignored (catch branches); the deck keeps the
     // stored default scale rather than losing its sizes.
@@ -470,7 +470,7 @@ describe('presentation store — full lifecycle exercise', () => {
     localStorage.setItem('eigendeck:pref:textSizes', '{not json');
     const p2 = createSeededPresentation();
     expect(p2.config.deckToken).toBeTruthy();
-    expect(p2.config.textSizes).toEqual({ ...DEFAULT_TEXT_SIZES });
+    expect(p2.config.textSizes).toEqual({ ...newDeckScale });
     localStorage.removeItem('eigendeck:pref:mathPreamble');
     localStorage.removeItem('eigendeck:pref:textSizes');
   });

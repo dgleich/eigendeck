@@ -10,12 +10,16 @@
 // size — the editor/app-export (effectiveFontSize) and the PDF path got it right.
 // Routing the CLI through effectiveFontSize here closes that drift at the root.
 
-/** Built-in defaults for the type scale (px). */
+/** Built-in defaults for the type scale (px). This is THE default for every deck
+ *  that hasn't stored its own size for a name (via config.textSizes) — old decks
+ *  included — so a change here restyles all such decks. Title is 62 (not 72): two
+ *  lines of the default title fit the default 180px title box at 62
+ *  (2×1.3×62≈161 < 164 content px) but overflow at 72. */
 export const DEFAULT_TEXT_SIZES = {
   footnote: 24,
   note:     32,
   body:     48,
-  title:    72,
+  title:    62,
   hype:     48,
 };
 

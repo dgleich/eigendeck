@@ -73,11 +73,12 @@ describe('presentation types', () => {
 });
 
 describe('named text size system', () => {
-  it('DEFAULT_TEXT_SIZES has the historical preset sizes', () => {
+  it('DEFAULT_TEXT_SIZES has the default preset sizes', () => {
     expect(DEFAULT_TEXT_SIZES.footnote).toBe(24);
     expect(DEFAULT_TEXT_SIZES.note).toBe(32);
     expect(DEFAULT_TEXT_SIZES.body).toBe(48);
-    expect(DEFAULT_TEXT_SIZES.title).toBe(72);
+    // Title lowered 72 → 62 so a two-line default title fits the 180px title box.
+    expect(DEFAULT_TEXT_SIZES.title).toBe(62);
     expect(DEFAULT_TEXT_SIZES.hype).toBe(48);
   });
 
@@ -93,7 +94,7 @@ describe('named text size system', () => {
   });
 
   it('effectiveTextPresetSize walks preset → sizeName → resolveNamedSize', () => {
-    expect(effectiveTextPresetSize('title', null)).toBe(72);
+    expect(effectiveTextPresetSize('title', null)).toBe(62);
     expect(effectiveTextPresetSize('body', null)).toBe(48);
     expect(effectiveTextPresetSize('annotation', null)).toBe(32); // annotation → 'note'
     expect(effectiveTextPresetSize('footnote', null)).toBe(24);
