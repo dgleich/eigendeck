@@ -35,6 +35,30 @@ export function resolveNamedSize(name, config) {
   return config?.textSizes?.[name] ?? DEFAULT_TEXT_SIZES[name];
 }
 
+/**
+ * On-open migration: stamp the current default type scale into a deck that
+ * predates stored sizes, so a later change to DEFAULT_TEXT_SIZES never restyles
+ * an old deck (same rationale as fonts, which new decks already store in
+ * createDefaultPresentation). Fills ONLY the named sizes the deck is missing;
+ * any size the deck already sets is preserved. Behavior-preserving: the value
+ * stamped for a missing name equals what resolveNamedSize returns for it today,
+ * so nothing renders differently — the deck just now carries the scale
+ * explicitly. Mutates `config` in place; returns true iff it changed anything.
+ */
+export function ensureStoredTextSizes(config) {
+  if (!config || typeof config !== 'object') return false;
+  const existing = (config.textSizes && typeof config.textSizes === 'object') ? config.textSizes : null;
+  let changed = !existing;
+  const out = { ...DEFAULT_TEXT_SIZES, ...(existing || {}) };
+  if (existing) {
+    for (const k of Object.keys(DEFAULT_TEXT_SIZES)) {
+      if (typeof existing[k] !== 'number') { changed = true; break; }
+    }
+  }
+  if (changed) config.textSizes = out;
+  return changed;
+}
+
 /** Effective px size for a text preset, honoring the deck's textSizes override. */
 export function effectiveTextPresetSize(preset, config) {
   return resolveNamedSize(PRESET_SIZE_NAME[preset], config);

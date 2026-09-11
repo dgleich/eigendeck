@@ -10,6 +10,7 @@ export const DEFAULT_TEXT_SIZES: Record<NamedSize, number>;
 export const PRESET_SIZE_NAME: Record<string, NamedSize>;
 
 export function resolveNamedSize(name: NamedSize, config?: TextSizeConfig): number;
+export function ensureStoredTextSizes(config: unknown): boolean;
 export function effectiveTextPresetSize(preset: string, config?: TextSizeConfig): number;
 export function effectiveFontSize(
   element:

@@ -160,11 +160,11 @@ export function createSeededPresentation(): Presentation {
     }
   } catch { /* ignore */ }
   try {
-    // Seed deck-level type scale from the global pref. Empty/missing
-    // keys fall back to DEFAULT_TEXT_SIZES at render time — we only
-    // store an override if the pref has one. Carrying only the
-    // non-empty entries keeps PresentationConfig.textSizes undefined
-    // when the user hasn't customized anything globally.
+    // Seed deck-level type scale from the global pref, MERGED over the stored
+    // defaults that createDefaultPresentation stamps (6c90720). A new deck now
+    // carries the full scale; the pref only overrides the names it customizes —
+    // so we must merge, not replace, or a partial pref (e.g. just `title`) would
+    // drop the other stored sizes back to undefined.
     const v = localStorage.getItem('eigendeck:pref:textSizes');
     if (v) {
       const parsed = JSON.parse(v);
@@ -174,7 +174,10 @@ export function createSeededPresentation(): Presentation {
           if (typeof val === 'number' && val > 0) cleaned[k] = val;
         }
         if (Object.keys(cleaned).length) {
-          pres.config.textSizes = cleaned as Presentation['config']['textSizes'];
+          pres.config.textSizes = {
+            ...(pres.config.textSizes || {}),
+            ...cleaned,
+          } as Presentation['config']['textSizes'];
         }
       }
     }
@@ -1550,6 +1553,22 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
       }
     } catch (e) {
       console.warn('Notebook token migration failed (non-fatal):', e);
+    }
+
+    // Stamp the current default type scale into a deck that predates stored
+    // sizes, so a later change to the global defaults never restyles an old (or
+    // CLI-created) deck — the same freeze new decks already get for fonts and,
+    // since 6c90720, for sizes. Behavior-preserving (the stamped values equal
+    // what those names resolve to today) and, like the notebook migration, it
+    // does not dirty the deck: markClean() follows, so it persists on the next
+    // save rather than rewriting every opened file. Idempotent.
+    try {
+      const { ensureStoredTextSizes } = await import('../lib/textSizes.mjs');
+      if (ensureStoredTextSizes(presentation.config)) {
+        olog('stamped default text sizes into a deck that lacked them');
+      }
+    } catch (e) {
+      console.warn('Text-size defaulting failed (non-fatal):', e);
     }
 
     // Normalize untrusted deck content: reduce text html to the toolbar allowlist

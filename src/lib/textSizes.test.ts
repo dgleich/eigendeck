@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { effectiveFontSize, resolveNamedSize, PRESET_SIZE_NAME, DEFAULT_TEXT_SIZES } from './textSizes.mjs';
+import { effectiveFontSize, resolveNamedSize, PRESET_SIZE_NAME, DEFAULT_TEXT_SIZES, ensureStoredTextSizes } from './textSizes.mjs';
 import { TEXT_PRESET_STYLES, type TextPreset } from '../types/presentation';
 
 // @simplify-guard — the shared text type-scale (lib/textSizes.mjs), the single
@@ -25,6 +25,33 @@ describe('[simplify-guard] textSizes', () => {
     // body preset, no explicit size, deck shrinks the body scale → must follow it
     expect(effectiveFontSize({ type: 'text', preset: 'body' }, { textSizes: { body: 40 } })).toBe(40);
     expect(resolveNamedSize('body', { textSizes: { body: 40 } })).toBe(40);
+  });
+
+  it('ensureStoredTextSizes stamps the full default scale into a deck that lacks it', () => {
+    // A deck opened without stored sizes gets the current defaults, and is now
+    // frozen against a later DEFAULT_TEXT_SIZES change — behavior-preserving.
+    const config: { textSizes?: Record<string, number> } = {};
+    expect(ensureStoredTextSizes(config)).toBe(true);
+    expect(config.textSizes).toEqual({ ...DEFAULT_TEXT_SIZES });
+    // Idempotent: a second pass makes no change.
+    expect(ensureStoredTextSizes(config)).toBe(false);
+  });
+
+  it('ensureStoredTextSizes fills only missing names and preserves the deck values', () => {
+    const config: { textSizes?: Record<string, number> } = { textSizes: { title: 62 } };
+    expect(ensureStoredTextSizes(config)).toBe(true);
+    expect(config.textSizes).toEqual({ ...DEFAULT_TEXT_SIZES, title: 62 });
+    // The deck's explicit 62 survives; the fill did not clobber it.
+    expect(config.textSizes!.title).toBe(62);
+    expect(ensureStoredTextSizes(config)).toBe(false);
+  });
+
+  it('ensureStoredTextSizes is a no-op on a full scale and tolerates junk config', () => {
+    const full = { textSizes: { ...DEFAULT_TEXT_SIZES } };
+    expect(ensureStoredTextSizes(full)).toBe(false);
+    // Non-object configs are ignored (fail-safe, never throws).
+    expect(ensureStoredTextSizes(null)).toBe(false);
+    expect(ensureStoredTextSizes(undefined)).toBe(false);
   });
 
   it('PRESET_SIZE_NAME stays in sync with TEXT_PRESET_STYLES.sizeName', () => {
