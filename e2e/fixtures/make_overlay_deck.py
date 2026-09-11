@@ -7,6 +7,7 @@
 #             edited one (reproduces the test-1 corruption; the heal must
 #             pick the content-bearing one).
 import base64, json, sys
+from _deckcfg import with_defaults
 
 EL = "nb-el-1"
 IPYNB_ID = "ipynb-1"
@@ -46,7 +47,7 @@ def deck(mode):
         assets.append({"assetId": "ov-real", "mime": OV, "ownerElementId": EL,
                        "data": b64(overlay(edited_src))})
     return {
-        "title": f"OV {mode}", "theme": "white", "config": {},
+        "title": f"OV {mode}", "theme": "white", "config": with_defaults({}),
         "slides": [{"id": "s1", "elements": [
             {"id": EL, "type": "notebook", "assetId": IPYNB_ID,
              "position": {"x": 60, "y": 60, "width": 1100, "height": 640}},

@@ -11,6 +11,7 @@
 # The payloads self-report to the parent via postMessage({__nbprobe:1, …}); the
 # probe (e2e/nb-security-probe.mjs) collects and asserts.
 import base64, json, sys
+from _deckcfg import with_defaults
 
 EL = "nb-el-1"
 IPYNB_ID = "ipynb-sec-1"
@@ -46,7 +47,7 @@ def b64(obj):
     return base64.b64encode(json.dumps(obj).encode()).decode()
 
 deck = {
-    "title": "NB security", "theme": "white", "config": {},
+    "title": "NB security", "theme": "white", "config": with_defaults({}),
     "slides": [{"id": "s1", "elements": [
         {"id": EL, "type": "notebook", "assetId": IPYNB_ID,
          "position": {"x": 40, "y": 40, "width": 1200, "height": 700}},

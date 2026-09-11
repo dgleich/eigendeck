@@ -8,6 +8,7 @@
 # .eigendeck, so convert this JSON first:
 #   eigendeck-cli out.eigendeck import json this.json
 import base64, json, sys
+from _deckcfg import with_defaults
 
 def b64(o): return base64.b64encode(json.dumps(o).encode()).decode()
 
@@ -24,7 +25,7 @@ def ov(mark):
 
 OV = "application/x-eigendeck-overlay+json"
 deck = {
-    "title": "link conflict", "theme": "white", "config": {},
+    "title": "link conflict", "theme": "white", "config": with_defaults({}),
     "slides": [
         {"id": "s1", "elements": [{"id": "nb1", "type": "notebook", "assetId": "ipy1",
             "position": {"x": 60, "y": 60, "width": 1100, "height": 640}}]},

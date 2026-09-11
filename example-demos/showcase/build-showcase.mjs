@@ -15,6 +15,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { buildTextSlides } from './text-slides.mjs';
+import { DEFAULT_TEXT_SIZES } from '../../src/lib/textSizes.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DEMODIR = join(HERE, 'demos');
@@ -231,10 +232,11 @@ slides[1].elements.push(
 const deck = {
   title: 'Eigendeck — Showcase',
   theme: 'white',
-  // Store the deck's fonts explicitly (don't rely on the app default, which changed
-  // from PT Sans → Lato): the showcase is designed around PT Sans. `import json`
-  // writes config verbatim, so this is what pins the deck's look.
-  config: { width: 1920, height: 1080, author: 'David F. Gleich', venue: 'Eigendeck Showcase', showSlideNumber: true, defaultTitleFont: 'ptsans', defaultBodyFont: 'ptsans', defaultMonoFont: 'source-code' },
+  // Store the deck's fonts AND type scale explicitly (don't rely on the app
+  // defaults, which changed PT Sans → Lato, and which `import json` now REQUIRES
+  // a deck to carry — see require_complete_config in cli.rs). `import json` writes
+  // config verbatim, so this is what pins the deck's look.
+  config: { width: 1920, height: 1080, author: 'David F. Gleich', venue: 'Eigendeck Showcase', showSlideNumber: true, defaultTitleFont: 'ptsans', defaultBodyFont: 'ptsans', defaultMonoFont: 'source-code', textSizes: { ...DEFAULT_TEXT_SIZES } },
   slides,
   assets,
 };

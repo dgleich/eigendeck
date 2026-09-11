@@ -11,6 +11,7 @@
 # Assets (image PNG, notebook ipynb, optional file video) are embedded base64 so
 # the deck is self-contained via `eigendeck-cli <deck> import json <this-output>`.
 import base64, json, os, sys
+from _deckcfg import with_defaults
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -111,8 +112,8 @@ def deck():
     return {
         "title": "User Journey",
         "theme": "white",
-        "config": {"width": 1920, "height": 1080, "author": "e2e",
-                   "venue": "headless", "customPalette": ["#ff00aa", "#00cc88"]},
+        "config": with_defaults({"width": 1920, "height": 1080, "author": "e2e",
+                   "venue": "headless", "customPalette": ["#ff00aa", "#00cc88"]}),
         "slides": slides,
         "assets": assets,
     }

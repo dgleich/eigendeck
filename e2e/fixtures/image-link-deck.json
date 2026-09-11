@@ -1,1 +1,51 @@
-{"title": "Image Link Test", "theme": "white", "config": {"width": 1920, "height": 1080}, "slides": [{"id": "s0", "notes": "", "elements": [{"id": "img0", "type": "image", "kind": "raster", "assetId": "a1", "position": {"x": 100, "y": 100, "width": 400, "height": 400}}]}, {"id": "s1", "notes": "", "elements": []}], "assets": [{"assetId": "a1", "path": "images/x.png", "mime": "image/png", "size": 70, "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}]}
+{
+  "title": "Image Link Test",
+  "theme": "white",
+  "config": {
+    "width": 1920,
+    "height": 1080,
+    "defaultTitleFont": "lato",
+    "defaultBodyFont": "lato",
+    "textSizes": {
+      "footnote": 24,
+      "note": 32,
+      "body": 48,
+      "title": 62,
+      "hype": 48
+    }
+  },
+  "slides": [
+    {
+      "id": "s0",
+      "notes": "",
+      "elements": [
+        {
+          "id": "img0",
+          "type": "image",
+          "kind": "raster",
+          "assetId": "a1",
+          "position": {
+            "x": 100,
+            "y": 100,
+            "width": 400,
+            "height": 400
+          }
+        }
+      ]
+    },
+    {
+      "id": "s1",
+      "notes": "",
+      "elements": []
+    }
+  ],
+  "assets": [
+    {
+      "assetId": "a1",
+      "path": "images/x.png",
+      "mime": "image/png",
+      "size": 70,
+      "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+    }
+  ]
+}

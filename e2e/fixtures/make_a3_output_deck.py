@@ -5,6 +5,7 @@
 #
 #   python3 make_a3_output_deck.py <theme> <out.json>
 import base64, json, sys
+from _deckcfg import with_defaults
 
 EL = "nb-el-1"
 IPYNB_ID = "ipynb-1"
@@ -68,7 +69,7 @@ def b64(obj):
 
 def deck(theme):
     return {
-        "title": f"a3 outputs {theme}", "theme": theme, "config": {},
+        "title": f"a3 outputs {theme}", "theme": theme, "config": with_defaults({}),
         "slides": [{"id": "s1", "theme": theme, "elements": [
             {"id": EL, "type": "notebook", "assetId": IPYNB_ID,
              "position": {"x": 40, "y": 40, "width": 1200, "height": 900}},

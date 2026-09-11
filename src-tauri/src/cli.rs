@@ -678,13 +678,84 @@ fn cmd_export(args: &[String]) -> Result<(), String> {
     Ok(())
 }
 
+/// Reject an `import json` deck whose config omits the fonts / type scale that
+/// the GUI's New Project always stamps (createDefaultPresentation:
+/// `defaultTitleFont`, `defaultBodyFont`, and the full `textSizes` scale), so a
+/// real GUI-authored or -exported deck always passes. We refuse a deck that
+/// "floats" on the app defaults instead of storing its own look — a later change
+/// to those defaults would silently restyle it (the exact drift new decks avoid
+/// by storing their fonts + sizes). The app's on-open migration back-fills a deck
+/// opened in the GUI, but the CLI has no editing UI to save through, so it
+/// enforces completeness at import time instead.
+///
+/// This is a PRESENCE / shape check only — it knows no font ids and no size
+/// values, so it does not duplicate the font registry or DEFAULT_TEXT_SIZES
+/// (those stay single-sourced in the JS/TS layer: lib/fontRegistry.mjs,
+/// lib/textSizes.mjs).
+fn require_complete_config(pres: &Value) -> Result<(), String> {
+    let cfg = match pres.get("config").and_then(|v| v.as_object()) {
+        Some(c) => c,
+        None => return Err(import_config_error(&["config (object)"])),
+    };
+
+    let mut missing: Vec<&str> = Vec::new();
+
+    // Fonts: the two non-empty strings a new deck always stores.
+    for key in ["defaultTitleFont", "defaultBodyFont"] {
+        let ok = cfg
+            .get(key)
+            .and_then(|v| v.as_str())
+            .map(|s| !s.trim().is_empty())
+            .unwrap_or(false);
+        if !ok {
+            missing.push(key);
+        }
+    }
+
+    // Type scale: a non-empty object whose every value is a positive, finite
+    // number. Rejects a missing / null / empty `textSizes` and any junk value,
+    // without pinning the exact named sizes (forward-compatible if the scale
+    // grows a bucket).
+    let sizes_ok = cfg
+        .get("textSizes")
+        .and_then(|v| v.as_object())
+        .map(|m| {
+            !m.is_empty()
+                && m.values()
+                    .all(|v| v.as_f64().map(|n| n.is_finite() && n > 0.0).unwrap_or(false))
+        })
+        .unwrap_or(false);
+    if !sizes_ok {
+        missing.push("textSizes");
+    }
+
+    if missing.is_empty() {
+        Ok(())
+    } else {
+        Err(import_config_error(&missing))
+    }
+}
+
+fn import_config_error(missing: &[&str]) -> String {
+    format!(
+        "Refusing to import: deck config is missing required attribute(s): {}. \
+A deck imported via `import json` must store its fonts and type scale so its look \
+is frozen against future app-default changes (the same fields File \u{2192} New \
+stamps). Add them to the JSON's `config`, e.g. \"defaultTitleFont\":\"lato\", \
+\"defaultBodyFont\":\"lato\", \"textSizes\":{{\"footnote\":24,\"note\":32,\
+\"body\":48,\"title\":62,\"hype\":48}}, then re-import.",
+        missing.join(", ")
+    )
+}
+
 fn cmd_import(db_path: &str, args: &[String]) -> Result<(), String> {
     let format = args.first().map(|s| s.as_str()).ok_or("Usage: import json <input.json>")?;
     if format != "json" { return Err("Usage: import json <input.json>".to_string()); }
     let input = args.get(1).ok_or("Usage: import json <input.json>")?;
     let content = std::fs::read_to_string(input).map_err(|e| format!("Failed to read {}: {}", input, e))?;
-    // Validate JSON
-    let _: Value = serde_json::from_str(&content).map_err(|e| format!("Invalid JSON: {}", e))?;
+    // Validate JSON syntax AND require a complete config (fonts + type scale).
+    let pres: Value = serde_json::from_str(&content).map_err(|e| format!("Invalid JSON: {}", e))?;
+    require_complete_config(&pres)?;
     // Build the deck in a FRESH in-memory DB, then atomically replace the
     // target file — same model as the GUI's New Project. db_import_json
     // preserves assets, so we must NOT import in place over the existing
@@ -856,5 +927,65 @@ mod uuid {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             write!(f, "{}", self.0)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn complete() -> Value {
+        json!({
+            "slides": [],
+            "config": {
+                "defaultTitleFont": "lato",
+                "defaultBodyFont": "lato",
+                "textSizes": { "footnote": 24, "note": 32, "body": 48, "title": 72, "hype": 48 }
+            }
+        })
+    }
+
+    #[test]
+    fn accepts_a_complete_deck_config() {
+        assert!(require_complete_config(&complete()).is_ok());
+    }
+
+    #[test]
+    fn rejects_missing_or_nonobject_config() {
+        let err = require_complete_config(&json!({ "slides": [] })).unwrap_err();
+        assert!(err.contains("config"), "{err}");
+        assert!(require_complete_config(&json!({ "config": 3, "slides": [] })).is_err());
+    }
+
+    #[test]
+    fn rejects_missing_fonts() {
+        let mut p = complete();
+        p["config"].as_object_mut().unwrap().remove("defaultTitleFont");
+        let err = require_complete_config(&p).unwrap_err();
+        assert!(err.contains("defaultTitleFont"), "{err}");
+
+        let mut p2 = complete();
+        p2["config"]["defaultBodyFont"] = json!("  ");
+        assert!(require_complete_config(&p2).unwrap_err().contains("defaultBodyFont"));
+    }
+
+    #[test]
+    fn rejects_missing_empty_or_junk_text_sizes() {
+        let mut p = complete();
+        p["config"].as_object_mut().unwrap().remove("textSizes");
+        assert!(require_complete_config(&p).unwrap_err().contains("textSizes"));
+
+        let mut empty = complete();
+        empty["config"]["textSizes"] = json!({});
+        assert!(require_complete_config(&empty).is_err());
+
+        let mut zero = complete();
+        zero["config"]["textSizes"] = json!({ "title": 0 });
+        assert!(require_complete_config(&zero).is_err());
+
+        let mut junk = complete();
+        junk["config"]["textSizes"] = json!({ "title": "big" });
+        assert!(require_complete_config(&junk).is_err());
     }
 }

@@ -1,9 +1,11 @@
-// #137 regression: a deck built WITHOUT a `config` block must still present. The
+// #137 regression: a deck WITHOUT config.width/height must still present. The
 // present stage reads presentation.config.width; when absent it fell back to
 // undefined → the .present-slide stage collapsed to 0×0 and every element
 // overflowed off-screen (present showed nothing). PresentMode now defaults to
-// 1920×1080. This probe opens a config-less full-bleed html deck, enters present,
-// and asserts the stage is scaled to fit (not 0×0) with the element on-screen.
+// 1920×1080. This probe opens a full-bleed html deck whose config omits
+// width/height (it carries only the fonts/type-scale that `import json` requires),
+// enters present, and asserts the stage is scaled to fit (not 0×0) with the
+// element on-screen.
 const BASE = 'http://127.0.0.1:4444', APP = process.env.E2E_APP, DECK = process.env.E2E_DECK;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function post(p, b) { const r = await fetch(BASE + p, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }); const t = await r.text(); try { return JSON.parse(t); } catch { return t; } }

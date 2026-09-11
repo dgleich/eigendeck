@@ -11,6 +11,7 @@
 # Elements sit at deterministic grid coordinates so snap / group-move deltas are
 # exactly predictable.
 import base64, json, sys
+from _deckcfg import with_defaults
 
 # 1x1 transparent PNG
 PNG_B64 = ("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgYGAAAAAEAAH2"
@@ -38,7 +39,7 @@ def deck():
     return {
         "title": "Deep Editor Gestures",
         "theme": "white",
-        "config": {"width": 1920, "height": 1080},
+        "config": with_defaults({"width": 1920, "height": 1080}),
         "slides": [{"id": "s1", "layout": "default", "notes": "deep editor fixture",
                     "elements": elements}],
         "assets": [

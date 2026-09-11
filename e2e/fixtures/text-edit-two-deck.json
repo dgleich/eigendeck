@@ -5,11 +5,45 @@
     {
       "id": "s0",
       "elements": [
-        { "id": "t1", "type": "text", "preset": "body", "html": "ORIGINAL_A", "position": { "x": 100, "y": 100, "width": 700, "height": 200 } },
-        { "id": "t2", "type": "text", "preset": "body", "html": "ORIGINAL_B", "position": { "x": 100, "y": 500, "width": 700, "height": 200 } }
+        {
+          "id": "t1",
+          "type": "text",
+          "preset": "body",
+          "html": "ORIGINAL_A",
+          "position": {
+            "x": 100,
+            "y": 100,
+            "width": 700,
+            "height": 200
+          }
+        },
+        {
+          "id": "t2",
+          "type": "text",
+          "preset": "body",
+          "html": "ORIGINAL_B",
+          "position": {
+            "x": 100,
+            "y": 500,
+            "width": 700,
+            "height": 200
+          }
+        }
       ],
       "notes": ""
     }
   ],
-  "config": { "transition": "slide", "backgroundTransition": "fade" }
+  "config": {
+    "transition": "slide",
+    "backgroundTransition": "fade",
+    "defaultTitleFont": "lato",
+    "defaultBodyFont": "lato",
+    "textSizes": {
+      "footnote": 24,
+      "note": 32,
+      "body": 48,
+      "title": 62,
+      "hype": 48
+    }
+  }
 }

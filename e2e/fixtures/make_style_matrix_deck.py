@@ -7,6 +7,7 @@ distinct style variation; element-fidelity-probe deep-compares before vs after.
 Usage:  python3 make_style_matrix_deck.py <out.json>
 """
 import json, sys
+from _deckcfg import with_defaults
 
 W, H = 1920, 1080
 els = []
@@ -88,7 +89,7 @@ for i in range(0, len(els), per):
     slides.append({"id": f"s{i//per+1}", "layout": "default", "notes": "", "elements": els[i:i+per]})
 
 deck = {"title": "Style Matrix Round-trip λ", "theme": "white",
-        "config": {"width": W, "height": H}, "slides": slides}
+        "config": with_defaults({"width": W, "height": H}), "slides": slides}
 out = sys.argv[1] if len(sys.argv) > 1 else "/tmp/style-matrix.json"
 json.dump(deck, open(out, "w"), indent=1)
 print(f"wrote {out}: {len(els)} styled elements across {len(slides)} slides")

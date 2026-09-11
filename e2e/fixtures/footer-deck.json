@@ -6,7 +6,16 @@
     "height": 1080,
     "author": "Ada Lovelace",
     "venue": "SIAM 2026",
-    "footerFont": "shantell"
+    "footerFont": "shantell",
+    "defaultTitleFont": "lato",
+    "defaultBodyFont": "lato",
+    "textSizes": {
+      "footnote": 24,
+      "note": 32,
+      "body": 48,
+      "title": 62,
+      "hype": 48
+    }
   },
   "slides": [
     {
@@ -15,7 +24,18 @@
       "notes": "",
       "theme": "white",
       "elements": [
-        { "id": "t0", "type": "text", "preset": "title", "html": "Footer shown here", "position": { "x": 80, "y": 40, "width": 1760, "height": 150 } }
+        {
+          "id": "t0",
+          "type": "text",
+          "preset": "title",
+          "html": "Footer shown here",
+          "position": {
+            "x": 80,
+            "y": 40,
+            "width": 1760,
+            "height": 150
+          }
+        }
       ]
     },
     {
@@ -25,7 +45,18 @@
       "theme": "dark",
       "omitFooter": true,
       "elements": [
-        { "id": "t1", "type": "text", "preset": "title", "html": "Footer omitted here", "position": { "x": 80, "y": 40, "width": 1760, "height": 150 } }
+        {
+          "id": "t1",
+          "type": "text",
+          "preset": "title",
+          "html": "Footer omitted here",
+          "position": {
+            "x": 80,
+            "y": 40,
+            "width": 1760,
+            "height": 150
+          }
+        }
       ]
     }
   ]

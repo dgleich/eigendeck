@@ -2,11 +2,36 @@
   "title": "html no-config (present fallback #137)",
   "theme": "black",
   "slides": [
-    { "id": "s0", "layout": "default", "notes": "", "theme": "black",
+    {
+      "id": "s0",
+      "layout": "default",
+      "notes": "",
+      "theme": "black",
       "elements": [
-        { "id": "full", "type": "html", "background": "#0a0a0f",
-          "position": { "x": 0, "y": 0, "width": 1920, "height": 1080 },
-          "html": "<div style=\"height:100%;display:grid;place-items:center;font-family:system-ui\"><h1 style=\"font-size:120px;color:#a78bfa\">PRESENT_OK</h1></div>" }
-      ] }
-  ]
+        {
+          "id": "full",
+          "type": "html",
+          "background": "#0a0a0f",
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 1920,
+            "height": 1080
+          },
+          "html": "<div style=\"height:100%;display:grid;place-items:center;font-family:system-ui\"><h1 style=\"font-size:120px;color:#a78bfa\">PRESENT_OK</h1></div>"
+        }
+      ]
+    }
+  ],
+  "config": {
+    "defaultTitleFont": "lato",
+    "defaultBodyFont": "lato",
+    "textSizes": {
+      "footnote": 24,
+      "note": 32,
+      "body": 48,
+      "title": 62,
+      "hype": 48
+    }
+  }
 }

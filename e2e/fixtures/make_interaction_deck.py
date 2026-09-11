@@ -8,6 +8,7 @@
 # Assets (image PNG, file video webm, notebook ipynb) are embedded base64 so the
 # deck is self-contained via `eigendeck-cli <deck> import json <this-output>`.
 import base64, json, os, sys
+from _deckcfg import with_defaults
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -88,7 +89,7 @@ def deck():
     return {
         "title": "Interaction Exercise",
         "theme": "white",
-        "config": {"width": 1920, "height": 1080, "customPalette": ["#ff00aa", "#00cc88"]},
+        "config": with_defaults({"width": 1920, "height": 1080, "customPalette": ["#ff00aa", "#00cc88"]}),
         "slides": [{"id": "s1", "layout": "default", "notes": "interaction fixture",
                     "elements": elements}],
         "assets": assets,

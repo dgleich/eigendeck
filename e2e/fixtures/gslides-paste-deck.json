@@ -1,8 +1,26 @@
 {
   "title": "Google Slides paste (#158)",
   "theme": "white",
-  "config": { "width": 1920, "height": 1080 },
+  "config": {
+    "width": 1920,
+    "height": 1080,
+    "defaultTitleFont": "lato",
+    "defaultBodyFont": "lato",
+    "textSizes": {
+      "footnote": 24,
+      "note": 32,
+      "body": 48,
+      "title": 62,
+      "hype": 48
+    }
+  },
   "slides": [
-    { "id": "s0", "layout": "default", "notes": "", "theme": "white", "elements": [] }
+    {
+      "id": "s0",
+      "layout": "default",
+      "notes": "",
+      "theme": "white",
+      "elements": []
+    }
   ]
 }

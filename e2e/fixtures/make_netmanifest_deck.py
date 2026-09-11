@@ -6,6 +6,7 @@
 # Expectation: only the undeclared host is blocked; the declared host is allowed by
 # the injected scoped connect-src (network still fails, but no CSP violation).
 import base64, json, sys
+from _deckcfg import with_defaults
 
 PAYLOAD = (
     '<script type="application/eigendeck-manifest+json">'
@@ -42,7 +43,7 @@ ipynb = {
 }
 
 deck = {
-    "title": "netmanifest", "theme": "white", "config": {},
+    "title": "netmanifest", "theme": "white", "config": with_defaults({}),
     "slides": [
         {"id": "s0", "elements": []},
         {"id": "s1", "elements": [

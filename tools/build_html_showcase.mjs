@@ -19,6 +19,7 @@
 
 import { randomUUID as uuid } from 'node:crypto';
 import zlib from 'node:zlib';
+import { DEFAULT_TEXT_SIZES } from '../src/lib/textSizes.mjs';
 
 const FULL = { x: 0, y: 0, width: 1920, height: 1080 };
 
@@ -565,7 +566,10 @@ function makePng2x2() {
 const deck = {
   title: 'HTML Element Showcase',
   theme: 'black',
-  config: { width: 1920, height: 1080, defaultBodyFont: 'ptSans' },
+  // `import json` requires a deck to store its fonts + type scale (see
+  // require_complete_config in cli.rs). ('ptSans' → 'ptsans': the real registry
+  // id is lowercase; the old value silently fell back to the default font.)
+  config: { width: 1920, height: 1080, defaultTitleFont: 'ptsans', defaultBodyFont: 'ptsans', textSizes: { ...DEFAULT_TEXT_SIZES } },
   slides,
 };
 process.stdout.write(JSON.stringify(deck, null, 2));

@@ -17,7 +17,14 @@
     "showSlideNumber": false,
     "transition": "none",
     "venue": "STOC 2026",
-    "width": 1280
+    "width": 1280,
+    "textSizes": {
+      "footnote": 24,
+      "note": 32,
+      "body": 48,
+      "title": 62,
+      "hype": 48
+    }
   },
   "slides": [
     {

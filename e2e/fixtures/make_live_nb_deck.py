@@ -9,6 +9,7 @@
 # initial cell is `k = 5` (valid in every language we test and only a
 # placeholder — the probe replaces it before running).
 import base64, json, sys
+from _deckcfg import with_defaults
 
 IPY = "application/x-ipynb+json"
 
@@ -31,6 +32,7 @@ def ipynb(cells, kname, kdisp):
 def deck(kname, kdisp):
     nb = ipynb([code_cell("k = 5\n")], kname, kdisp)
     return {
+        "config": with_defaults(),
         "slides": [{
             "id": "s1",
             "elements": [{

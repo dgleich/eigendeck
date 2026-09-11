@@ -5,6 +5,7 @@
 # gone (WebRTC neuter), and does a fetch trip a connect-src CSP violation (the
 # injected connect-src 'none' lockdown). Reported via postMessage({__netprobe:1}).
 import base64, json, sys
+from _deckcfg import with_defaults
 
 PAYLOAD = (
     '<div id="p">plot</div><script>'
@@ -32,7 +33,7 @@ ipynb = {
 }
 
 deck = {
-    "title": "netblock", "theme": "white", "config": {},
+    "title": "netblock", "theme": "white", "config": with_defaults({}),
     "slides": [
         {"id": "s0", "elements": []},
         {"id": "s1", "elements": [

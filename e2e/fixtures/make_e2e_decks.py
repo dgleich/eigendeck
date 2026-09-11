@@ -15,6 +15,7 @@
 #                         INIT_VAL; for notebook-watch-takecontrol-probe.mjs.
 #                         (The probe writes the on-disk nb.ipynb itself via E2E_NB.)
 import base64, json, sys
+from _deckcfg import with_defaults
 
 OV = "application/x-eigendeck-overlay+json"
 IPY = "application/x-ipynb+json"
@@ -58,7 +59,7 @@ def make_shared():
     # One shared ipynb asset (INIT_VAL), referenced by a notebook on each slide.
     nb = ipynb([code_cell("k = 'INIT_VAL'\n")])
     return {
-        "title": "shared nb", "theme": "white", "config": {},
+        "title": "shared nb", "theme": "white", "config": with_defaults({}),
         "slides": [
             {"id": "s1", "elements": [nb_el("nbA", "ipy")]},
             {"id": "s2", "elements": [nb_el("nbB", "ipy")]},
@@ -74,7 +75,7 @@ def make_copypaste():
     # nb1 with a MARK_A overlay on slide 1; slide 2 empty.
     nb = ipynb([code_cell("k = 5\n")])
     return {
-        "title": "copypaste", "theme": "white", "config": {},
+        "title": "copypaste", "theme": "white", "config": with_defaults({}),
         "slides": [
             {"id": "s1", "elements": [nb_el("nb1", "ipy1")]},
             {"id": "s2", "elements": []},
@@ -95,7 +96,7 @@ def make_export():
         code_cell("import numpy as np\nx = np.linspace(0, 1, 11)\n"),
     ])
     return {
-        "title": "export nb", "theme": "white", "config": {},
+        "title": "export nb", "theme": "white", "config": with_defaults({}),
         "slides": [{"id": "s1", "elements": [nb_el("nbx", "ipy")]}],
         "assets": [
             {"assetId": "ipy", "mime": IPY, "path": "hello.ipynb", "data": b64(nb)},
@@ -107,7 +108,7 @@ def make_watch():
     # nb1 bound to an EXTERNAL nb.ipynb (auto-reload on), showing INIT_VAL.
     nb = ipynb([code_cell("k = 'INIT_VAL'\n")])
     return {
-        "title": "watch nb", "theme": "white", "config": {},
+        "title": "watch nb", "theme": "white", "config": with_defaults({}),
         "slides": [{"id": "s1", "elements": [nb_el("nb1", "ipy")]}],
         "assets": [
             {"assetId": "ipy", "mime": IPY, "path": "nb.ipynb",
@@ -122,7 +123,7 @@ def make_solo():
     # The link-conflict deck has TWO slides, which breaks their slide-count math.
     nb = ipynb([code_cell("k = 5\n")])
     return {
-        "title": "solo nb", "theme": "white", "config": {},
+        "title": "solo nb", "theme": "white", "config": with_defaults({}),
         "slides": [{"id": "s1", "elements": [nb_el("nb1", "ipy1")]}],
         "assets": [
             {"assetId": "ipy1", "mime": IPY, "path": "a.ipynb", "data": b64(nb)},
@@ -135,7 +136,7 @@ def make_solo():
 def make_empty():
     # A single-slide deck with NO elements — for editor probes that assert exact
     # slide[0] contents / slide counts and need a clean canvas.
-    return {"title": "empty", "theme": "white", "config": {},
+    return {"title": "empty", "theme": "white", "config": with_defaults({}),
             "slides": [{"id": "s1", "elements": []}]}
 
 
@@ -168,7 +169,7 @@ def make_hyphenpiece():
         "position": {"x": 40, "y": y, "width": 800, "height": 380},
     }
     return {
-        "title": "hyphen pieces", "theme": "white", "config": {},
+        "title": "hyphen pieces", "theme": "white", "config": with_defaults({}),
         "slides": [{"id": "s1", "elements": [
             el("p1", "force-graph", 40), el("p2", "bar-chart-2", 460),
         ]}],
@@ -207,7 +208,7 @@ def make_printdemo():
     )
     nb = ipynb([md_cell("# print demo notebook\n"), code_cell("x = 1\n")])
     return {
-        "title": "print demo", "theme": "white", "config": {},
+        "title": "print demo", "theme": "white", "config": with_defaults({}),
         "slides": [{"id": "s1", "elements": [
             {"id": "demo1", "type": "demo", "assetId": "dhtml",
              "position": {"x": 40, "y": 40, "width": 700, "height": 360}},

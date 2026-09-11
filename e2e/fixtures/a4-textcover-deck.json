@@ -3,7 +3,14 @@
     "defaultBodyFont": "ptsans",
     "defaultTitleFont": "ptsans",
     "height": 1080,
-    "width": 1920
+    "width": 1920,
+    "textSizes": {
+      "footnote": 24,
+      "note": 32,
+      "body": 48,
+      "title": 62,
+      "hype": 48
+    }
   },
   "slides": [
     {
