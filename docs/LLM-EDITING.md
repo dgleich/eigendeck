@@ -140,7 +140,7 @@ All elements share these base fields:
 | `body`       | 48       | PT Sans             | normal     | normal    | #222    | `x:60, y:240, 1800×750` (flush under the title) |
 | `textbox`    | 48       | PT Sans             | normal     | normal    | #222    | `x:210, y:330, 810×330` |
 | `annotation` | 32       | PT Sans             | normal     | italic    | #2563eb | `x:210, y:720, 600×150` |
-| `footnote`   | 24       | PT Sans Narrow      | normal     | normal    | #888    | `x:60, y:990, 1020×30` (bottom-aligned; renders tight — no padding, 1.0 line-height) |
+| `footnote`   | 24       | PT Sans Narrow      | normal     | normal    | #888    | `x:60, y:960, 1020×60` (top-aligned, so a 2nd line grows down; renders tight — no padding, 1.0 line-height) |
 | `hype`       | 48 (body) | Shantell (or hypeFont) | normal  | normal    | #1a1a1a | `x:720,y:360, 570×360` — **sticky note**: seeded with `backgroundColor:"#fde047"` (bright yellow) + Shantell Sans + `rotation:-4` (jaunty tilt) |
 
 Defaults sit on the **30px** alignment grid with a 60px (2-cell) outer margin.
@@ -150,7 +150,7 @@ Defaults sit on the **30px** alignment grid with a 60px (2-cell) outer margin.
 - `fontSize`: number (in slide units, 1920×1080 coordinate space). Beats `fontSizeName` when both set.
 - `fontFamily`: string (e.g., `"'PT Sans Narrow', sans-serif"`)
 - `color`: string (CSS color, e.g., `"#dc2626"`) — or the special **`"accent"`** token (#132), a **live theme-relative** foreground: it resolves to the slide theme's accent at render and re-adapts if the theme changes (unlike a baked hex). Also valid on `arrow` `color`. Absent = the preset's theme default.
-- `verticalAlign`: `"top"` | `"middle"` | `"bottom"` — vertical text alignment within the box. Title and footnote default to `"bottom"`.
+- `verticalAlign`: `"top"` | `"middle"` | `"bottom"` — vertical text alignment within the box. This is a STORED property: it's stamped from the preset when the element is created (title → `"bottom"`, every other preset → `"top"`) and back-filled onto older decks on open, so the render paths read it directly. If somehow absent it falls back to `"top"`.
 - `backgroundColor`: string (CSS color) — fill behind the text box (e.g., a caption panel over a busy background). Absent = transparent.
 - `backgroundOpacity`: number 0–1 (default 1) — opacity applied to `backgroundColor` (combined into rgba at render, so the text itself isn't faded).
 - `boxTint`: string — a **theme-relative** fill (the "Card" look, #132). `"accent"` mixes the slide theme's accent into the theme background; a hex value tints that color instead. Resolved per-theme at render, so the fill stays colored **and** contrasting on any theme: light themes get a pale pastel (~20% mix), dark/black themes mix the SATURATED base in far more strongly (~52%) so the panel reads as a real colored surface instead of a muddy grey. Takes precedence over `backgroundColor`. Pairs with `boxShadow` + `borderRadius` for a Beamer-block card. The **+ Card** insert seeds a text element with `boxTint:"accent"`, `borderRadius:30`, `boxShadow:true`, and a bold all-caps first line + body line.

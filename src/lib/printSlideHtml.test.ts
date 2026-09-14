@@ -12,7 +12,7 @@ function fixture(): { slide: Slide; presentation: Presentation } {
   const slide = {
     id: 's1', theme: undefined, layout: 'default', notes: '',
     elements: [
-      { id: 't1', type: 'text', preset: 'title', html: 'Title <b>x</b>', position: { x: 60, y: 40, width: 800, height: 120 } },
+      { id: 't1', type: 'text', preset: 'title', verticalAlign: 'bottom', html: 'Title <b>x</b>', position: { x: 60, y: 40, width: 800, height: 120 } },
       { id: 't2', type: 'text', preset: 'body', html: 'Body', verticalAlign: 'middle', position: { x: 60, y: 200, width: 800, height: 200 } },
       // styled text box — exercises background / box-shadow / border-radius +
       // custom padding in the print path (previously dropped).

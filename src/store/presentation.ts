@@ -1571,6 +1571,18 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
       console.warn('Text-size defaulting failed (non-fatal):', e);
     }
 
+    // Stamp verticalAlign onto text elements that predate stored valign, from
+    // their preset default, so old titles keep 'bottom' (footnotes now 'top') and
+    // the render paths can read el.verticalAlign directly. Same non-dirtying,
+    // idempotent, persist-on-next-save model as the type-scale back-fill above.
+    try {
+      const { ensureStoredValign } = await import('../lib/textElementHtml.mjs');
+      const stamped = ensureStoredValign(presentation);
+      if (stamped) olog(`stamped default valign onto ${stamped} element(s) that lacked it`);
+    } catch (e) {
+      console.warn('Valign defaulting failed (non-fatal):', e);
+    }
+
     // Normalize untrusted deck content: reduce text html to the toolbar allowlist
     // AND validate element properties (fontFamily/color/geometry) against their
     // known-safe shape, dropping any element outside it. Both html and PROPERTIES

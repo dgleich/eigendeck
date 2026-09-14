@@ -12,7 +12,7 @@ function deck(): { presentation: Presentation; slide: Slide } {
   const slide = {
     id: 's1', layout: 'default', notes: '',
     elements: [
-      { id: 't1', type: 'text', preset: 'title', html: 'Title', position: { x: 60, y: 40, width: 800, height: 120 } },
+      { id: 't1', type: 'text', preset: 'title', verticalAlign: 'bottom', html: 'Title', position: { x: 60, y: 40, width: 800, height: 120 } },
       { id: 't2', type: 'text', preset: 'body', html: 'Body <b>x</b>', position: { x: 60, y: 200, width: 800, height: 200 } },
       { id: 'a1', type: 'arrow', x1: 100, y1: 500, x2: 400, y2: 520, color: '#e53e3e', strokeWidth: 4, headSize: 16, heads: 'end', position: { x: 0, y: 0, width: 0, height: 0 } },
       { id: 'c1', type: 'cover', color: '#222', position: { x: 1200, y: 500, width: 300, height: 200 } },

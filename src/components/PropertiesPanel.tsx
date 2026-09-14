@@ -6,6 +6,7 @@ import { extractDemoPieceNames } from '../lib/demoPieces';
 import { FONT_PACKAGES, DEFAULT_FONT_ID, HYPE_DEFAULT_FONT_ID } from '../lib/fonts';
 import { listMonoEligible } from '../lib/notebookFonts';
 import type { VerticalAlign } from '../types/presentation';
+import { elementValign } from '../lib/textElementHtml.mjs';
 import { AssetSection } from './AssetSection';
 import { HelpText } from './HelpText';
 import { usePreference } from '../lib/preferences';
@@ -453,7 +454,7 @@ export function PropertiesPanel() {
                 <PropSection label="Vertical Align">
                   <div style={{ display: 'flex', gap: 2 }}>
                     {(['top', 'middle', 'bottom'] as VerticalAlign[]).map((va) => {
-                      const current = selectedEl.verticalAlign || (selectedEl.preset === 'title' || selectedEl.preset === 'footnote' ? 'bottom' : 'top');
+                      const current = elementValign(selectedEl);
                       return (
                         <button key={va} className={`prop-zbtn ${current === va ? 'active' : ''}`}
                           style={{ fontSize: 11, width: 'auto', padding: '2px 6px' }}

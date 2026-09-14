@@ -12,6 +12,9 @@ interface TextEl {
   textEffect?: 'shadow' | 'glow';
 }
 
+export function elementValign(el: TextEl): 'top' | 'middle' | 'bottom';
+export function ensureStoredValign(presentation: unknown): number;
+
 export function textElementHtml(
   el: TextEl,
   o: {

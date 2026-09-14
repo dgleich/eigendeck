@@ -615,7 +615,7 @@ describe('[simplify-guard] exportCore full-output snapshot (all element types)',
       slides: [{
         id: 's1', layout: 'default', notes: 'n',
         elements: [
-          { id: 't-title', type: 'text', preset: 'title', html: 'Title', position: { x: 60, y: 40, width: 1800, height: 120 } },
+          { id: 't-title', type: 'text', preset: 'title', verticalAlign: 'bottom', html: 'Title', position: { x: 60, y: 40, width: 1800, height: 120 } },
           { id: 't-body', type: 'text', preset: 'body', html: 'Body <b>b</b>', backgroundColor: '#eef3fb', backgroundOpacity: 0.8, padding: { top: 10, right: 12, bottom: 10, left: 12 }, textEffect: 'shadow', boxShadow: true, position: { x: 60, y: 180, width: 900, height: 200 } },
           { id: 't-foot', type: 'text', preset: 'footnote', html: 'Foot', position: { x: 60, y: 980, width: 1800, height: 60 } },
           { id: 'img', type: 'image', src: 'data:image/png;base64,iVBORw0KGgo=', borderRadius: 12, opacity: 0.9, rotation: 5, position: { x: 1000, y: 180, width: 400, height: 300 } },

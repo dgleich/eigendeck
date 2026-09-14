@@ -26,6 +26,7 @@ import { resolveTheme, themeColorForPreset } from '../lib/themes';
 import type { ThemeColors } from '../lib/themes';
 
 import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundResolved, textShadowCss, textBoxShadowCss, textPresetBoxCss, textPaddingCss, resolveColor } from '../types/presentation';
+import { elementValign } from '../lib/textElementHtml.mjs';
 import { fontForPreset, fontFamilyForPreset, resolveMonoFontPackage } from '../lib/fonts';
 import { buildTextElementSvgMarkup } from './TextElementSvg';
 import { TextFormatToolbar } from './TextFormatToolbar';
@@ -92,7 +93,7 @@ export function SlideElementRenderer({
           isSelected={isSelected}
           boxStyle={{ backgroundColor: textBackgroundResolved(element, theme), boxShadow: textBoxShadowCss(element), borderRadius: element.borderRadius || undefined }}
           rotation={element.rotation}
-          dataValign={element.verticalAlign || (element.preset === 'title' || element.preset === 'footnote' ? 'bottom' : undefined)}
+          dataValign={elementValign(element)}
           onEdit={() => {
             // Trigger edit mode on the TextContent inside this box
             const el = document.querySelector(`[data-element-id="${element.id}"]`);
@@ -710,7 +711,7 @@ function TextContent({
   // loaded so switching slides is fast.
   const mathBundleId = presetFontPkg.id;
 
-  const valign = element.verticalAlign || (element.preset === 'title' || element.preset === 'footnote' ? 'bottom' : undefined);
+  const valign = elementValign(element);
 
   const boxCss = textPresetBoxCss(element.preset);
   const style: React.CSSProperties = {

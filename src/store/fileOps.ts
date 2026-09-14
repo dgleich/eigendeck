@@ -42,6 +42,7 @@ import {
 import { TEXT_PRESET_STYLES, effectiveFontSize, resolveColor } from '../types/presentation';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 import { buildTextElementSvgMarkup } from '../components/TextElementSvg';
+import { elementValign } from '../lib/textElementHtml.mjs';
 import { demoVarsCssForSlide } from '../lib/demoThemeInject';
 import { previewKey, loadPreviewDataUrl } from '../lib/previewCache';
 import { pngBytesToDataUrl } from '../lib/assetCachePreview.mjs';
@@ -424,7 +425,7 @@ export function makeTextElementRenderer(presentation: Presentation) {
     const presetFontPkg = fontForPreset(el.preset, slide, presentation.config);
     const fontFamily = el.fontFamily || fontFamilyForPreset(presetFontPkg, el.preset);
     const color = resolveColor(el.color, theme, themeColorForPreset(theme, el.preset));
-    const valign = el.verticalAlign || (el.preset === 'title' || el.preset === 'footnote' ? 'bottom' : undefined);
+    const valign = elementValign(el);
     const renderedHtml = await renderMathPerBundle(
       el.html || '', presetFontPkg.id, presentation.config.mathPreamble || ''
     ).catch(() => el.html || '');

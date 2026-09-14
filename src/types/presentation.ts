@@ -12,8 +12,9 @@ export { DEFAULT_TEXT_SIZES, resolveNamedSize, effectiveTextPresetSize, effectiv
 export { textPresetBoxCss, textPaddingCss } from '../lib/textBox.mjs';
 // Text visual-style helpers (fill / effect / box-shadow), shared with the exports.
 export { textBackgroundCss, textBackgroundResolved, mixHex, TINT_STRENGTH, textEffectCss, textShadowCss, textBoxShadowCss, resolveColor, boxShadowExtents } from '../lib/textStyle.mjs';
-// Per-preset style table (label/size/font/weight/style/color), shared with the exports.
-export { TEXT_PRESET_STYLES } from '../lib/textPresets.mjs';
+// Per-preset style table (label/size/font/weight/style/color/valign), shared with the exports.
+import { TEXT_PRESET_STYLES } from '../lib/textPresets.mjs';
+export { TEXT_PRESET_STYLES };
 export type { TextPresetStyle } from '../lib/textPresets.mjs';
 
 export interface ElementPosition {
@@ -488,14 +489,15 @@ export function createTextElement(preset: TextPreset, overrides?: Partial<Elemen
   // and the standard template breathes evenly from the slide edges.
   // Body starts flush at the title's bottom (no gap) and grows down to the
   // footnote. The footnote renders TIGHT (no padding, single line-height — see
-  // textPresetBoxCss), so its 24px text fits a slim 30px box flush on the 60px
-  // bottom margin.
+  // textPresetBoxCss) and is TOP-aligned (its preset valign), so a 60px box holds
+  // its 24px text at the top with room for a second line to grow DOWN. Its y is
+  // 960 (not 990) so the taller box's bottom stays flush on the 60px margin (1020).
   const defaults: Record<TextPreset, ElementPosition> = {
     title:      { x: 60,  y: 60,   width: 1800, height: 180 },
     body:       { x: 60,  y: 240,  width: 1800, height: 750 },
     textbox:    { x: 210, y: 330,  width: 810,  height: 330 },
     annotation: { x: 210, y: 720,  width: 600,  height: 150 },
-    footnote:   { x: 60,  y: 990,  width: 1020, height: 30  },
+    footnote:   { x: 60,  y: 960,  width: 1020, height: 60  },
     hype:       { x: 720, y: 360,  width: 570,  height: 360 },
   };
 
@@ -514,6 +516,10 @@ export function createTextElement(preset: TextPreset, overrides?: Partial<Elemen
     preset,
     html: defaultText[preset],
     position: { ...defaults[preset], ...overrides },
+    // valign is a STORED property (title 'bottom', the rest 'top') — stamped from
+    // the preset here and back-filled onto old decks on open (ensureStoredValign),
+    // so the render paths read it directly instead of branching on the preset.
+    verticalAlign: TEXT_PRESET_STYLES[preset].valign,
     // Hype = sticky note: seed the bright-yellow fill (Shantell font comes from
     // the preset / hype font role) + a jaunty tilt so it reads as a tacked-on
     // callout (#8). Per-element rotation is editable in the inspector.

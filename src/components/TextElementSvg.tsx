@@ -15,6 +15,7 @@
 import { useEffect, useState } from 'react';
 import type { TextElement, Slide, PresentationConfig } from '../types/presentation';
 import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundResolved, textShadowCss, textBoxShadowCss, textPresetBoxCss, textPaddingCss, resolveColor } from '../types/presentation';
+import { elementValign } from '../lib/textElementHtml.mjs';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 import { applyCodeFont } from '../lib/textStyle.mjs';
 import { fontForPreset, fontFamilyForPreset, resolveMonoFontPackage } from '../lib/fonts';
@@ -166,7 +167,7 @@ export function TextElementSvg({
   const color = resolveColor(element.color, theme, themeColor);
   const mathBundleId = presetFontPkg.id;
 
-  const valign = element.verticalAlign || (element.preset === 'title' || element.preset === 'footnote' ? 'bottom' : undefined);
+  const valign = elementValign(element);
 
   // Pre-render math via per-preset iframe pool. The INITIAL value pulls any
   // already-cached SVGs synchronously (renderMathInHtmlSync) so warmed math

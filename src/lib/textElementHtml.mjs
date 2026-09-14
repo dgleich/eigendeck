@@ -27,12 +27,39 @@ import { TEXT_PRESET_STYLES } from './textPresets.mjs';
  * @param o.len    (px:number) => string  length formatter, e.g. n=>`${n}px` or px2in
  * @param o.fsize  (px:number) => string  font-size formatter, e.g. n=>`${n}px` or px2pt
  */
+/** The effective vertical alignment of a text element. `verticalAlign` is a
+ *  STORED property now — stamped from the preset at creation (createTextElement)
+ *  and back-filled onto older decks on open (ensureStoredValign) — so the render
+ *  paths just read it, with a 'top' floor for anything that predates the stamp.
+ *  The SINGLE resolver used by every render path (SVG markup, the editor DOM's
+ *  data-valign, the #95 overflow detector, the inspector). */
+export function elementValign(el) {
+  return el.verticalAlign || 'top';
+}
+
+/** Back-fill: stamp `verticalAlign` onto text elements that predate stored valign,
+ *  from their preset default (TEXT_PRESET_STYLES[preset].valign), so the render
+ *  resolver can stay preset-agnostic and old titles keep their 'bottom' alignment.
+ *  Mutates the presentation in place; returns the count stamped. Idempotent. */
+export function ensureStoredValign(presentation) {
+  let n = 0;
+  for (const s of presentation?.slides || []) {
+    for (const el of s?.elements || []) {
+      if (el && el.type === 'text' && el.verticalAlign == null) {
+        el.verticalAlign = TEXT_PRESET_STYLES[el.preset]?.valign || 'top';
+        n++;
+      }
+    }
+  }
+  return n;
+}
+
 export function textElementHtml(el, { color, fontFamily, fontSize, content, len, fsize, theme }) {
   const ps = TEXT_PRESET_STYLES[el.preset] || TEXT_PRESET_STYLES.body;
   const p = el.position;
   const box = textPresetBoxCss(el.preset);
 
-  const valign = el.verticalAlign || (el.preset === 'title' || el.preset === 'footnote' ? 'bottom' : undefined);
+  const valign = elementValign(el);
   const valignStyle = valign === 'middle' ? 'display:flex;flex-direction:column;justify-content:center;' :
                       valign === 'bottom' ? 'display:flex;flex-direction:column;justify-content:flex-end;' : '';
 
