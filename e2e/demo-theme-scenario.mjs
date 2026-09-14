@@ -5,7 +5,7 @@
 // persists the deck (PROBE_OUT) so it can be opened and eyeballed.
 import { readFileSync } from 'node:fs';
 const BASE='http://127.0.0.1:4444', APP=process.env.E2E_APP, DECK=process.env.E2E_DECK;
-const DEMO_HTML=readFileSync('/work/e2e/fixtures/theme-probe-demo.html','utf8');
+const DEMO_HTML=readFileSync(new URL('./fixtures/theme-probe-demo.html', import.meta.url),'utf8');
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function post(p,b){const r=await fetch(BASE+p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const t=await r.text();try{return JSON.parse(t)}catch{return t}}
 async function exec(sid,s){return (await post(`/session/${sid}/execute/sync`,{script:s,args:[]}))?.value}

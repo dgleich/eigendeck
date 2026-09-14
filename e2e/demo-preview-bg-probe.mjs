@@ -10,7 +10,7 @@
 //  lower elements — the bug #111 fixes by moving the bg from pixels to wrapper.)
 import { readFileSync } from 'node:fs';
 const BASE='http://127.0.0.1:4444', APP=process.env.E2E_APP, DECK=process.env.E2E_DECK;
-const HTML=readFileSync('/work/example-demos/gimmicks/demos/gimmicks.html','utf8');
+const HTML=readFileSync(new URL('../example-demos/gimmicks/demos/gimmicks.html', import.meta.url),'utf8');
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function post(p,b){const r=await fetch(BASE+p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const t=await r.text();try{return JSON.parse(t)}catch{return t}}
 async function exec(sid,s){return (await post(`/session/${sid}/execute/sync`,{script:s,args:[]}))?.value}
