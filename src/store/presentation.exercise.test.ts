@@ -569,6 +569,60 @@ describe('presentation store — SQLite write-through exercise', () => {
     }
   });
 
+  it('selecting an element issues NO SQLite write — selection cannot pollute the store', async () => {
+    // The selected-element z-raise is pure render (a style zIndex derived from
+    // isSelected), and selectObject only sets selectedObject/inspectorTab — it never
+    // creates a new `presentation`. The autosave subscriber early-returns when
+    // `state.presentation` is the SAME reference, so a pure selection change never
+    // reaches the flush queues. This guards against a future refactor that routes
+    // selection (or the z-raise) through a presentation mutation — which WOULD write
+    // to SQLite on every click, the expensive z-order write path.
+    mockInvoke.mockReset();
+    mockInvoke.mockImplementation(((cmd: string) => {
+      if (cmd === 'db_element_exists') return Promise.resolve(true);
+      if (cmd === 'db_get_project_id') return Promise.resolve(null);
+      return Promise.resolve(undefined);
+    }) as unknown as typeof invoke);
+
+    usePresentationStore.setState({
+      presentation: { ...createDefaultPresentation(),
+        slides: [{ id: 'sel', notes: '', elements: [
+          { id: 'e1', type: 'text', preset: 'body', html: 'x', position: pos() } as unknown as SlideElement,
+        ] } as Slide] },
+      currentSlideIndex: 0,
+      selectedObject: { type: 'slide' },
+    });
+    setSqliteDbPath(dbPath);
+    try {
+      const store = usePresentationStore.getState();
+      // Establish the subscriber's baseline with one real edit, then flush + clean it.
+      store.setTitle('sel-baseline');
+      await flushToSqlite();
+      store.markClean();
+      mockInvoke.mockClear();
+
+      const presRef = usePresentationStore.getState().presentation;
+      // ONLY change selection — element, multi, back to slide (what a click drives).
+      store.selectObject({ type: 'element', id: 'e1' });
+      store.selectObject({ type: 'multi', ids: ['e1'] });
+      store.selectObject({ type: 'slide' });
+      await flushToSqlite();
+
+      // Same presentation reference (the subscriber's early-return guard), still
+      // clean, and NOT ONE db_* write command issued by the selection churn.
+      expect(usePresentationStore.getState().presentation).toBe(presRef);
+      expect(usePresentationStore.getState().isDirty).toBe(false);
+      const writeCmds = (mockInvoke.mock.calls as unknown[][])
+        .map((c) => c[0] as string)
+        .filter((c) => typeof c === 'string' && c.startsWith('db_')
+          && c !== 'db_get_project_id' && c !== 'db_element_exists');
+      expect(writeCmds).toEqual([]);
+    } finally {
+      await closeSqliteProject();
+      expect(isSqliteOpen()).toBe(false);
+    }
+  });
+
   it('seedUndoHistory reconstructs prior snapshots from the temporal history', async () => {
     // Happy path: >1 timestamps, each reconstructable.
     usePresentationStore.temporal.getState().clear();
