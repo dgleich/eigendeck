@@ -38,9 +38,21 @@ function SettingsRoot(): React.ReactElement {
   );
 }
 
-// Esc closes the window (native Cmd+W also works via the menu).
 window.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') { e.preventDefault(); void getCurrentWindow().close(); }
+  // Esc closes the window (native Cmd+W also works via the menu).
+  if (e.key === 'Escape') { e.preventDefault(); void getCurrentWindow().close(); return; }
+  // Cmd/Ctrl+A in a text field selects its text. WKWebView (macOS) routes a
+  // field's Cmd+A through the native Edit menu's selectAll:, which our custom
+  // accelerator-less menu doesn't provide, so the field's native select-all never
+  // fires; do it in JS (harmless on Linux/Windows, which do it in-engine). Same
+  // fix as the main window's selectAllAction field case (this window has no App).
+  if (e.key.toLowerCase() === 'a' && (e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey) {
+    const el = document.activeElement as HTMLElement | null;
+    if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+      e.preventDefault();
+      (el as HTMLInputElement).select?.();
+    }
+  }
 });
 
 ReactDOM.createRoot(document.getElementById('root')!).render(<SettingsRoot />);

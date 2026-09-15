@@ -1142,14 +1142,19 @@ function App() {
         if (key === 'i') { e.preventDefault(); document.execCommand('italic'); }
         if (key === 'e') { e.preventDefault(); document.execCommand('justifyCenter'); }
       }
-      // Cmd+A selects all ELEMENTS on the canvas. This keydown IS the primary path:
-      // the "Select All" menu item deliberately has no Cmd+A accelerator (binding it
-      // natively hijacked Cmd+A away from focused text fields — see lib.rs), so the
-      // menu-event handler only fires on an actual click. Skip when the browser
-      // default should win (a focused input/textarea/contentEditable → native
-      // select-all of its text).
+      // Cmd+A. This keydown IS the primary path: the "Select All" menu item
+      // deliberately has no Cmd+A accelerator (binding it natively hijacked Cmd+A
+      // away from focused text fields — see lib.rs), so the menu-event handler only
+      // fires on an actual click. selectAllAction routes it: a focused input/
+      // textarea selects ITS text (el.select()), otherwise all slide elements.
+      //
+      // We must handle the field case in JS rather than deferring to the webview's
+      // native select-all: WKWebView (macOS) routes a text field's Cmd+A through the
+      // native Edit menu's selectAll:, which our accelerator-less custom item doesn't
+      // provide, so the field never selects. (Linux/Windows webviews do it in-engine,
+      // so el.select() is just harmless there.) contenteditable is left to its own
+      // in-canvas handler (SlideElementRenderer) + the native path.
       if (e.key.toLowerCase() === 'a' && (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey
-          && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)
           && !(e.target as HTMLElement).closest('[contenteditable]')) {
         e.preventDefault();
         selectAllAction();
