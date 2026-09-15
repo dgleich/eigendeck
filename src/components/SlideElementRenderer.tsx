@@ -1280,7 +1280,14 @@ export function DraggableBox({
       data-valign={dataValign}
       style={{
         position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
-        zIndex, cursor: isDragging ? 'grabbing' : 'grab',
+        // Selected element floats above the others so ALL its authoring chrome —
+        // the link badges (which sit in the normally-empty space above the box),
+        // the resize handle, the delete button — stays clickable even when a
+        // higher-z-order element overlaps it. The badges' own z-index is trapped
+        // in this wrapper's stacking context, so raising the wrapper is what frees
+        // them; 10000 clears any element's array-order z, stays under the drag/
+        // resize blockers (99999) and the portaled toolbar. Reverts on deselect.
+        zIndex: isSelected ? 10000 : zIndex, cursor: isDragging ? 'grabbing' : 'grab',
         // Promote to its own compositor layer. Text SVGs use overflow="visible"
         // (required for italic-glyph ink overhang); without layer promotion,
         // WebKit doesn't invalidate ink painted outside the wrapper's layout
