@@ -1532,7 +1532,10 @@ function ArrowRenderer({
         ];
         window.dispatchEvent(new CustomEvent('show-context-menu', { detail: { x: e.clientX, y: e.clientY, items } }));
       }}
-      style={{ position: 'absolute', left: minX, top: minY, width: maxX - minX, height: maxY - minY, pointerEvents: 'auto', zIndex }}>
+      // Selected arrow floats above the others (same raise as DraggableBox) so its
+      // endpoint/control handles, badges and delete stay clickable under a higher-z
+      // element; reverts on deselect.
+      style={{ position: 'absolute', left: minX, top: minY, width: maxX - minX, height: maxY - minY, pointerEvents: 'auto', zIndex: isSelected ? 10000 : zIndex }}>
       <svg width={maxX - minX} height={maxY - minY} style={{ overflow: 'visible' }}>
         {geo.curved
           ? <path d={geo.path} transform={`translate(${-minX} ${-minY})`} fill="none"
