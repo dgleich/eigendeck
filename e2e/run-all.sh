@@ -180,6 +180,12 @@ MANIFEST=(
   "resync-position-probe.mjs|solo.eigendeck||python3 $EXFIX/make_e2e_decks.py solo \$DECKDIR/solo.json; import_json \$DECKDIR/solo.json"
   "free-animate-reload-probe.mjs|solo.eigendeck|E2E_MODE=samesession|python3 $EXFIX/make_e2e_decks.py solo \$DECKDIR/solo.json; import_json \$DECKDIR/solo.json"
   "free-animate-reload-probe.mjs|solo.eigendeck|E2E_MODE=settled|python3 $EXFIX/make_e2e_decks.py solo \$DECKDIR/solo.json; import_json \$DECKDIR/solo.json"
+  # Durability: an unsync must reach disk NOW (flushSyncLinkNow), not on the 1s
+  # autosave debounce — else a fast/non-graceful close loses it and, since sync is
+  # DERIVED, it silently reverts. nosave = quit inside the window (regression guard
+  # for the fix); settled = wait for the debounce (control).
+  "sync-durability-probe.mjs|syncgroup.eigendeck|E2E_MODE=nosave|python3 $EXFIX/make_e2e_decks.py syncgroup \$DECKDIR/syncgroup.json; import_json \$DECKDIR/syncgroup.json"
+  "sync-durability-probe.mjs|syncgroup.eigendeck|E2E_MODE=settled|python3 $EXFIX/make_e2e_decks.py syncgroup \$DECKDIR/syncgroup.json; import_json \$DECKDIR/syncgroup.json"
 
   # ── notebook overlay / share / watch / copy-paste / export (built) ──────
   "notebook-reload-shared-probe.mjs|shared.eigendeck||python3 $EXFIX/make_e2e_decks.py shared \$DECKDIR/d.json; import_json \$DECKDIR/d.json"

@@ -55,6 +55,40 @@ def nb_el(eid, asset, **extra):
     return e
 
 
+def sync_text(eid):
+    # A text element that is SYNCED across slides: same id AND syncId on every
+    # slide → collapses to one canonical row + N junctions on import (that IS
+    # "synced" in the storage model). Mirrors the source-inversion legend box.
+    return {"id": eid, "type": "text", "preset": "textbox", "syncId": eid,
+            # Shared animation linkId across the whole group — matches the
+            # source-inversion deck (sync + link together), the structure the
+            # simpler repro lacked.
+            "linkId": "lnk-legend",
+            "html": "<div>SYNCED-LEGEND</div>",
+            "position": {"x": 1295, "y": 51, "width": 597, "height": 349}}
+
+
+def marker(eid, label):
+    return {"id": eid, "type": "text", "preset": "body",
+            "html": f"<div>{label}</div>",
+            "position": {"x": 60, "y": 60, "width": 800, "height": 120}}
+
+
+def make_syncgroup():
+    # A text box synced across THREE slides (id==syncId==grp1). Repro target for
+    # "unsync reverts on reload" in a MULTI-INSTANCE group: free instances
+    # sequentially across reloads; each freed instance must STAY freed (its own
+    # row) and never re-derive syncId. Each slide carries a distinct marker so the
+    # probe can tell slides apart.
+    return {"title": "sync group", "theme": "white", "config": with_defaults({}),
+            "slides": [
+                {"id": "sg1", "elements": [marker("m1", "SLIDE-ONE"),   sync_text("grp1")]},
+                {"id": "sg2", "elements": [marker("m2", "SLIDE-TWO"),   sync_text("grp1")]},
+                {"id": "sg3", "elements": [marker("m3", "SLIDE-THREE"), sync_text("grp1")]},
+            ]}
+
+
+
 def make_shared():
     # One shared ipynb asset (INIT_VAL), referenced by a notebook on each slide.
     nb = ipynb([code_cell("k = 'INIT_VAL'\n")])
@@ -232,6 +266,7 @@ MAKERS = {
     "watch": make_watch,
     "empty": make_empty,
     "solo": make_solo,
+    "syncgroup": make_syncgroup,
     "hyphenpiece": make_hyphenpiece,
     "printdemo": make_printdemo,
 }

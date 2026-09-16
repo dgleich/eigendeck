@@ -642,6 +642,7 @@ export const usePresentationStore = create<PresentationState>()(
           })(),
           isDirty: true,
         }));
+        flushSyncLinkNow();
       },
       resyncElement: (elementId) => {
         const st = get();
@@ -663,20 +664,21 @@ export const usePresentationStore = create<PresentationState>()(
           : {};
         void runResyncHook(el);
         get().updateElement(elementId, { ...resyncDelta(el), ...geom } as Partial<SlideElement>);
+        flushSyncLinkNow();
       },
       unlinkElement: (elementId) => {
         const el = get().presentation.slides[get().currentSlideIndex]
           ?.elements.find((e) => e.id === elementId);
         if (!el) return;
         const delta = unlinkDelta(el);
-        if (Object.keys(delta).length) get().updateElement(elementId, delta);
+        if (Object.keys(delta).length) { get().updateElement(elementId, delta); flushSyncLinkNow(); }
       },
       relinkElement: (elementId) => {
         const el = get().presentation.slides[get().currentSlideIndex]
           ?.elements.find((e) => e.id === elementId);
         if (!el) return;
         const delta = relinkDelta(el);
-        if (Object.keys(delta).length) get().updateElement(elementId, delta);
+        if (Object.keys(delta).length) { get().updateElement(elementId, delta); flushSyncLinkNow(); }
       },
       linkElements: (sourceId, targetSlideIndex, targetId) => {
         const st = get();
@@ -725,6 +727,7 @@ export const usePresentationStore = create<PresentationState>()(
           },
           isDirty: true,
         }));
+        flushSyncLinkNow();
       },
       promoteToSync: (elementId) => {
         const st = get();
@@ -765,6 +768,7 @@ export const usePresentationStore = create<PresentationState>()(
           },
           isDirty: true,
         }));
+        flushSyncLinkNow();
       },
 
       deleteElement: (elementId) =>
@@ -1456,6 +1460,15 @@ export async function flushToSqlite(): Promise<void> {
   }
   await flushInFlight;
 }
+
+/** Persist a sync/link mutation to disk NOW, bypassing the 1s autosave debounce.
+ *  These changes are special: "synced" is DERIVED from an element id being shared
+ *  across >1 slide (storage.rs), so a dropped write doesn't merely lose a visible
+ *  edit — it silently REVERTS (a freed instance comes back synced). Left on the
+ *  debounce, a crash / OS-shutdown / non-graceful close in that 1s window strands
+ *  the change. Fire-and-forget (the subscriber has already queued the diff by the
+ *  time an action returns), and a no-op without an open DB (tests). */
+function flushSyncLinkNow(): void { void flushToSqlite(); }
 
 /** Debounced flush — called when dirty items accumulate */
 function scheduleFlush() {

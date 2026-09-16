@@ -899,6 +899,11 @@ function App() {
               // deliberately does not.
               closingRef.current = true;
               await flushAllOverlays();
+              // Drain any queued writes too: an autosave still inside its debounce
+              // window can leave rows queued even when isDirty is false, and
+              // force_quit's DB close only checkpoints the WAL — it doesn't run
+              // this flush. Without it those edits are lost on a "clean" quit.
+              await flushToSqlite();
               const { invoke } = await import('@tauri-apps/api/core');
               await invoke('force_quit');
               return;
