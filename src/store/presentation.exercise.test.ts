@@ -623,6 +623,53 @@ describe('presentation store — SQLite write-through exercise', () => {
     }
   });
 
+  it('freeElement flushes to SQLite IMMEDIATELY (no explicit save) — durability guard', async () => {
+    // A lost sync/link write silently REVERTS (sync is derived), so free/resync/
+    // link/unlink/relink/promote must persist NOW via flushSyncLinkNow, not on the
+    // 1s autosave debounce. This asserts a db_* write lands from freeElement alone,
+    // within a tick — WITHOUT the test calling flush/save. Without the fix, nothing
+    // is written until the debounce fires (this short wait would see no db_ write).
+    mockInvoke.mockReset();
+    mockInvoke.mockImplementation(((cmd: string) => {
+      if (cmd === 'db_element_exists') return Promise.resolve(true);
+      if (cmd === 'db_get_project_id') return Promise.resolve(null);
+      return Promise.resolve(undefined);
+    }) as unknown as typeof invoke);
+
+    // A synced pair: same id + syncId on two slides (one canonical row, two junctions).
+    usePresentationStore.setState({
+      presentation: { ...createDefaultPresentation(),
+        slides: [
+          { id: 'sa', notes: '', elements: [{ id: 'g', type: 'text', preset: 'body', html: 'x', syncId: 'g', position: pos() } as unknown as SlideElement] } as Slide,
+          { id: 'sb', notes: '', elements: [{ id: 'g', type: 'text', preset: 'body', html: 'x', syncId: 'g', position: pos() } as unknown as SlideElement] } as Slide,
+        ] },
+      currentSlideIndex: 1,
+      selectedObject: { type: 'slide' },
+    });
+    setSqliteDbPath(dbPath);
+    try {
+      const store = usePresentationStore.getState();
+      store.setTitle('base'); await flushToSqlite(); store.markClean(); mockInvoke.mockClear();
+
+      // Free the slide-2 instance. Do NOT call flush/save — flushSyncLinkNow must
+      // fire on its own. (We deliberately never call flushToSqlite here; without
+      // the fix the write would sit on the 1s debounce and this wait would see it.)
+      store.freeElement('g');
+      await new Promise((r) => setTimeout(r, 50));   // lets the fire-and-forget flush run; NOT 1s
+
+      const wrote = (mockInvoke.mock.calls as unknown[][])
+        .map((c) => c[0] as string)
+        .some((c) => typeof c === 'string' && c.startsWith('db_')
+          && c !== 'db_get_project_id' && c !== 'db_element_exists');
+      expect(wrote).toBe(true);
+      // And it did not dirty-leak: the freed instance is off the canonical row.
+      expect(usePresentationStore.getState().presentation.slides[1].elements[0].syncId).toBeUndefined();
+    } finally {
+      await closeSqliteProject();
+      expect(isSqliteOpen()).toBe(false);
+    }
+  });
+
   it('seedUndoHistory reconstructs prior snapshots from the temporal history', async () => {
     // Happy path: >1 timestamps, each reconstructable.
     usePresentationStore.temporal.getState().clear();
