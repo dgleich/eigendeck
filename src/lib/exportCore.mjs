@@ -2,6 +2,7 @@ import { injectDemoThemeIntoHtml } from './demoTheme.mjs';
 import { isEigendeckDemo } from './assetTypes.mjs';
 import { resolveMonoFontPackage } from './fontRegistry.mjs';
 import { showFooter, footerFontFamily } from './footer.mjs';
+import { getSlideNumber } from './slideGroups.mjs';
 import { coverHtml, arrowSvgHtml, imageHtml } from './elementHtml.mjs';
 import { htmlElementIframeHtml, htmlElementScaledIframeHtml, htmlIsScaled, htmlScaleLayout } from './htmlElement.mjs';
 import { htmlEscapeForSrcdoc, escAttr, safeExportUrl } from './htmlEscape.mjs';
@@ -525,7 +526,7 @@ export async function buildExportHtml(opts) {
     }
 
     if (showFooter(slide)) {
-      inner += `<div class="slide-footer"><span class="slide-footer-meta">${meta}</span><span class="slide-footer-number">${i + 1}</span></div>`;
+      inner += `<div class="slide-footer"><span class="slide-footer-meta">${meta}</span><span class="slide-footer-number">${getSlideNumber(presentation.slides, i)}</span></div>`;
     }
     // P0-1: emit the per-slide theme background on the wrapper so dark/black/
     // light themes don't export white-on-white. CSS no longer forces #fff.

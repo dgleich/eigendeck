@@ -10,6 +10,7 @@
 // math to inline SVG. Fonts + the document wrapper stay with each caller.
 
 import type { Presentation, SlideElement, Slide } from '../types/presentation';
+import { getSlideNumber } from '../types/presentation';
 import { usePresentationStore } from '../store/presentation';
 import { buildPrintSlideHtml } from './printSlideHtml';
 import { previewKey, loadPreviewDataUrl, isPreviewThemeStale } from './previewCache';
@@ -146,6 +147,6 @@ export async function preparePrintLayer(
   }
 
   const slideHtmls = presentation.slides.map((slide, i) =>
-    buildPrintSlideHtml(slide, presentation, imageCache, demoScreenshots, mathHtmlByKey, i + 1));
+    buildPrintSlideHtml(slide, presentation, imageCache, demoScreenshots, mathHtmlByKey, getSlideNumber(presentation.slides, i)));
   return { slideHtmls };
 }

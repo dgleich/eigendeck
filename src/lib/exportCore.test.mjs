@@ -57,6 +57,30 @@ describe('buildExportHtml', () => {
     expect(html).toContain('Test Author');
   });
 
+  // #187 — the exported website's slide-footer numbers must respect build-slide
+  // groups (slides sharing a groupId share one number, per getSlideNumber), not
+  // the raw slide index. A 4-slide deck whose slides 2 & 3 form one build should
+  // number 1, 2, 2, 3 — NOT 1, 2, 3, 4.
+  it('slide-footer numbers respect build-slide groups (#187)', async () => {
+    const p = makePresentation({
+      slides: [
+        { id: 's1', layout: 'default', elements: [], notes: '' },
+        { id: 's2', layout: 'default', groupId: 'build-a', elements: [], notes: '' },
+        { id: 's3', layout: 'default', groupId: 'build-a', elements: [], notes: '' },
+        { id: 's4', layout: 'default', elements: [], notes: '' },
+      ],
+    });
+    const html = await buildExportHtml({
+      presentation: p,
+      readFile: async () => new Uint8Array([0]),
+      readTextFile: async () => '<html><body>demo</body></html>',
+      renderMath: null,
+      applyMathPreamble: null,
+    });
+    const nums = [...html.matchAll(/slide-footer-number">(\d+)<\/span>/g)].map((m) => Number(m[1]));
+    expect(nums).toEqual([1, 2, 2, 3]);
+  });
+
   // #85 (font-embedding variant) — the export embeds the caller's @font-face CSS
   // in the #eigendeck-fonts <style> block and, when present, does NOT fall back to
   // the PT-Sans-only Google Fonts CDN. The app export always passes fontFacesCss;
