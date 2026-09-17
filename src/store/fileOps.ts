@@ -270,6 +270,11 @@ export async function saveProject(): Promise<void> {
 
   try {
     await flushToSqlite();
+    // Durability (#190): flushToSqlite writes to the WAL; checkpoint so an explicit
+    // Save folds everything (edits AND watched-asset reloads, which don't self-
+    // checkpoint) into the MAIN .eigendeck file — the bytes a cloud sync propagates.
+    // Without this, Save left recent work WAL-stranded until an edit's debounce or close.
+    await invoke('db_checkpoint');
     store.markClean();
     // Refresh the recent-projects entry with the CURRENT title so a rename shows up
     // in the recent list + native Open Recent menu on save, instead of keeping the

@@ -124,6 +124,8 @@ MANIFEST=(
   "asset-open-untrusted-probe.mjs|empty.eigendeck||$EMPTY"
   "asset-open-trusted-probe.mjs|empty.eigendeck||$EMPTY"
   "asset-watch-warning-probe.mjs|empty.eigendeck||$EMPTY"
+  "asset-durability-probe.mjs|empty.eigendeck||$EMPTY"          # #190 an explicit Save checkpoints the WAL → reload is sync-safe in the MAIN file
+  "asset-durability-close-probe.mjs|empty.eigendeck||$EMPTY"    # #190 a graceful save+close persists a watched-asset reload (v2), reopen shows v2
   "security-actions-probe.mjs|empty.eigendeck||$EMPTY"
   # REAL second-window trust: drives the actual Security window (window-handle
   # switch) + clicks the real "Trust this deck" button — NOT the trust seam — and

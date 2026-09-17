@@ -256,6 +256,7 @@ class WatcherRegistry {
       const st = await pathStat(absPath).catch(() => null);
       const mtime = statMtimeIso(st);
       wlog(`handleChange read ${bytes.length} bytes from "${absPath}" mtime=${mtime} → fanout to ${entry.assets.size} asset(s)`);
+      let stored = false;
       for (const { assetId, path } of entry.assets.values()) {
         markAssetFound(assetId);  // a successful read means the source is back
         try {
@@ -271,8 +272,25 @@ class WatcherRegistry {
           wlog(`  db_store_asset ok → assetId=${writtenId.slice(0, 8)} (expected ${assetId.slice(0, 8)})`);
           await invalidateRenderedAsset(assetId);
           wlog(`  invalidateRenderedAsset(${assetId.slice(0, 8)}) fired`);
+          stored = true;
         } catch (e) {
           console.warn(`[watcher] db_store_asset for ${assetId.slice(0, 8)} FAILED:`, e);
+        }
+      }
+      // Durability (#190): a watched-asset reload writes to the WAL but — unlike a
+      // presentation edit — schedules NO checkpoint, so the new bytes are stranded
+      // in the WAL (invisible to the MAIN .eigendeck file a cloud sync propagates)
+      // until an unrelated edit or the close-truncate. Checkpoint now so the reload
+      // reaches the main file promptly, and mark the deck dirty so the modified
+      // state reflects the change and a save/close re-checkpoints as a safety net.
+      if (stored) {
+        try {
+          await invoke('db_checkpoint');
+          const { usePresentationStore } = await import('../store/presentation');
+          usePresentationStore.getState().markDirty();
+          wlog('  reload checkpointed + deck marked dirty (#190)');
+        } catch (e) {
+          console.warn('[watcher] post-reload checkpoint FAILED:', e);
         }
       }
     } catch (e) {

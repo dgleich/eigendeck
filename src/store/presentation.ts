@@ -46,6 +46,7 @@ interface PresentationState {
   setProjectPath: (path: string | null) => void;
   setPresenting: (presenting: boolean) => void;
   markClean: () => void;
+  markDirty: () => void;
   setTitle: (title: string) => void;
   setTheme: (theme: string) => void;
   updateConfig: (config: Partial<Presentation['config']>) => void;
@@ -896,6 +897,7 @@ export const usePresentationStore = create<PresentationState>()(
 
       setPresenting: (isPresenting) => set({ isPresenting }),
       markClean: () => set({ isDirty: false }),
+      markDirty: () => set({ isDirty: true }),
 
       setTitle: (title) =>
         set((state) => ({
