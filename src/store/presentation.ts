@@ -1542,8 +1542,8 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
     olog(`db_open: ${(performance.now() - t).toFixed(0)}ms`);
 
     t = performance.now();
-    const json = await invoke<string>('db_export_json');
-    olog(`db_export_json: ${(performance.now() - t).toFixed(0)}ms → ${(json.length / 1024).toFixed(0)}KB JSON`);
+    const json = await invoke<string>('db_load_presentation');
+    olog(`db_load_presentation: ${(performance.now() - t).toFixed(0)}ms → ${(json.length / 1024).toFixed(0)}KB JSON`);
 
     t = performance.now();
     const presentation: Presentation = JSON.parse(json);

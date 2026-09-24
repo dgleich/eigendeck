@@ -122,7 +122,7 @@ CREATE INDEX idx_el_asset
 
 The pattern: anything that's a cross-table reference or needs SQL-
 level indexing is **stripped from the JSON `data` blob and stored as
-its own column**. `db_export_json` reassembles the JSON on the way
+its own column**. `db_load_presentation` reassembles the JSON on the way
 out by merging the columns back into per-element objects.
 
 This is the existing pattern for `link_id` (cross-slide animation

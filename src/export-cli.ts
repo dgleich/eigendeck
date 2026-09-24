@@ -137,7 +137,7 @@ async function main() {
   try {
     const args = await invoke<{ dbPath: string; outputPath: string }>('cli_export_args');
     await invoke('db_open', { path: args.dbPath });
-    const json = await invoke<string>('db_export_json');
+    const json = await invoke<string>('db_load_presentation');
     const presentation = JSON.parse(json);
 
     // The CLI reads the deck straight from SQLite — it never went through the

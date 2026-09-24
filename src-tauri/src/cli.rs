@@ -165,7 +165,7 @@ fn strip_html(html: &str) -> String {
 // ============================================================================
 
 fn cmd_info() -> Result<(), String> {
-    let json_str = storage::db_export_json()?;
+    let json_str = storage::db_load_presentation()?;
     let p: Value = serde_json::from_str(&json_str).map_err(|e| e.to_string())?;
 
     if is_json() {
@@ -204,7 +204,7 @@ fn cmd_info() -> Result<(), String> {
 
 fn cmd_list(args: &[String]) -> Result<(), String> {
     let what = args.first().map(|s| s.as_str()).unwrap_or("slides");
-    let json_str = storage::db_export_json()?;
+    let json_str = storage::db_load_presentation()?;
     let p: Value = serde_json::from_str(&json_str).map_err(|e| e.to_string())?;
     let slides = p.get("slides").and_then(|v| v.as_array()).ok_or("No slides")?;
 
@@ -263,7 +263,7 @@ fn cmd_list(args: &[String]) -> Result<(), String> {
 
 fn cmd_show(args: &[String]) -> Result<(), String> {
     let what = args.first().map(|s| s.as_str()).ok_or("Usage: show <slide|element> <id>")?;
-    let json_str = storage::db_export_json()?;
+    let json_str = storage::db_load_presentation()?;
     let p: Value = serde_json::from_str(&json_str).map_err(|e| e.to_string())?;
 
     match what {
@@ -295,7 +295,7 @@ fn cmd_show(args: &[String]) -> Result<(), String> {
 }
 
 fn cmd_outline() -> Result<(), String> {
-    let json_str = storage::db_export_json()?;
+    let json_str = storage::db_load_presentation()?;
     let p: Value = serde_json::from_str(&json_str).map_err(|e| e.to_string())?;
     let slides = p.get("slides").and_then(|v| v.as_array()).ok_or("No slides")?;
 
@@ -348,7 +348,7 @@ fn cmd_search(args: &[String]) -> Result<(), String> {
     let query = args.join(" ");
     if query.is_empty() { return Err("Usage: search <query>".to_string()); }
     let query_lower = query.to_lowercase();
-    let json_str = storage::db_export_json()?;
+    let json_str = storage::db_load_presentation()?;
     let p: Value = serde_json::from_str(&json_str).map_err(|e| e.to_string())?;
     let slides = p.get("slides").and_then(|v| v.as_array()).ok_or("No slides")?;
 
@@ -391,7 +391,7 @@ fn cmd_search(args: &[String]) -> Result<(), String> {
 }
 
 fn cmd_validate() -> Result<(), String> {
-    let json_str = storage::db_export_json()?;
+    let json_str = storage::db_load_presentation()?;
     let p: Value = serde_json::from_str(&json_str).map_err(|e| e.to_string())?;
     let slides = p.get("slides").and_then(|v| v.as_array()).ok_or("No slides")?;
 
@@ -456,7 +456,7 @@ fn cmd_history(args: &[String]) -> Result<(), String> {
 
 fn cmd_get_text(args: &[String]) -> Result<(), String> {
     let id_prefix = args.first().ok_or("Usage: get-text <element_id>")?;
-    let json_str = storage::db_export_json()?;
+    let json_str = storage::db_load_presentation()?;
     let p: Value = serde_json::from_str(&json_str).map_err(|e| e.to_string())?;
 
     for s in p.get("slides").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
@@ -477,7 +477,7 @@ fn cmd_set_text(args: &[String]) -> Result<(), String> {
     let text = args[1..].join(" ");
 
     // Find the element and update it
-    let json_str = storage::db_export_json()?;
+    let json_str = storage::db_load_presentation()?;
     let p: Value = serde_json::from_str(&json_str).map_err(|e| e.to_string())?;
 
     for s in p.get("slides").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
@@ -563,7 +563,7 @@ fn cmd_remove(args: &[String]) -> Result<(), String> {
         "element" => {
             let id_prefix = args.get(1).ok_or("Usage: remove element <id> [slide_num]")?;
             // Find full ID
-            let json_str = storage::db_export_json()?;
+            let json_str = storage::db_load_presentation()?;
             let p: Value = serde_json::from_str(&json_str).map_err(|e| e.to_string())?;
             for s in p.get("slides").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
                 let sid = s.get("id").and_then(|v| v.as_str()).unwrap_or("");
@@ -601,7 +601,7 @@ fn cmd_move(args: &[String]) -> Result<(), String> {
             let x: f64 = args.get(2).and_then(|s| s.parse().ok()).ok_or("Usage: move element <id> <x> <y>")?;
             let y: f64 = args.get(3).and_then(|s| s.parse().ok()).ok_or("Usage: move element <id> <x> <y>")?;
 
-            let json_str = storage::db_export_json()?;
+            let json_str = storage::db_load_presentation()?;
             let p: Value = serde_json::from_str(&json_str).map_err(|e| e.to_string())?;
             for s in p.get("slides").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
                 for el in s.get("elements").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
@@ -635,7 +635,7 @@ fn cmd_edit(args: &[String]) -> Result<(), String> {
     let json_str = args[2..].join(" ");
     let _new_data: Value = serde_json::from_str(&json_str).map_err(|e| format!("Invalid JSON: {}", e))?;
 
-    let export = storage::db_export_json()?;
+    let export = storage::db_load_presentation()?;
     let p: Value = serde_json::from_str(&export).map_err(|e| e.to_string())?;
     for s in p.get("slides").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
         for el in s.get("elements").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
@@ -664,7 +664,7 @@ fn cmd_export(args: &[String]) -> Result<(), String> {
             let json = if with_assets {
                 storage::db_export_json_with_assets()?
             } else {
-                storage::db_export_json()?
+                storage::db_load_presentation()?
             };
             if let Some(path) = output {
                 std::fs::write(path, &json).map_err(|e| e.to_string())?;
@@ -839,7 +839,7 @@ fn cmd_unpack(db_path: &str, args: &[String]) -> Result<(), String> {
 
     // Get assets via raw SQL (db_get_asset only gets one at a time)
     // This is acceptable since unpack is a bulk operation
-    let json_str = storage::db_export_json()?;
+    let json_str = storage::db_load_presentation()?;
     let p: Value = serde_json::from_str(&json_str).map_err(|e| e.to_string())?;
 
     // Collect (asset_id, path) for every asset referenced by a current

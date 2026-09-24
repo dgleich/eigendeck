@@ -292,7 +292,7 @@ A synced element gets onto a second slide via a junction-only insert (no new
 `elements` row) — see `db_add_element_to_slide` and the note at
 `storage.rs:1246`.
 
-### Export — `syncId` re-derivation (`db_export_json`, ~line 1011)
+### Export — `syncId` re-derivation (`db_load_presentation`, ~line 1011)
 
 Export counts how many junctions reference each element
 (`storage.rs:1054`). When building each slide's elements, it reattaches the

@@ -92,7 +92,7 @@ pub fn create_schema(conn: &Connection) -> SqlResult<()> {
         -- elements: data is JSON of all type-specific fields EXCEPT
         -- the promoted columns (link_id, asset_id). Promoted fields are
         -- stripped from data before INSERT (see db_add_element /
-        -- db_update_element) and reassembled into JSON by db_export_json.
+        -- db_update_element) and reassembled into JSON by db_load_presentation.
         -- Same pattern as link_id, which got promoted earlier; asset_id
         -- is promoted for indexing + asset-GC reachability queries.
         CREATE TABLE IF NOT EXISTS elements (
@@ -902,7 +902,7 @@ pub fn db_import_json(json: String) -> Result<(), String> {
 /// the LLM bulk-edit workflow; see `db_export_json_with_assets` for the
 /// self-contained variant.
 #[tauri::command]
-pub fn db_export_json() -> Result<String, String> {
+pub fn db_load_presentation() -> Result<String, String> {
     with_db(|conn| Ok(serde_json::to_string_pretty(&build_presentation_value(conn)?).unwrap()))
 }
 
@@ -1502,7 +1502,7 @@ pub fn db_get_state_at(at: String) -> Result<String, String> {
         }
 
         // Elements alive at `at`. Same (data, link_id, asset_id)
-        // shape as db_export_json; promoted columns reassemble below.
+        // shape as db_load_presentation; promoted columns reassemble below.
         let mut elements: std::collections::HashMap<String, (Value, Option<String>, Option<String>)> =
             std::collections::HashMap::new();
         let mut stmt = conn.prepare(
@@ -3329,7 +3329,7 @@ mod tests {
 
         db_import_json(sample_presentation()).unwrap();
 
-        let output_str = db_export_json().unwrap();
+        let output_str = db_load_presentation().unwrap();
         let output: Value = serde_json::from_str(&output_str).unwrap();
 
         assert_eq!(output["title"], "Test Presentation");
@@ -3454,7 +3454,7 @@ mod tests {
         }"####).unwrap();
 
         db_import_json(input.to_string()).unwrap();
-        let output: Value = serde_json::from_str(&db_export_json().unwrap()).unwrap();
+        let output: Value = serde_json::from_str(&db_load_presentation().unwrap()).unwrap();
         assert_eq!(
             output, input,
             "typed presentation fields must survive import/export"
@@ -3563,7 +3563,7 @@ mod tests {
 
         // Export should mark both with syncId
         let output: Value =
-            serde_json::from_str(&db_export_json().unwrap()).unwrap();
+            serde_json::from_str(&db_load_presentation().unwrap()).unwrap();
         let s1_els = output["slides"][0]["elements"].as_array().unwrap();
         let s2_els = output["slides"][1]["elements"].as_array().unwrap();
         assert!(s1_els[0].get("syncId").is_some());
@@ -3611,7 +3611,7 @@ mod tests {
         ).unwrap();
 
         // Both slides reflect the new content AND position on export.
-        let out: Value = serde_json::from_str(&db_export_json().unwrap()).unwrap();
+        let out: Value = serde_json::from_str(&db_load_presentation().unwrap()).unwrap();
         for s in 0..2 {
             let el = &out["slides"][s]["elements"][0];
             assert_eq!(el["html"], "Changed", "slide {s} content synced");
@@ -3672,7 +3672,7 @@ mod tests {
         }).unwrap();
 
         // Both positions survive the round-trip.
-        let out: Value = serde_json::from_str(&db_export_json().unwrap()).unwrap();
+        let out: Value = serde_json::from_str(&db_load_presentation().unwrap()).unwrap();
         assert_eq!(out["slides"][0]["elements"][0]["position"]["x"], 491);
         assert_eq!(out["slides"][1]["elements"][0]["position"]["x"], 39);
         teardown_global_db();
@@ -3960,7 +3960,7 @@ mod tests {
         assert_eq!(slides.len(), 0);
 
         let output: Value =
-            serde_json::from_str(&db_export_json().unwrap()).unwrap();
+            serde_json::from_str(&db_load_presentation().unwrap()).unwrap();
         assert_eq!(output["title"], "Empty");
         assert_eq!(output["slides"].as_array().unwrap().len(), 0);
 
@@ -4099,7 +4099,7 @@ mod tests {
         db_import_json(input).unwrap();
 
         let output: Value =
-            serde_json::from_str(&db_export_json().unwrap()).unwrap();
+            serde_json::from_str(&db_load_presentation().unwrap()).unwrap();
         assert_eq!(output["title"], "Untitled");
         assert_eq!(output["theme"], "white");
 
@@ -4283,7 +4283,7 @@ mod tests {
         assert_eq!(els[1]["id"], "el-1", "el-1 should be second (z=5)");
 
         // Round-trip: export to JSON and verify order is preserved
-        let json = db_export_json().unwrap();
+        let json = db_load_presentation().unwrap();
         let presentation: Value = serde_json::from_str(&json).unwrap();
         let slide1 = &presentation["slides"][0];
         let elements = slide1["elements"].as_array().unwrap();
@@ -4419,7 +4419,7 @@ mod tests {
         db_update_presentation("title".to_string(), "New Title".to_string()).unwrap();
 
         let output: Value =
-            serde_json::from_str(&db_export_json().unwrap()).unwrap();
+            serde_json::from_str(&db_load_presentation().unwrap()).unwrap();
         assert_eq!(output["title"], "New Title");
 
         teardown_global_db();
@@ -4584,7 +4584,7 @@ mod tests {
     /// losslessly (the self-contained portable-deck format). Bytes travel
     /// base64 in an `assets[]` array; import restores them under their
     /// original id, and a JSON carrying `assets` is authoritative for the
-    /// asset table. Also checks the lean db_export_json omits assets.
+    /// asset table. Also checks the lean db_load_presentation omits assets.
     #[test]
     fn export_with_assets_import_roundtrip() {
         setup_global_db();
@@ -4609,7 +4609,7 @@ mod tests {
         }).unwrap();
 
         // Lean export omits assets; with-assets includes them.
-        let lean = db_export_json().unwrap();
+        let lean = db_load_presentation().unwrap();
         assert!(!lean.contains("\"assets\""), "lean export must NOT embed assets");
         let portable = db_export_json_with_assets().unwrap();
         let parsed: Value = serde_json::from_str(&portable).unwrap();
@@ -5021,7 +5021,7 @@ mod tests {
     /// assetId in their JSON → export back out → assertion: the
     /// exported JSON has assetId in the element objects. Verifies
     /// db_import_json moves assetId from JSON into the column AND
-    /// db_export_json reassembles it back into the per-element JSON.
+    /// db_load_presentation reassembles it back into the per-element JSON.
     #[test]
     fn asset_id_round_trips_through_import_export() {
         setup_global_db();
@@ -5058,7 +5058,7 @@ mod tests {
                 "assetId should be stripped from data JSON; found in stored: {}", stored_data);
 
         // Export reassembles assetId from the column back into the JSON.
-        let exported: Value = serde_json::from_str(&db_export_json().unwrap()).unwrap();
+        let exported: Value = serde_json::from_str(&db_load_presentation().unwrap()).unwrap();
         let els = exported["slides"][0]["elements"].as_array().unwrap();
         let img = els.iter().find(|e| e["id"] == "el-img").unwrap();
         assert_eq!(img["assetId"], "asset-A");

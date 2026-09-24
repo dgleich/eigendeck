@@ -102,7 +102,7 @@ CREATE TABLE elements (
 `data` holds ALL element properties EXCEPT the promoted columns
 (`link_id`, `asset_id`). The promoted fields are stripped from
 `data` before INSERT and reassembled into the JSON on
-`db_export_json` — see `db_add_element` / `db_update_element` in
+`db_load_presentation` — see `db_add_element` / `db_update_element` in
 `storage.rs`. One UPDATE handles any change (text edit, move,
 resize, style change).
 
@@ -310,7 +310,7 @@ of the element in its `elements[]` array, with a `syncId` field
 linking them. The `updateElement` action propagates changes to all
 elements with the same `syncId`.
 
-On export to JSON (`db_export_json`), if an element appears on
+On export to JSON (`db_load_presentation`), if an element appears on
 multiple slides, the JSON gets `syncId` set to the element ID.
 
 On import from JSON (`db_import_json`), elements with the same
@@ -357,7 +357,7 @@ The app does NOT query SQLite on every render. Instead:
 ### On open project
 1. `db_open(path)` opens the file-backed DB
 2. `create_schema()` runs all idempotent migrations
-3. `db_export_json()` reads the full presentation
+3. `db_load_presentation()` reads the full presentation
 4. Zustand store is populated; write-through subscriber enabled
 
 ### During editing

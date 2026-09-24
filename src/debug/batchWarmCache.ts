@@ -18,9 +18,9 @@ import type { WarmCacheReport, WarmCacheFileReport, RunMeta } from './types';
 
 async function readSchemaVersion(): Promise<number | null> {
   try {
-    const v = await invoke<string>('db_export_json'); // just used to ensure handle open
-    // db_export_json doesn't return the schema version directly; query via raw SQL.
-    // The storage layer exposes _meta via db_export_json's presentation/config
+    const v = await invoke<string>('db_load_presentation'); // just used to ensure handle open
+    // db_load_presentation doesn't return the schema version directly; query via raw SQL.
+    // The storage layer exposes _meta via db_load_presentation's presentation/config
     // path, but the schema version lives in the _meta table directly. There's
     // no dedicated command — fall back to assuming v2 after db_open since
     // open performs the migration. Return null if we can't determine.
@@ -49,7 +49,7 @@ async function warmOne(input: string): Promise<WarmCacheFileReport> {
     const schemaAfter = await readSchemaVersion();
     const cacheRowsBefore = await cacheRowCount();
 
-    const json = await invoke<string>('db_export_json');
+    const json = await invoke<string>('db_load_presentation');
     const presentation = JSON.parse(json);
     const preamble = presentation.config?.mathPreamble || '';
 

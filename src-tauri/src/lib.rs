@@ -1075,7 +1075,7 @@ pub fn run() {
             storage::db_get_project_id,
             storage::db_close,
             storage::db_import_json,
-            storage::db_export_json,
+            storage::db_load_presentation,
             storage::db_export_json_with_assets,
             storage::db_get_slides,
             storage::db_get_slide_elements,

@@ -14,7 +14,7 @@ async function waitSeam(sid) { for (let i = 0; i < 25; i++) { await sleep(800); 
 const fail = (m) => { console.error('A2ELPROPS_FAIL:', m); process.exit(1); };
 
 // Read a specific element's data JSON from the saved file, merged with promoted columns
-// exactly as db_export_json would reassemble it.
+// exactly as db_load_presentation would reassemble it.
 const PY = '/tmp/a2-readel.py';
 writeFileSync(PY, [
   'import sqlite3,json,sys',

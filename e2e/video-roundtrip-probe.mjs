@@ -23,7 +23,7 @@ await fetch(`${BASE}/session/${sid}`, { method: 'DELETE' }).catch(() => {}); awa
 // ---- Session 2: reopen, assert persisted ----
 const sid2 = await open(); if (!sid2 || !await waitSeam(sid2)) fail('s2 open');
 await sleep(1200);
-const j = JSON.parse(await execA(sid2, "const d=arguments[arguments.length-1];window.__TAURI_INTERNALS__.invoke('db_export_json').then(d).catch(e=>d('ERR'+e));"));
+const j = JSON.parse(await execA(sid2, "const d=arguments[arguments.length-1];window.__TAURI_INTERNALS__.invoke('db_load_presentation').then(d).catch(e=>d('ERR'+e));"));
 const els = j.slides.flatMap((s) => s.elements);
 const vf = els.find((e) => e.id === 'vf');
 const ve = els.find((e) => e.id === 've');

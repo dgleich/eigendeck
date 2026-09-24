@@ -232,7 +232,7 @@ round-trip is drivable.
 
 - **sync/link round-trip** — `roundtrip-probe.mjs` drives store actions
   (duplicate / linkElements / promoteToSync) via the `window.__eigendeck` seam,
-  runs the REAL `flushToSqlite`, then `db_export_json`, and asserts the persisted
+  runs the REAL `flushToSqlite`, then `db_load_presentation`, and asserts the persisted
   structure: duplicate & promote → one entry (shared id + syncId); link → shared
   linkId with separate positions and no syncId. This is the in-session→save
   reopen path end-to-end.

@@ -1,6 +1,6 @@
 // Verify sync/link operations survive the REAL in-session→flush→export path:
 // drive a store action, await flushToSqlite (write-through to the open SQLite),
-// then db_export_json (which re-derives syncId from junction counts) and assert
+// then db_load_presentation (which re-derives syncId from junction counts) and assert
 // the persisted structure. E2E_MODE = 'linkpromote' | 'duplicate'.
 const BASE='http://127.0.0.1:4444', APP=process.env.E2E_APP, DECK=process.env.E2E_DECK, MODE=process.env.E2E_MODE;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -23,7 +23,7 @@ async function opThenExport(opBody){
       ${opBody}
       await E.flush();
       const inv = window.__TAURI_INTERNALS__.invoke;
-      const json = await inv('db_export_json');
+      const json = await inv('db_load_presentation');
       done(json);
     })().catch(e => done('ERR:'+e));
   `);
@@ -48,7 +48,7 @@ if(MODE==='linkpromote'){
   if(A.id!==B.id) fail(`promote: not one entry (ids ${A.id} vs ${B.id})`);
   if(!A.syncId) fail('promote: syncId missing after save');
   // exactly one element row underneath (one entry)
-  const inv = await execAsync(sid, "const d=arguments[arguments.length-1]; window.__TAURI_INTERNALS__.invoke('db_export_json').then(()=>d('ok'));");
+  const inv = await execAsync(sid, "const d=arguments[arguments.length-1]; window.__TAURI_INTERNALS__.invoke('db_load_presentation').then(()=>d('ok'));");
   console.log('  PROMOTE ok: one entry (shared id + syncId on both slides)');
   console.log('ROUNDTRIP_PASS linkpromote');
 } else if(MODE==='duplicate'){

@@ -75,8 +75,8 @@ fn validate_one(path: &Path) -> Result<(), String> {
         }
     }
 
-    let json = storage::db_export_json()
-        .map_err(|e| format!("db_export_json: {}", e))?;
+    let json = storage::db_load_presentation()
+        .map_err(|e| format!("db_load_presentation: {}", e))?;
 
     let v: serde_json::Value = serde_json::from_str(&json)
         .map_err(|e| format!("export JSON is not valid JSON: {}", e))?;

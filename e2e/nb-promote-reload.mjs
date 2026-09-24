@@ -34,7 +34,7 @@ let sid2=await open(); if(!sid2) fail('s2 no start');
 if(!await waitSeam(sid2)) fail('s2 saved deck not open');
 let txt=''; for(let i=0;i<18;i++){await sleep(800); txt=await dom(sid2); if(txt.includes('MARK_A')||txt.includes('MARK_B'))break;}
 // Also confirm the structure collapsed to one entry.
-const j=JSON.parse(await execAsync(sid2,"const d=arguments[arguments.length-1];window.__TAURI_INTERNALS__.invoke('db_export_json').then(d).catch(e=>d('ERR:'+e));"));
+const j=JSON.parse(await execAsync(sid2,"const d=arguments[arguments.length-1];window.__TAURI_INTERNALS__.invoke('db_load_presentation').then(d).catch(e=>d('ERR:'+e));"));
 const a=j.slides[0].elements[0], b=j.slides[1].elements[0];
 const oneEntry = a.id===b.id && !!a.syncId;
 const keptA = txt.includes('MARK_A');

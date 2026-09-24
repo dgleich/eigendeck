@@ -30,7 +30,7 @@ await sleep(2500);  // let the process fully exit + file settle
 let sid2 = await open();
 if(!sid2) fail('session 2 did not start');
 if(!await waitSeam(sid2)) fail('session 2: saved deck never opened');
-const j = JSON.parse(await execAsync(sid2, "const d=arguments[arguments.length-1]; window.__TAURI_INTERNALS__.invoke('db_export_json').then(x=>d(x)).catch(e=>d('ERR:'+e));"));
+const j = JSON.parse(await execAsync(sid2, "const d=arguments[arguments.length-1]; window.__TAURI_INTERNALS__.invoke('db_load_presentation').then(x=>d(x)).catch(e=>d('ERR:'+e));"));
 const S = j.slides;
 
 if(MODE==='duplicate'){

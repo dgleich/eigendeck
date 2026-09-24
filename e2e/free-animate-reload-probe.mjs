@@ -25,7 +25,7 @@ async function waitSeam(sid){for(let i=0;i<20;i++){await sleep(800);if(await exe
 async function dom(sid){return String(await execSync(sid,"return document.body?document.body.textContent:''")||'');}
 async function waitDom(sid,s,n=18){for(let i=0;i<n;i++){await sleep(700);if((await dom(sid)).includes(s))return true;}return false;}
 async function run(sid,body){return await execAsync(sid,`const done=arguments[arguments.length-1];(async()=>{const E=window.__eigendeck,s=E.store;${body}})().catch(e=>done('ERR:'+e));`);}
-async function exportJson(sid){return JSON.parse(await execAsync(sid,"const d=arguments[arguments.length-1];window.__TAURI_INTERNALS__.invoke('db_export_json').then(d).catch(e=>d('ERR:'+e));"));}
+async function exportJson(sid){return JSON.parse(await execAsync(sid,"const d=arguments[arguments.length-1];window.__TAURI_INTERNALS__.invoke('db_load_presentation').then(d).catch(e=>d('ERR:'+e));"));}
 async function quit(sid){await fetch(`${BASE}/session/${sid}`,{method:'DELETE'}).catch(()=>{});}
 const fail=(m)=>{console.error('FAR_FAIL ['+MODE+']:',m);process.exit(1);};
 

@@ -706,7 +706,7 @@ describe('presentation store — SQLite write-through exercise', () => {
       ] } as Slide] };
     mockInvoke.mockReset();
     mockInvoke.mockImplementation(((cmd: string) => {
-      if (cmd === 'db_export_json') return Promise.resolve(JSON.stringify(loaded));
+      if (cmd === 'db_load_presentation') return Promise.resolve(JSON.stringify(loaded));
       if (cmd === 'db_get_project_id') return Promise.resolve(null);
       if (cmd === 'db_element_exists') return Promise.resolve(false);
       return Promise.resolve(undefined);

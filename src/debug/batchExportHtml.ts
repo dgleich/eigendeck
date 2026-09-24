@@ -32,7 +32,7 @@ async function exportOne(input: string, outputDir: string): Promise<ExportFileRe
     resetMathCacheWarmupFlag();
     await warmMathCacheFromSqlite();
 
-    const json = await invoke<string>('db_export_json');
+    const json = await invoke<string>('db_load_presentation');
     const presentation = JSON.parse(json);
 
     const fontFacesCss = await buildEmbeddedFontFacesCSS(presentation);

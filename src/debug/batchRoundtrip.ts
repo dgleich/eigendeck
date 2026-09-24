@@ -56,7 +56,7 @@ async function roundtripOne(input: string, tempDir: string): Promise<RoundtripFi
   const tempPath = `${tempDir}/${basename(input)}`;
   try {
     await invoke('db_open', { path: input });
-    const jsonBefore = await invoke<string>('db_export_json');
+    const jsonBefore = await invoke<string>('db_load_presentation');
     const before = JSON.parse(jsonBefore);
 
     // Save-as a fresh copy on disk. db_save_to_file commits the current
@@ -65,7 +65,7 @@ async function roundtripOne(input: string, tempDir: string): Promise<RoundtripFi
 
     // Reopen the copy and re-export.
     await invoke('db_open', { path: tempPath });
-    const jsonAfter = await invoke<string>('db_export_json');
+    const jsonAfter = await invoke<string>('db_load_presentation');
     const after = JSON.parse(jsonAfter);
 
     const slides = before.slides || [];
