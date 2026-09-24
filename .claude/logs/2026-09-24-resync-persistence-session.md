@@ -90,8 +90,9 @@ fail at setup. On this branch the full suite passes 130 of 130.
 
 #191 (David's unsync reverting after a save and reload) is still not reproduced. It
 involves free, not resync, so 0c28970 does not claim to fix it. #188 (cut and paste
-of demos) has a passing logic-level probe, `e2e/demo-copypaste-probe.mjs`, which is
-not yet committed; the working theory is that no `cut` listener exists and that a
+of demos) has a passing logic-level guard, `e2e/demo-copypaste-probe.mjs`, now in
+`run-all.sh`. It dispatches the clipboard events directly, so it does not cover the
+keyboard path, and that is where the working theory lives: that no `cut` listener exists and that a
 focused demo iframe takes Cmd+C and Cmd+V away from the parent. #189 (demo pieces on
 reload) has not been investigated. `cargo fmt --check` reports 452 lines of drift
 across the crate. That drift predates this work, and CI does not run the check.

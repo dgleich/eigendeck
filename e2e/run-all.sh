@@ -110,6 +110,7 @@ MANIFEST=(
   # plus a canvas marquee and a no-uncaught-error sentinel.
   "editor-paste-probe.mjs|empty.eigendeck||$EMPTY"
   "internal-paste-probe.mjs|ip.eigendeck||import_json $EXFIX/internal-paste-deck.json"   # copy/paste redesign: private-flavor round-trip + stale guard
+  "demo-copypaste-probe.mjs|dcp.eigendeck||import_json $EXFIX/internal-paste-deck.json"   # #188 demo copy->paste->render logic (NOT the keyboard/iframe-focus path)
   "image-link-probe.mjs|imglink.eigendeck||import_json $EXFIX/image-link-deck.json"   # copy/paste redesign: image copy -> paste + cross-slide link
   "caret-double-paste-probe.mjs|caret-paste.eigendeck||import_json $EXFIX/caret-paste-deck.json"   # editing + paste must NOT create a canvas element (double-paste guard)
   "styling-roundtrip.mjs|empty.eigendeck||$EMPTY"
