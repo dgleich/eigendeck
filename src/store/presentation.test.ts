@@ -669,6 +669,52 @@ describe('presentation store', () => {
       expect(back.position.x).toBe(canonX);            // snapped; the move is discarded
     });
 
+    it('resyncElement mints a fresh instance id (mirror of free) so the save repoints the junction (#192)', () => {
+      // The freed instance was persisted as its OWN row + junction (006d924 flushes
+      // free immediately). Rejoining must reach the save as "freed instance removed
+      // + synced instance added" (junction-only insert onto the group's row). If the
+      // freed id were kept, the save would see a plain content update that never
+      // repoints the junction, and the rejoin would be lost on reload.
+      const store = usePresentationStore.getState();
+      store.duplicateSlide(0);
+      store.selectSlide(0);
+      const el = usePresentationStore.getState().presentation.slides[0].elements[0];
+      const gid = el.syncId;
+      store.freeElement(el.id);
+      const freedId = usePresentationStore.getState().presentation.slides[0].elements[0].id;
+      store.selectObject({ type: 'element', id: freedId });
+      store.resyncElement(freedId);
+      const st = usePresentationStore.getState();
+      const back = st.presentation.slides[0].elements[0];
+      expect(back.id).not.toBe(freedId);               // fresh id → structural change for the save
+      expect(back.id).not.toBe(gid);                   // not the group's row id (that would duplicate the row)
+      expect(back.syncId).toBe(gid);                   // references the group again
+      expect(st.selectedObject).toEqual({ type: 'element', id: back.id });   // selection follows
+      // the peer on the other slide is untouched
+      expect(st.presentation.slides[1].elements[0].syncId).toBe(gid);
+    });
+
+    it('resyncElement adopts the group CONTENT too — edits made while freed are discarded (decision 2026-06)', () => {
+      // Resync = "the same element again"; the save points this slide at the
+      // group's row, so the session must already show the group's data, not the
+      // freed copy's edits (else it would change on reload).
+      const store = usePresentationStore.getState();
+      store.duplicateSlide(0);
+      store.selectSlide(0);
+      const el = usePresentationStore.getState().presentation.slides[0].elements[0];
+      store.freeElement(el.id);
+      const freedId = usePresentationStore.getState().presentation.slides[0].elements[0].id;
+      store.updateElement(freedId, { html: 'EDITED WHILE FREED', color: '#ff0000' } as any);
+      store.resyncElement(freedId);
+      const st = usePresentationStore.getState();
+      const back = st.presentation.slides[0].elements[0] as any;
+      const peer = st.presentation.slides[1].elements[0] as any;
+      expect(back.html).toBe(peer.html);
+      expect(back.html).not.toBe('EDITED WHILE FREED');
+      expect(back.color).toBe(peer.color);
+      expect(back.linkId).toBe(peer.linkId);           // still animation-paired with the group
+    });
+
     it('unlinkElement ALWAYS remembers _linkId (re-linkable)', () => {
       const store = usePresentationStore.getState();
       const id = usePresentationStore.getState().presentation.slides[0].elements[0].id;

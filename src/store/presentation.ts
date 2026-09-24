@@ -647,24 +647,56 @@ export const usePresentationStore = create<PresentationState>()(
       },
       resyncElement: (elementId) => {
         const st = get();
-        const el = st.presentation.slides[st.currentSlideIndex]
-          ?.elements.find((e) => e.id === elementId);
+        const csi = st.currentSlideIndex;
+        const el = st.presentation.slides[csi]?.elements.find((e) => e.id === elementId);
         if (!el || !el._syncId) return;
         const syncId = el._syncId;
-        // Snap to the group's geometry: re-syncing means "this is the same
-        // element again", so it ADOPTS a still-synced peer's position (the move
-        // made while freed is discarded — to keep it, stay freed). Without this
-        // the group ends up at two different positions (the S2 bug).
+        // Re-syncing means "this is the same element again" (decision, David
+        // 2026-06, recorded in e2e/resync-position-probe.mjs): it ADOPTS the
+        // group's state, and anything changed while freed (a move, an edit) is
+        // discarded; to keep it, stay freed. The save repoints this slide at the
+        // group's row, so adopting a still-synced peer's data keeps the session
+        // identical to what reload shows. Identity/linkage fields stay this
+        // instance's own. Without this the group sat at two positions (S2).
         const peer = st.presentation.slides.flatMap((s) => s.elements)
           .find((e) => e.id !== elementId && e.syncId === syncId);
-        const geom: Partial<SlideElement> = peer
-          ? (peer.type === 'arrow' && el.type === 'arrow'
-              ? { x1: peer.x1, y1: peer.y1, x2: peer.x2, y2: peer.y2,
-                  c1x: peer.c1x, c1y: peer.c1y, c2x: peer.c2x, c2y: peer.c2y, points: peer.points } as Partial<SlideElement>
-              : { position: { ...peer.position } } as Partial<SlideElement>)
-          : {};
+        const identity: readonly string[] = IDENTITY_KEYS;
+        const pick = (src: object, keepIdentity: boolean) => Object.fromEntries(
+          Object.entries(src).filter(([k]) => identity.includes(k) === keepIdentity));
+        // Data from the group (or this instance, if no peer remains), identity
+        // from this instance; then the resync flip and the fresh id below.
+        const rejoined = { ...pick(peer ?? el, false), ...pick(el, true), ...resyncDelta(el) };
         void runResyncHook(el);
-        get().updateElement(elementId, { ...resyncDelta(el), ...geom } as Partial<SlideElement>);
+        // Rejoin is the mirror of free. Free gave this instance its own id, so the
+        // save wrote it as its own row + junction. Rejoining means this slide
+        // references the GROUP's row again, so mint a fresh instance id (as free
+        // does) carrying the group's syncId: the save then sees the freed instance
+        // removed (closes its junction; the freed row is simply unreferenced, like
+        // any deleted element) and a synced instance added (a junction-only insert
+        // onto the group's existing row). Keeping the freed id instead left this a
+        // plain content update, which never repoints the junction, so the rejoin
+        // was lost on reload (#192, S2). Same shape duplicateSlide produces.
+        const newId = crypto.randomUUID();
+        set((state) => ({
+          presentation: {
+            ...state.presentation,
+            slides: state.presentation.slides.map((slide, idx) => (idx !== csi ? slide : {
+              ...slide,
+              elements: slide.elements.map((e) => (e.id === elementId
+                ? { ...rejoined, id: newId } as SlideElement
+                : e)),
+            })),
+          },
+          selectedObject: (() => {
+            const sel = state.selectedObject;
+            if (!sel) return sel;
+            if (sel.type === 'element' && sel.id === elementId) return { type: 'element' as const, id: newId };
+            if (sel.type === 'multi' && sel.ids.includes(elementId))
+              return { type: 'multi' as const, ids: sel.ids.map((i: string) => (i === elementId ? newId : i)) };
+            return sel;
+          })(),
+          isDirty: true,
+        }));
         flushSyncLinkNow();
       },
       unlinkElement: (elementId) => {
