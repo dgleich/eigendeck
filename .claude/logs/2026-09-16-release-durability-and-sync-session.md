@@ -33,12 +33,18 @@ rapidSlideNav 28→17ms = the JIT fix). Rig at $HOME/el-target (cargo, app+cli).
   presentation.exercise.test "selecting an element issues NO SQLite write", dddf72e).
 - **Sync/link durability fix** (006d924 + unit guard c985625) — see next section.
 
-## THE BIG ONE — sync "unsync reverts on reload" (REPRODUCED + FIXED)
+## sync "unsync reverts on reload" — RELATED path fixed, David's case UNCONFIRMED (#191)
 David: unsynced a legend textbox in gitignore/source-inversion.eigendeck while
-building a talk LIVE; it re-synced on reload. Root cause is DURABILITY, not sync
-logic:
-- "synced" is DERIVED on load from an element id shared across >1 slide
-  (storage.rs:1102), stripped on write. So a DROPPED unsync silently REVERTS.
+building a talk LIVE; it re-synced on reload. NOTE (2026-09-17): David pushed back
+that it's NOT clear his bug was fixed — only a related durability path was. His
+exact trigger (unsync → SAVE → reload → reverts) was never reproduced; he reports
+he DID force a save before closing, so it's likely a different path than the
+debounce-drop the fix covers. #191 OPEN. Below is the RELATED path that WAS fixed.
+The failure family is DURABILITY, not sync logic:
+- An element is synced when it is referenced by more than one slide: one
+  `elements` row, several `slide_elements` junctions. That is stored and cheap to
+  check; the `syncId` field is just how the loader surfaces it. So a DROPPED unsync
+  (the freed instance never got its own row + junction) silently REVERTS.
 - Edits ride a **1s autosave debounce** (scheduleFlush). A non-graceful close in
   that window strands the write; the clean-quit path (App.tsx, isDirty=false) force_quits
   without flushing the queue (force_quit only checkpoints the WAL).
@@ -57,6 +63,11 @@ logic:
   within a tick without an explicit save). NOTE: resync/unlink/relink DO mark dirty
   (via updateElement) — the earlier "they don't" was a false grep negative; the
   mark-dirty fix was unneeded.
+- **LATER (2026-09-24): 006d924 introduced a resync regression.** The "sync logic is
+  robust" claim above did not cover resync after an immediately-flushed free: the
+  freed row was already on disk and resync never repointed the junction, so a rejoin
+  was lost on reload. Caught by the weekly coverage run (#192), fixed in 0c28970. See
+  2026-09-24-resync-persistence-session.md.
 
 ## FLAGGED, NOT FIXED (in auto-memory)
 - **Asset-reload durability** (project_eigendeck_asset_reload_durability_bug): a
