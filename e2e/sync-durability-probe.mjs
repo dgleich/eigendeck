@@ -5,14 +5,19 @@
 // E2E_MODE:
 //   nosave  — free, then quit IMMEDIATELY (inside the 1s debounce), no flush/save
 //   settled — free, wait 1.6s for the debounce to fire, then quit (control: should persist)
-// Bug reproduces (nosave) if slide-2 comes back SYNCED after reload.
+//   mainfile — #200: free, wait 3s WITHOUT saving, then copy ONLY the main .eigendeck (not
+//              the -wal/-shm) while the app is open, as a cloud sync would, and open that
+//              copy. Fails while the free sits only in the WAL (never checkpointed).
+// Bug reproduces if slide-2 comes back SYNCED after reload.
+import { copyFileSync, mkdtempSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 const BASE='http://127.0.0.1:4444', APP=process.env.E2E_APP, DECK=process.env.E2E_DECK;
 const MODE=process.env.E2E_MODE||'nosave';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function post(p,b){const r=await fetch(BASE+p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const t=await r.text();try{return JSON.parse(t)}catch{return t}}
 async function execSync(sid,s){return (await post(`/session/${sid}/execute/sync`,{script:s,args:[]}))?.value}
 async function execAsync(sid,s){return (await post(`/session/${sid}/execute/async`,{script:s,args:[]}))?.value}
-async function open(){for(let i=0;i<12;i++){const j=await post('/session',{capabilities:{alwaysMatch:{'tauri:options':{application:APP,args:[DECK]}}}});if(j?.value?.sessionId)return j.value.sessionId;await sleep(1000);}return null;}
+async function open(path=DECK){for(let i=0;i<12;i++){const j=await post('/session',{capabilities:{alwaysMatch:{'tauri:options':{application:APP,args:[path]}}}});if(j?.value?.sessionId)return j.value.sessionId;await sleep(1000);}return null;}
 async function waitSeam(sid){for(let i=0;i<20;i++){await sleep(800);if(await execSync(sid,"return !!(window.__eigendeck&&window.__eigendeck.store&&window.__eigendeck.store.getState().projectPath)"))return true;}return false;}
 async function run(sid,body){return await execAsync(sid,`const done=arguments[arguments.length-1];(async()=>{const E=window.__eigendeck,s=E.store;${body}})().catch(e=>done('ERR:'+e));`);}
 async function exportJson(sid){return JSON.parse(await execAsync(sid,"const d=arguments[arguments.length-1];window.__TAURI_INTERNALS__.invoke('db_load_presentation').then(d).catch(e=>d('ERR:'+e));"));}
@@ -37,9 +42,18 @@ const inMem=legends(await exportJson(sid));  // NOTE: db_load_presentation reads
 console.log('  right after free (db state):',JSON.stringify(inMem));
 
 if(MODE==='settled'){ await sleep(1600); }  // let the 1s debounce fire
+// #200: what a sync service sees is the MAIN file only. Copy it while the app is still
+// open (no save, no close), then open the copy instead of the original.
+let reopenPath=DECK;
+if(MODE==='mainfile'){
+  await sleep(3000);
+  reopenPath=join(mkdtempSync(join(dirname(DECK),'mainfile-')),'copy.eigendeck');
+  copyFileSync(DECK,reopenPath);
+  console.log('  copied the main file only (no -wal) after 3s, no save');
+}
 await quit(sid); await sleep(2500);
 
-let sid2=await open(); if(!sid2||!await waitSeam(sid2)) fail('reopen');
+let sid2=await open(reopenPath); if(!sid2||!await waitSeam(sid2)) fail('reopen');
 await sleep(1200);
 const after=legends(await exportJson(sid2));
 console.log('  after reopen:',JSON.stringify(after));

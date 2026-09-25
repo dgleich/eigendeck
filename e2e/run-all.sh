@@ -189,6 +189,31 @@ MANIFEST=(
   # for the fix); settled = wait for the debounce (control).
   "sync-durability-probe.mjs|syncgroup.eigendeck|E2E_MODE=nosave|python3 $EXFIX/make_e2e_decks.py syncgroup \$DECKDIR/syncgroup.json; import_json \$DECKDIR/syncgroup.json"
   "sync-durability-probe.mjs|syncgroup.eigendeck|E2E_MODE=settled|python3 $EXFIX/make_e2e_decks.py syncgroup \$DECKDIR/syncgroup.json; import_json \$DECKDIR/syncgroup.json"
+  # Sync/link persistence bugs (.claude/notes/sync-link-hunt-2026-09-24.md). These are OPEN
+  # bugs, so these entries FAIL until the persistence redesign fixes them (E2E_EXPECT=clean).
+  "sync-durability-probe.mjs|syncgroup.eigendeck|E2E_MODE=mainfile|python3 $EXFIX/make_e2e_decks.py syncgroup \$DECKDIR/syncgroup.json; import_json \$DECKDIR/syncgroup.json"   # #200 free stays in the WAL: main file still synced
+  "sync-hunt-probe.mjs|solo.eigendeck|E2E_MODE=L1 E2E_EXPECT=clean|node \$ROOT/e2e/sync-hunt-fixtures.mjs \$DECKDIR \$CLI"   # #194 L1: dup slide, delete ORIGINAL slide, edit copy: edit lost
+  "sync-hunt-probe.mjs|solo.eigendeck|E2E_MODE=L3 E2E_EXPECT=clean|node \$ROOT/e2e/sync-hunt-fixtures.mjs \$DECKDIR \$CLI"   # #194 L3: dup, delete original element, move copy: move lost
+  "sync-hunt-probe.mjs|solo.eigendeck|E2E_MODE=L4 E2E_EXPECT=clean|node \$ROOT/e2e/sync-hunt-fixtures.mjs \$DECKDIR \$CLI"   # #194 L4: dup, delete original element, delete copy: copy resurrects
+  "sync-hunt-probe.mjs|solo.eigendeck|E2E_MODE=L5 E2E_EXPECT=clean|node \$ROOT/e2e/sync-hunt-fixtures.mjs \$DECKDIR \$CLI"   # #194 L5: dup, delete original element, reorder copy: order lost
+  "sync-hunt-probe.mjs|solo.eigendeck|E2E_MODE=F2 E2E_EXPECT=clean|node \$ROOT/e2e/sync-hunt-fixtures.mjs \$DECKDIR \$CLI"   # #194 F2: dup, free ORIGINAL, edit copy: edit lost
+  "sync-hunt-probe.mjs|solo.eigendeck|E2E_MODE=F3 E2E_EXPECT=clean|node \$ROOT/e2e/sync-hunt-fixtures.mjs \$DECKDIR \$CLI"   # #194 F3: dup, free original, resync, edit: edit lost
+  "sync-hunt-probe.mjs|solo.eigendeck|E2E_MODE=D1 E2E_EXPECT=clean|node \$ROOT/e2e/sync-hunt-fixtures.mjs \$DECKDIR \$CLI"   # #194 D1: move original then free it within 1s: move lost
+  "sync-hunt-probe.mjs|solo.eigendeck|E2E_MODE=C1 E2E_EXPECT=clean|node \$ROOT/e2e/sync-hunt-fixtures.mjs \$DECKDIR \$CLI"   # #195 C1: delete element + Cmd+Z: duplicated and synced on reopen
+  "sync-hunt-probe.mjs|solo.eigendeck|E2E_MODE=C2 E2E_EXPECT=clean|node \$ROOT/e2e/sync-hunt-fixtures.mjs \$DECKDIR \$CLI"   # #195 C2: delete slide + Cmd+Z: slide doubled on reopen
+  "sync-hunt-probe.mjs|solo.eigendeck|E2E_MODE=C3 E2E_EXPECT=clean|node \$ROOT/e2e/sync-hunt-fixtures.mjs \$DECKDIR \$CLI"   # #195 C3: delete, autosave, Cmd+Z: duplicate current row
+  "sync-hunt-probe.mjs|solo.eigendeck|E2E_MODE=C4 E2E_EXPECT=clean|node \$ROOT/e2e/sync-hunt-fixtures.mjs \$DECKDIR \$CLI"   # #195 C4: delete element, Cmd+Z, Cmd+Shift+Z: delete lost
+  "sync-hunt-probe.mjs|solo.eigendeck|E2E_MODE=C5 E2E_EXPECT=clean|node \$ROOT/e2e/sync-hunt-fixtures.mjs \$DECKDIR \$CLI"   # #195 C5: delete slide, Cmd+Z, Cmd+Shift+Z: delete lost
+  "sync-hunt-probe.mjs|syncgroup.eigendeck|E2E_MODE=FUR E2E_EXPECT=clean|node \$ROOT/e2e/sync-hunt-fixtures.mjs \$DECKDIR \$CLI"   # #195 FUR: free, Cmd+Z, Cmd+Shift+Z: duplicate current row
+  "sync-hunt-probe.mjs|solo.eigendeck|E2E_MODE=U2 E2E_EXPECT=clean|node \$ROOT/e2e/sync-hunt-fixtures.mjs \$DECKDIR \$CLI"   # #195 #199 U2: dup, free copy, Cmd+Z x2: original comes back synced
+  "sync-hunt-probe.mjs|syncgroup.eigendeck|E2E_MODE=A1 E2E_EXPECT=clean|node \$ROOT/e2e/sync-hunt-fixtures.mjs \$DECKDIR \$CLI"   # #196 A1: unlink one synced instance: link comes back
+  "sync-hunt-probe.mjs|syncgroup.eigendeck|E2E_MODE=B1 E2E_EXPECT=clean|node \$ROOT/e2e/sync-hunt-fixtures.mjs \$DECKDIR \$CLI"   # #196 B1: paste synced clip onto a slide holding the group: copy dropped
+  "sync-hunt-probe.mjs|solo.eigendeck|E2E_MODE=P1 E2E_EXPECT=clean|node \$ROOT/e2e/sync-hunt-fixtures.mjs \$DECKDIR \$CLI"   # #196 P1: copy synced, edit group, paste: stale content
+  "sync-hunt-probe.mjs|linked.eigendeck|E2E_MODE=R1 E2E_EXPECT=clean|node \$ROOT/e2e/sync-hunt-fixtures.mjs \$DECKDIR \$CLI"   # #196 R1: promote with two link members on one slide: duplicate ids
+  "sync-hunt-probe.mjs|solo.eigendeck|E2E_MODE=U1 E2E_EXPECT=clean|node \$ROOT/e2e/sync-hunt-fixtures.mjs \$DECKDIR \$CLI"   # #196 U1: paste synced clip after undoing the dup: original synced
+  "sync-hunt-probe.mjs|solo.eigendeck|E2E_MODE=U3 E2E_EXPECT=clean|node \$ROOT/e2e/sync-hunt-fixtures.mjs \$DECKDIR \$CLI"   # #196 U3: paste synced clip after deleting the dup: original synced
+  "sync-hunt-probe.mjs|solo.eigendeck|E2E_MODE=Z2 E2E_EXPECT=clean|node \$ROOT/e2e/sync-hunt-fixtures.mjs \$DECKDIR \$CLI"   # #197 Z2: delete then add: stacking order flips on reopen
+  "sync-hunt-probe.mjs|solo.eigendeck|E2E_MODE=IDX E2E_EXPECT=clean|node \$ROOT/e2e/sync-hunt-fixtures.mjs \$DECKDIR \$CLI"   # #201 IDX: undo a duplicate of the last slide: index out of range
 
   # ── notebook overlay / share / watch / copy-paste / export (built) ──────
   "notebook-reload-shared-probe.mjs|shared.eigendeck||python3 $EXFIX/make_e2e_decks.py shared \$DECKDIR/d.json; import_json \$DECKDIR/d.json"

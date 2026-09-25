@@ -1,11 +1,13 @@
-// Sync/link persistence BUG HUNT harness (2026-09-24). Not a regression suite.
+// Sync/link persistence tests (from the 2026-09-24 bug hunt).
 //
 // Drives the REAL store actions + the REAL incremental save (subscriber diff →
 // flushSqliteBatch) against a fake Tauri backend built on REAL SQLite
 // (node:sqlite) using the SAME SQL statements as src-tauri/src/storage.rs, then
 // "reopens" through the same db_load_presentation logic and compares against
-// the session. Findings are collected and printed; the suite only FAILS when
-// HUNT_ASSERT=1, so it never breaks the normal `vitest run`.
+// the session. Every named scenario is a real test: any finding fails it. Each
+// test name carries its GitHub issue (#194-#201); those are OPEN bugs, so those
+// tests FAIL until the persistence redesign fixes them. Tests tagged [guard]
+// cover behaviour that already works and must stay green.
 //
 // Invariant under test: after a save, reopening reproduces the session exactly
 // (per slide: same elements, same data + position, same order, same sync-group
@@ -13,7 +15,7 @@
 // collapse to the canonical row id and syncId is re-derived.
 //
 // Report: .claude/notes/sync-link-hunt-2026-09-24.md. Usage:
-//   npx vitest run src/store/syncHunt.test.ts                 # named scenarios, report-only
+//   npx vitest run src/store/syncHunt.test.ts                 # named scenarios (real tests)
 //   HUNT_SCEN_OUT=/path/out.txt  ...                           # write each scenario's trace
 //   HUNT=1 HUNT_SEEDS=40 HUNT_LEN=25 HUNT_OUT=/path/rep.txt ...  # randomized fuzz + shrinking
 // Fuzz knobs: HUNT_FX=solo,syncgroup,linked,david  HUNT_ONLY=<ops>  HUNT_AVOID=undo,delete,
@@ -583,7 +585,9 @@ export async function runOps(fx: string, ops: Op[], mode: Mode, seedUndo = false
     trace.push(`${i}: ${t}`);
     if (o.op === 'undo' || o.op === 'redo') {
       const n = st().presentation.slides.length;
-      if (st().currentSlideIndex >= n) { info.push(`info:index-out-of-range after ${i}`); usePresentationStore.setState({ currentSlideIndex: n - 1 }); }
+      // #201: a real bug, so it is a finding. Do NOT clamp the index here: clamping
+      // would hide the bug from every later step of the scenario.
+      if (st().currentSlideIndex >= n) { findings.push(`session:index-out-of-range index=${st().currentSlideIndex} slides=${n} [after ${i}]`); break; }
     }
     const sv = sessionViolations(st().presentation);
     for (const f of sv) (isInfo(f) ? info : findings).push(`${f}  [after ${i}]`);
@@ -597,7 +601,9 @@ export async function runOps(fx: string, ops: Op[], mode: Mode, seedUndo = false
 
 /** Category of a finding (for grouping + shrinking). */
 const cat = (f: string) => f.split(' ')[0];
-const INFO = new Set(['remembered:lost', 'latent:alias', 'info:index-out-of-range', 'session:lone-sync', 'session:lone-link']);
+// Categories reported but not counted as failures. remembered:lost (#198) and the
+// index-out-of-range (#201) used to be here; they are filed bugs, so they fail now.
+const INFO = new Set(['latent:alias', 'session:lone-sync', 'session:lone-link']);
 const isInfo = (f: string) => INFO.has(cat(f));
 
 async function shrink(fx: string, ops: Op[], mode: Mode, seedUndo: boolean, target: string): Promise<Op[]> {
@@ -739,13 +745,37 @@ scenario('#192 same-session free then resync (syncnow)', 'syncgroup', 'syncnow',
 scenario('M1 dup, copy copy, delete dup slide, paste back, move', 'syncgroup', 'syncnow', [O('dupSlide'), O('copy', 1), O('deleteSlide', 1), O('paste'), O('move', 1, 4), O('reopen')]);
 
 
-describe('sync/link persistence hunt (scenarios)', () => {
+// Class 2: undo re-adds a saved row. Free, undo, redo inside one save batch (pre-006d924 batching).
+scenario('FUR free, undo, redo in one batch (batched)', 'syncgroup', 'batched', [O('select', 1), O('free', 0), O('undo'), O('redo'), O('reopen')]);
+// Class 5: the remembered group id must survive a reopen, or a freed element can never rejoin.
+scenario('RM dup, free copy, reopen (remembered _syncId kept)', 'solo', 'every', [O('dupSlide'), O('free', 0), O('reopen'), O('reopen')]);
+// Incidental: undo of a duplicate of the LAST slide leaves currentSlideIndex out of range.
+scenario('IDX duplicate last slide, undo', 'solo', 'every', [O('select', 2), O('dupSlide'), O('undo'), O('reopen')]);
+
+// Each finding's GitHub issue, by scenario id. A scenario that reports anything fails.
+// Several scenarios also lose the remembered _syncId (#198) on top of their own bug;
+// they list both, so fixing #198 alone does not turn them green.
+const ISSUE: Record<string, string> = {
+  L1: '#194', L2: '#194', L3: '#194', L4: '#194', L5: '#194', L6: '#194', D1: '#194 #198', D2: '#194 #198',
+  F2: '#194 #198', F3: '#194', M1: '#194', 'OLD-S1b': '#194',
+  C1: '#195', C2: '#195', C3: '#195', C4: '#195', C5: '#195', C6: '#195', FUR: '#195', U2: '#195 #199',
+  A1: '#196', A2: '#196 #198', B1: '#196', B2: '#196', P1: '#196', R1: '#196', U1: '#196', U3: '#196',
+  Z2: '#197', RM: '#198', IDX: '#201',
+  // These only fail because every free + reopen loses the remembered _syncId (#198).
+  'baseline:': '#198', 'OLD-S5b': '#198', 'OLD-S5c': '#198',
+};
+const ISSUE_BY_NAME: Record<string, string> = { '#192 settled free then resync': '#198' };
+const issueOf = (name: string) => ISSUE_BY_NAME[name] ?? ISSUE[name.split(' ')[0]] ?? 'guard';
+
+describe('sync/link persistence: reopen reproduces the session', () => {
   for (const [name, sc] of Object.entries(SCENARIOS)) {
-    it(name, async () => {
+    it(`[${issueOf(name)}] ${name}`, async () => {
       const r = await runOps(sc.fx, sc.ops, sc.mode, sc.seedUndo);
       const txt = `\n#### SCENARIO ${name}: ${r.findings.length ? 'FINDINGS' : 'clean'}\n${r.findings.join('\n')}\n${r.info.length ? 'info: ' + r.info.join('; ') + '\n' : ''}${r.trace.join('\n')}`;
       if (process.env.HUNT_SCEN_OUT) (process as any).getBuiltinModule('node:fs').appendFileSync(process.env.HUNT_SCEN_OUT, txt + '\n');
-      if (process.env.HUNT_ASSERT === '1') expect(r.findings).toEqual([]);
+      // A real test: any finding is a failure, printed with the trace so the
+      // failure says what broke. The bugs are open, so these fail until fixed.
+      expect(r.findings, `${r.findings.join('\n')}\n--- trace ---\n${r.trace.join('\n')}`).toEqual([]);
     });
   }
 });

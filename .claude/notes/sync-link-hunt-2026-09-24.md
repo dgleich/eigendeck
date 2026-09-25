@@ -20,8 +20,11 @@ load, and the DB is checked for duplicate current rows, duplicate junctions, jun
 rows or dead slides, and duplicate slides. Three save behaviours are modelled: `every` (flush after
 every op), `syncnow` (current code: sync/link ops flush at once, everything else waits for the 1s
 debounce) and `batched` (pre-006d924: one flush per explicit save). A shrinker reduces each failing
-random sequence to a minimal one. Named scenarios run in the normal `vitest run` (report-only, they
-never fail unless `HUNT_ASSERT=1`); the fuzzer runs with `HUNT=1` (usage is in the file header).
+random sequence to a minimal one. Named scenarios run in the normal `vitest run` as real tests: any
+finding fails the test, and each test name carries its issue (#194-#201). As originally written they
+only reported, and `remembered:lost` and the out-of-range slide index were classed as info (the
+harness even clamped the index after undo, hiding #201). That was changed on 2026-09-25, so those
+bugs fail too. The fuzzer runs with `HUNT=1` (usage is in the file header).
 About 15,000 random sequences of 14 to 30 ops were run (plus the shrinker's reruns) over 4
 fixtures, 3 save modes, and with and without cross-session undo seeding.
 
@@ -39,7 +42,11 @@ E2E_APP=$HOME/el-target/debug/eigendeck E2E_DECK=$D/deck.eigendeck E2E_MODE=L1 \
 ```
 
 The probe prints `SYNCHUNT <mode> REPRODUCED|CLEAN <details>`. Scenario ids below (L1, C2, …) are
-the same in the harness and the probe.
+the same in the harness and the probe. With `E2E_EXPECT=clean` it exits 1 when a finding
+reproduces; every confirmed mode is in `e2e/run-all.sh` that way, plus
+`sync-durability-probe.mjs` `E2E_MODE=mainfile` for #200. As originally written the probe printed
+database violations (duplicate rows, dangling junctions, z ties) and the IDX slide index without
+counting them, and its WAL flow always exited 0; since 2026-09-25 all of those count as failures.
 
 ## Summary
 

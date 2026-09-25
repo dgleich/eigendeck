@@ -230,6 +230,7 @@ print('X on S0:',c.execute("select json_extract(data,'$.position.x') from elemen
   console.log(`  -wal present: ${existsSync(DECK + '-wal')}`);
   const lines = out.split('\n');
   const reproduced = MODE === 'W0' ? !/550/.test(lines[1]) : /'G'/.test(lines[0]);
+  if (process.env.E2E_EXPECT === 'clean') process.exitCode = reproduced ? 1 : 0;
   console.log(`SYNCHUNT ${MODE} ${reproduced ? 'REPRODUCED' : 'CLEAN'} ${MODE === 'W0' ? '(control: debounced edit, expect X=550 in main file)' : 'freed instance still synced (junction to G) in the main file'}`);
   await quit(sid);
 }
@@ -237,7 +238,7 @@ print('X on S0:',c.execute("select json_extract(data,'$.position.x') from elemen
 // ─── main ───────────────────────────────────────────────────────────────────
 let sid = await open(); if (!sid || !await waitSeam(sid)) die('open');
 await sleep(1000);
-if (/^W\d$/.test(MODE)) { await walScenario(sid); process.exit(0); }
+if (/^W\d$/.test(MODE)) { await walScenario(sid); process.exit(process.exitCode ?? 0); }
 const sc = SCENARIOS[MODE]; if (!sc) die('unknown scenario');
 console.log(`  scenario ${MODE} (${sc.fx}): ${sc.note}`);
 const res = await execAsync(sid, `const done=arguments[arguments.length-1];(async()=>{${H}const extra={};${sc.body}
@@ -251,9 +252,20 @@ await sleep(1200);
 const reopened = JSON.parse(await execAsync(sid2, "const d=arguments[arguments.length-1];window.__TAURI_INTERNALS__.invoke('db_load_presentation').then(d).catch(e=>d('ERR:'+e));")).slides;
 await quit(sid2); await sleep(1500);
 const findings = [...sessionInvariants(session), ...compare(session, reopened)];
+// #201: an out-of-range slide index is a bug, not just a value to print.
+if (extra.currentSlideIndex !== undefined && extra.currentSlideIndex >= extra.slides)
+  findings.push(`index-out-of-range index=${extra.currentSlideIndex} slides=${extra.slides}`);
 console.log(`  session:\n${summary(session)}\n  reopen:\n${summary(reopened)}`);
 if (Object.keys(extra).length) console.log('  extra:', JSON.stringify(extra));
-console.log('  db:', dbCheck(DECK).split('\n').join(' ; '));
+const db = dbCheck(DECK);
+if (db.startsWith('dbcheck failed')) die(db);
+console.log('  db:', db.split('\n').join(' ; '));
+// Database invariants count too: a duplicate current row, a duplicate or dangling
+// junction, or a z-order tie is corruption even when the reopened view looks fine.
+for (const line of db.split('\n')) {
+  const sp = line.indexOf(' ');
+  if (sp > 0 && line.slice(sp + 1).trim() !== '[]') findings.push(`db:${line.slice(0, sp)} ${line.slice(sp + 1).trim()}`);
+}
 console.log(`SYNCHUNT ${MODE} ${findings.length ? 'REPRODUCED' : 'CLEAN'} ${findings.join(' ; ')}`);
 if (process.env.E2E_EXPECT === 'clean' && findings.length) process.exit(1);
 process.exit(0);
