@@ -319,6 +319,10 @@ for entry in "${MANIFEST[@]}"; do
     cp "$ROOT/$deck" "$DECK"
   fi
   rm -f "$DECK-wal" "$DECK-shm"
+  # Keep a pristine copy: probes EDIT and save their deck, so every attempt below
+  # must start from the fixture, not from the previous attempt's leftovers.
+  # (Reusing the edited deck let a deterministic failure "pass" on the retry.)
+  cp "$DECK" "$tmpdir/.pristine.eigendeck"
 
   # Expand $DECK / $DECKDIR refs in extra-env.
   extra_expanded="$(eval echo "$extra")"
@@ -332,6 +336,7 @@ for entry in "${MANIFEST[@]}"; do
   # with a GROWING backoff so a retry lands AFTER the bad window, not inside it.
   rc=1; tries=3
   for try in $(seq 1 $tries); do
+    cp "$tmpdir/.pristine.eigendeck" "$DECK"; rm -f "$DECK-wal" "$DECK-shm"
     env $extra_expanded PROBE="$ROOT/e2e/$probe" E2E_DECK="$DECK" bash "$ROOT/e2e/run-probe.sh" 2>&1 | tail -30
     rc=${PIPESTATUS[0]}
     [ "$rc" -eq 0 ] && break
