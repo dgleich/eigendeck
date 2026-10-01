@@ -339,6 +339,113 @@ group collapse.
 
 ---
 
+## Addendum: the session must hold the storage model (planned, #194–#201)
+
+> **Status: planned, not yet implemented (2026-10).** This records how the
+> in-session store will be brought in line with the storage model above. The
+> acceptance tests already exist and currently fail (see *Testing* below).
+
+### The gap
+
+`SPEC.md` already defines sync the way storage holds it: "Sync = one element row,
+multiple slide_elements rows", and "Freeing a synced element = duplicate the
+element row, update the junction." The in-session store does not hold that shape.
+`duplicateSlide` gives each copied element a fresh id with a `syncId` pointing at
+the original, so one synced element on three slides is three objects with three
+ids. After a reopen the same element has the row id on every slide, so the store
+holds two different shapes depending on whether the deck was reloaded since the
+duplicate. The write-through save diffs the previous snapshot against the current
+one and has to translate instance ids into row ids with a guess (`syncId ?? id`).
+Every bug class found by the 2026-09-24 hunt
+(`.claude/notes/sync-link-hunt-2026-09-24.md`) is that guess going wrong, or JS
+state that the row cannot hold: edits written to an id nobody owns after the
+original is deleted, freed or resynced (#194), undo re-inserting rows that are
+already saved (#195), and per-instance state on a one-row element (#196). Smaller
+bugs in the same area: remembered ids dropped on save (#198), the loader counting
+junctions on deleted slides (#199), the immediate flush skipping the checkpoint
+(#200), and undo leaving the slide index out of range (#201).
+
+### Rules
+
+1. **One id per element, and it is the row id.** An element shown on several
+   slides has the same id on each of them, in the session and in storage. This is
+   the shape the store already has after a reopen.
+2. **No JS-only state.** Every field the session holds for an element
+   round-trips through its row: its data, `link_id`, and the remembered
+   `_syncId`/`_linkId`. `_syncId` is the id of the row the element was freed from;
+   `_linkId` is the link it was removed from. They are kept so an accidental free
+   or unlink can be undone later from the badges, after Cmd+Z history has moved on.
+3. **Synced is derived, never set.** An element is synced exactly when its id
+   appears on more than one live slide, the rule the loader already uses. The
+   session computes `syncId` with that rule in one place after every change.
+4. **Write each dirty slide whole.** For a slide that changed, one Rust call
+   upserts its elements' rows (a new version only when the data differs) and sets
+   its junctions to exactly that list, in that order. This keeps the existing
+   write-through decisions (`DESIGN_DECISIONS.md`, `SPEC.md`): only dirty slides
+   are written, never the whole deck, and each edit is a new version row. What
+   goes away is inferring element adds and deletes from the snapshot diff.
+
+### How the existing decisions map
+
+These are already decided in this document, `copy-and-paste.md` and
+`DESIGN_DECISIONS.md`; the rules only change how they are represented.
+
+- **Duplicate / build slide** (join table above): the copies keep the element's
+  id, so the new slide's junctions reference the same rows and they are synced.
+  They share the row's `link_id`, so they stay animation-capable after a free.
+- **Free** (`SPEC.md`): the instance gets a new id, a new row with a copy of the
+  data, and `_syncId` set to the row it left. It stays linked to that row through
+  `linkId`, as in the lifecycle above.
+- **Resync**: the instance takes the id in `_syncId` again, so the slide
+  references that row and shows its current data (resync means "the same element
+  again"; changes made while freed are discarded, per the S2 decision in
+  `e2e/resync-position-probe.mjs`).
+- **Badges** (`DESIGN_DECISIONS.md`, "Sync badge visibility"): the grey S badge is
+  shown only while the `_syncId` row is still on another live slide, and returns
+  if a deletion that removed it is undone. The grey A badge follows the same rule
+  for `_linkId`. Deletes never rewrite `_syncId`, so `pruneOrphanedGroups` goes
+  away.
+- **Paste** (join table above; `copy-and-paste.md` resolves references at paste
+  time, "if it still exists"): a cross-slide paste joins when its source is in a
+  sync group at paste time, and then shows that element's current data;
+  otherwise it links to the source if the source still exists, or is an
+  independent copy. A paste onto a slide that already shows the element is an
+  independent copy, because one row appears at most once per slide.
+- **Link** ("different elements on different slides", above): a link is refused
+  when it would put two members of one link group on the same slide, so promote
+  can never put two copies of one row on a slide.
+- **Edits and moves**: applied to every instance with that id, as sync
+  propagation does today.
+- **Undo / redo**: unchanged (zundo with its debounce). Restoring a snapshot just
+  makes some slides dirty, and writing them upserts rows, so an element that is
+  already saved is updated, not inserted again.
+
+### Open question
+
+**Unlink on a synced element.** `IDENTITY_KEYS` above treats `linkId` as
+per-instance, but a synced element is one row with one `link_id`, so per-instance
+link ids cannot be stored (finding A1: unlinking one instance comes back on
+reopen; A2: unlinking the original unlinks the whole element). Either unlink
+applies to the element everywhere it appears, or Unlink is only offered on an
+element that is not synced. To be decided.
+
+### Testing
+
+The acceptance tests are on branch `test/sync-link-hunt` and currently fail:
+36 unit tests in `src/store/syncHunt.test.ts`, each named with its issue, and 23
+entries in `e2e/run-all.sh` (22 hunt scenarios plus `sync-durability-probe`
+`mainfile` for #200). They must pass, the guard tests and full suites must stay
+green, and the new Rust write commands need their own tests (idempotent, exact
+junctions, no duplicate current rows, no version row when nothing changed). Some
+existing unit tests assert today's id shapes (for example that a duplicate gets
+a fresh id); each of those changes must be called out, not silently edited.
+
+When this lands, *Canonical id and in-session instances*, `IDENTITY_KEYS` and the
+store API notes in this document change to match, and `SQLITE_STORAGE.md` gets the
+new write command.
+
+---
+
 ## Common mistakes
 
 1. **"`linkId` makes position independent."** No. Position is governed by
