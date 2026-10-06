@@ -28,6 +28,8 @@ writeFileSync(PY, [
   ' if r[2] is not None: d["assetId"]=r[2]',
   ' print(json.dumps(d))',
 ].join('\n'));
+const canon = (v) => JSON.stringify(v, (_k, x) => (x && typeof x === 'object' && !Array.isArray(x)
+  ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) : x));
 const fileEl = (id) => {
   const out = execSync(`python3 ${PY} ${JSON.stringify(DECK)} ${JSON.stringify(id)}`).toString().trim();
   if (out === '__MISSING__') return null;
@@ -80,7 +82,9 @@ for (const [id, changes] of Object.entries(updates)) {
   if (!el) { problems.push(`${id}: element missing from saved file`); continue; }
   for (const [k, want] of Object.entries(changes)) {
     const got = el[k];
-    if (JSON.stringify(got) !== JSON.stringify(want)) {
+    // Compare as values: key order is not data, and an unchanged row keeps the key
+    // order it was stored with (db_write_slide writes no version for it).
+    if (canon(got) !== canon(want)) {
       problems.push(`${id}.${k}: FILE has ${JSON.stringify(got)}, expected ${JSON.stringify(want)}`);
     }
   }
