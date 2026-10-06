@@ -7,7 +7,7 @@
 // (pasteDecision + docs/sync-and-link.md). Slide → a new independent slide
 // built from the COPIED slide (store.pasteSlide), not a duplicate of the current.
 
-import { usePresentationStore, getDeckToken } from '../store/presentation';
+import { usePresentationStore, getPasteIdentity } from '../store/presentation';
 import { pasteDecision, detachDelta } from './syncLink';
 import { offsetElement } from './offsetElement';
 import { runCopyHook } from './elementLifecycle';
@@ -60,8 +60,10 @@ export function pasteInternalClip(clip: EigendeckClip): void {
   // Same slide if pasting back onto the slide we copied from (by id, so slide
   // reordering doesn't fool it).
   const sameSlide = targetSlide?.id === clip.fromSlideId;
-  // A clip without a deck token (older clips, tests) is treated as this deck.
-  const sameDeck = !clip.fromDeck || clip.fromDeck === getDeckToken();
+  // fromDeck is the copying window's paste identity, so a clip from another deck, or
+  // from the other copy of a Save As, is never this deck. A clip without one (from
+  // an app version before this field) is treated as this deck.
+  const sameDeck = !clip.fromDeck || clip.fromDeck === getPasteIdentity();
 
   const newIds: string[] = [];
   const toLink: Array<{ pastedId: string; sourceId: string }> = [];

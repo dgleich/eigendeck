@@ -962,6 +962,16 @@ export function getDeckToken(): string | undefined {
   return usePresentationStore.getState().presentation.config.deckToken;
 }
 
+/** Which working deck, in this window, a clip was copied from. Renewed whenever a
+ *  different deck becomes the working one (open, close, Save As), and never saved.
+ *  A Save-As copy keeps the original's element ids and its deckToken, so the token
+ *  cannot tell them apart; this can, so a paste from the other copy never joins or
+ *  links by a shared id (docs/copy-and-paste.md). */
+let pasteIdentity = crypto.randomUUID();
+export function getPasteIdentity(): string {
+  return pasteIdentity;
+}
+
 export function pauseUndo() {
   if (undoTxnDepth === 0) {
     undoTxnSnapshot = { presentation: usePresentationStore.getState().presentation };
@@ -1418,6 +1428,7 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
 
     // Enable write-through for the new project
     sqliteDbPath = dbPath;
+    pasteIdentity = crypto.randomUUID();
     olog(`load complete, kicking off async warmups`);
 
     // Warm the math-SVG cache so previously-rendered expressions don't
@@ -1472,6 +1483,7 @@ export async function closeSqliteProject(): Promise<void> {
   } catch (e) {
     console.error('Failed to close SQLite project:', e);
   }
+  pasteIdentity = crypto.randomUUID();
 }
 
 /** Check if a SQLite DB is currently open */
@@ -1482,6 +1494,7 @@ export function isSqliteOpen(): boolean {
 /** Set the SQLite DB path (used by saveProject when saving for the first time) */
 export function setSqliteDbPath(path: string) {
   sqliteDbPath = path;
+  pasteIdentity = crypto.randomUUID();
   dirtySlideIds.clear();
   dirtySlideList = false;
   dirtyPresentation = false;

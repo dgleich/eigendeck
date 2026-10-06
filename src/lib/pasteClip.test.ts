@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { usePresentationStore } from '../store/presentation';
+import { usePresentationStore, getPasteIdentity } from '../store/presentation';
 import { createDefaultPresentation } from '../types/presentation';
 import type { Presentation, SlideElement } from '../types/presentation';
 import { pasteInternalClip, linkPastedToSource } from './pasteClip';
@@ -109,7 +109,8 @@ describe('pasteInternalClip', () => {
 // The join table (docs/sync-and-link.md), resolved at PASTE time (copy-and-paste.md),
 // under one id per element: a joined paste IS the element.
 describe('pasteInternalClip: join / link / independent at paste time', () => {
-  /** s0 and s1 show X (synced), s2 is empty and current; this deck's token is 'this-deck'. */
+  /** s0 and s1 show X (synced), s2 is empty and current. A clip copied from this
+   *  deck in this session carries getPasteIdentity(). */
   function seedSynced(xOn: number[], html = 'NOW') {
     const x = el('X', { html, linkId: 'L' } as Partial<SlideElement>);
     usePresentationStore.setState({
@@ -128,7 +129,7 @@ describe('pasteInternalClip: join / link / independent at paste time', () => {
 
   it('a joining paste is the same element, showing its CURRENT data (P1)', () => {
     seedSynced([0, 1]);
-    pasteInternalClip(clipX('this-deck'));
+    pasteInternalClip(clipX(getPasteIdentity()));
     const [p] = slide(2).elements;
     expect(p.id).toBe('X');
     expect((p as { html?: string }).html).toBe('NOW');
@@ -141,10 +142,20 @@ describe('pasteInternalClip: join / link / independent at paste time', () => {
     expect(p.id).not.toBe('X');
   });
 
+  it('a paste from a Save-As copy (same deckToken, same ids) never joins', () => {
+    // The clip was copied in the original deck, whose deckToken ('this-deck') the
+    // Save-As copy shares. Only a per-session paste identity tells them apart.
+    seedSynced([0, 1]);
+    pasteInternalClip(clipX('this-deck'));
+    const [p] = slide(2).elements;
+    expect(p.id).not.toBe('X');
+    expect(p.linkId).toBeUndefined();
+  });
+
   it('a paste onto a slide that already shows the element is an independent copy (B1)', () => {
     seedSynced([0, 1]);
     usePresentationStore.setState({ currentSlideIndex: 1 });
-    pasteInternalClip(clipX('this-deck'));
+    pasteInternalClip(clipX(getPasteIdentity()));
     const els = slide(1).elements;
     expect(els).toHaveLength(2);
     const p = els[1];
@@ -154,7 +165,7 @@ describe('pasteInternalClip: join / link / independent at paste time', () => {
 
   it('a paste after the group dissolved links to the source instead of joining (U1/U3)', () => {
     seedSynced([0]);                           // X is on one slide now: not synced
-    pasteInternalClip(clipX('this-deck'));     // the clip was copied while X was synced
+    pasteInternalClip(clipX(getPasteIdentity()));     // the clip was copied while X was synced
     const [p] = slide(2).elements;
     expect(p.id).not.toBe('X');                // not the same element
     expect(slide(0).elements[0].syncId).toBeUndefined();  // X stays unsynced

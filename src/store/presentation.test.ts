@@ -5,6 +5,7 @@ import {
   flushToSqlite,
   presentationRows,
   setSqliteDbPath,
+  getPasteIdentity,
   slideMeta,
   usePresentationStore,
 } from './presentation';
@@ -153,6 +154,21 @@ describe('SQLite flush concurrency (#186)', () => {
     expect(writes[1].position.x).toBe(482);
 
     await closeSqliteProject();
+  });
+});
+
+// Final review, Important #2: a Save-As copy keeps the original's ids AND its
+// deckToken, so the clip's deck identity must change when the working deck does.
+describe('paste identity follows the working deck', () => {
+  it('Save As, open and close each give the deck a new paste identity', async () => {
+    vi.mocked(invoke).mockReset();
+    const first = getPasteIdentity();
+    setSqliteDbPath('/tmp/talk-2026.eigendeck');      // what Save As does after writing the copy
+    const afterSaveAs = getPasteIdentity();
+    expect(afterSaveAs).not.toBe(first);
+    expect(getPasteIdentity()).toBe(afterSaveAs);     // stable while the deck stays open
+    await closeSqliteProject();
+    expect(getPasteIdentity()).not.toBe(afterSaveAs);
   });
 });
 

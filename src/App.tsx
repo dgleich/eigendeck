@@ -51,7 +51,7 @@ import {
   openRecentProject,
   syncRecentMenu,
 } from './store/fileOps';
-import { flushToSqlite, undoWithNav, redoWithNav, getDeckToken } from './store/presentation';
+import { flushToSqlite, undoWithNav, redoWithNav, getDeckToken, getPasteIdentity } from './store/presentation';
 import { withBusy, useBusyStore } from './store/busy';
 import { BusyOverlay } from './components/BusyOverlay';
 import './App.css';
@@ -1347,7 +1347,7 @@ function App() {
       const slide = state.presentation.slides[state.currentSlideIndex];
       if (!slide) return;
       // Which deck this clip came from: a paste only joins or links within one deck.
-      const fromDeck = state.presentation.config.deckToken;
+      const fromDeck = getPasteIdentity();
 
       // Write the PRIVATE Eigendeck flavor (element/slide JSON, base64 in
       // text/html) onto the OS clipboard for every copy, so paste reads an
