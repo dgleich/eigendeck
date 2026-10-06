@@ -3,6 +3,7 @@ import { useContextTarget, setContextTarget } from '../lib/contextTarget';
 import { createPortal } from 'react-dom';
 import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
+import { canResync, canRelink, hasLinkPartner } from '../lib/syncLink';
 import { getPreference } from '../lib/preferences';
 import { snapToGrid, resizeEdgeToGrid } from '../lib/grid';
 import { arrowBBox } from '../lib/arrowGeometry.mjs';
@@ -1339,7 +1340,8 @@ export function DraggableBox({
             { separator: true as const },
             { label: 'Free Position', onClick: () => store.freeElement(elementId) },
           ] : []),
-          ...(linkId ? [
+          // A synced element links only to its own copies; there is nothing to unlink.
+          ...(linkId && !syncId ? [
             { label: 'Unlink Animation', onClick: () => store.unlinkElement(elementId) },
           ] : []),
           { separator: true },
@@ -1593,61 +1595,51 @@ export function ElementLinkBadges({ element, isSelected }: {
   element: { id: string; linkId?: string; syncId?: string; _linkId?: string; _syncId?: string };
   isSelected: boolean;
 }) {
+  const slides = usePresentationStore((s) => s.presentation.slides);
+  const slideIndex = usePresentationStore((s) => s.currentSlideIndex);
   if (!isSelected) return null;
   const elementId = element.id;
   const { linkId, syncId, _linkId, _syncId } = element;
+  // Visibility is computed from the slides (docs/sync-and-link.md, "SQLite is the
+  // source of truth"): deletes never rewrite the ids, so undoing one brings a badge back.
+  // S: green = synced (click to free); grey = freed with the remembered element still
+  // shown elsewhere (click to re-sync), or linked to a partner and never synced (click
+  // to PROMOTE link → sync, destructive). A synced element links only to its own
+  // copies, so A is hidden on it: purple = a live link with a partner (click to
+  // unlink); grey = unlinked while the remembered link lives on (click to re-link).
+  const resync = !syncId && canResync(slides, slideIndex, element);
+  const promote = !syncId && !_syncId && hasLinkPartner(slides, slideIndex, element);
+  const anim = !syncId && !!linkId && hasLinkPartner(slides, slideIndex, element);
+  const relink = !syncId && !linkId && canRelink(slides, slideIndex, element);
   return (
     <div className="el-link-badges" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
-      {/* Sync badge. Green = synced (click to free). Grey = either freed
-          (click to re-sync) OR animation-linked-but-not-synced (click to
-          PROMOTE link → sync, destructive). Hidden if there's no partner. */}
-      {(syncId || _syncId || linkId) && (() => {
-        const slides = usePresentationStore.getState().presentation.slides;
-        const sid = syncId || _syncId;
-        // A sync partner (synced/freed group) OR, for the promote case, an
-        // animation-link partner sharing this linkId.
-        //
-        // Sync case: count the WHOLE group across slides — don't require a
-        // DIFFERENT id. After save→reopen, synced instances correctly share
-        // ONE canonical id (one row, many junctions — the storage model), so
-        // an `el.id !== elementId` partner check finds nothing and wrongly
-        // hides the S badge. A group of >1 instance always has a partner.
-        const hasPartner = sid
-          ? slides.reduce((n, s) => n + s.elements.filter((el) =>
-              el.syncId === sid || (el as any)._syncId === sid).length, 0) > 1
-          : slides.some((s) => s.elements.some((el) =>
-              el.id !== elementId && el.linkId === linkId));
-        if (!hasPartner) return null;
-        const promote = !syncId && !_syncId;   // linked, not yet synced
-        return (
-          <button
-            className={`el-link-badge ${syncId ? 'el-badge-sync' : 'el-badge-off'}`}
-            title={syncId ? 'Synced — click to free position'
-              : promote ? 'Animation-linked — click to promote to a sync (makes the copies identical; destructive)'
-              : 'Position free — click to re-sync'}
-            onClick={() => {
-              const store = usePresentationStore.getState();
-              if (syncId) store.freeElement(elementId);
-              else if (_syncId) store.resyncElement(elementId);
-              else {
-                // Promote link → sync. App decides: a recording conflict
-                // raises the "which to keep?" chooser; otherwise it confirms
-                // and promotes (keeping the only recording, if any).
-                window.dispatchEvent(new CustomEvent('promote-to-sync', { detail: { elementId } }));
-              }
-            }}>
-            S
-          </button>
-        );
-      })()}
-      {/* Animation badge: purple = active, grey = inactive */}
-      {(linkId || _linkId) && (
+      {(syncId || resync || promote) && (
         <button
-          className={`el-link-badge ${linkId ? 'el-badge-anim' : 'el-badge-off'}`}
-          title={linkId ? 'Animated — click to unlink' : 'Not animated — click to re-link'}
+          className={`el-link-badge ${syncId ? 'el-badge-sync' : 'el-badge-off'}`}
+          title={syncId ? 'Synced — click to free position'
+            : promote ? 'Animation-linked — click to promote to a sync (makes the copies identical; destructive)'
+            : 'Position free — click to re-sync'}
           onClick={() => {
             const store = usePresentationStore.getState();
-            if (linkId) store.unlinkElement(elementId);
+            if (syncId) store.freeElement(elementId);
+            else if (resync) store.resyncElement(elementId);
+            else {
+              // Promote link → sync. App decides: a recording conflict
+              // raises the "which to keep?" chooser; otherwise it confirms
+              // and promotes (keeping the only recording, if any).
+              window.dispatchEvent(new CustomEvent('promote-to-sync', { detail: { elementId } }));
+            }
+          }}>
+          S
+        </button>
+      )}
+      {(anim || relink) && (
+        <button
+          className={`el-link-badge ${anim ? 'el-badge-anim' : 'el-badge-off'}`}
+          title={anim ? 'Animated — click to unlink' : 'Not animated — click to re-link'}
+          onClick={() => {
+            const store = usePresentationStore.getState();
+            if (anim) store.unlinkElement(elementId);
             else if (_linkId) store.relinkElement(elementId);
           }}>
           A

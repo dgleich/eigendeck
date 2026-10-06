@@ -9,7 +9,6 @@ import {
 } from '../types/presentation';
 import {
   unlinkDelta, relinkDelta, linkPairDeltas, deriveSyncIds,
-  pruneOrphanedGroups,
 } from '../lib/syncLink';
 import { runFreeHook, runResyncHook, runMergeHook } from '../lib/elementLifecycle';
 import { flushAllOverlays } from '../lib/overlayFlushRegistry';
@@ -308,10 +307,10 @@ export const usePresentationStore = create<PresentationState>()(
       deleteSlide: (index) =>
         set((state) => {
           if (state.presentation.slides.length <= 1) return state;
-          const filtered = state.presentation.slides.filter((_, i) => i !== index);
-          // Strip syncId/linkId left orphaned (sole member) by the removal, so a
-          // duplicate-then-delete leaves the original genuinely un-synced.
-          const slides = pruneOrphanedGroups(filtered);
+          // No pruning: synced is derived (an element left on one slide is simply not
+          // synced), and remembered ids are never rewritten on delete; the badges
+          // are computed from the slides (canResync/canRelink/hasLinkPartner).
+          const slides = state.presentation.slides.filter((_, i) => i !== index);
           const newIndex = Math.min(index, slides.length - 1);
           return {
             presentation: { ...state.presentation, slides },
@@ -644,7 +643,9 @@ export const usePresentationStore = create<PresentationState>()(
       unlinkElement: (elementId) => {
         const el = get().presentation.slides[get().currentSlideIndex]
           ?.elements.find((e) => e.id === elementId);
-        if (!el) return;
+        // Unlink is only for an element that is not synced: a synced element is one
+        // element with one link, so to stop one copy animating, free it first.
+        if (!el || el.syncId) return;
         const delta = unlinkDelta(el);
         if (Object.keys(delta).length) { get().updateElement(elementId, delta); flushSyncLinkNow(); }
       },
@@ -764,8 +765,8 @@ export const usePresentationStore = create<PresentationState>()(
             ...slide,
             elements: slide.elements.filter((el) => el.id !== elementId),
           }));
-          // Prune across ALL slides — a sync/link partner may be on another slide.
-          const slides = pruneOrphanedGroups(removed.presentation!.slides);
+          // No pruning (see deleteSlide): synced is derived and badges are computed.
+          const slides = removed.presentation!.slides;
           return {
             presentation: { ...removed.presentation!, slides },
             isDirty: true,
@@ -779,7 +780,7 @@ export const usePresentationStore = create<PresentationState>()(
             ...slide,
             elements: slide.elements.filter((el) => !elementIds.includes(el.id)),
           }));
-          const slides = pruneOrphanedGroups(removed.presentation!.slides);
+          const slides = removed.presentation!.slides;
           return {
             presentation: { ...removed.presentation!, slides },
             isDirty: true,

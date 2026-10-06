@@ -79,48 +79,31 @@ export function detachDelta(): SyncLinkDelta {
   return { syncId: undefined, _syncId: undefined, linkId: undefined, _linkId: undefined };
 }
 
-/** After elements are removed (a slide or element is deleted), a sync or link
- *  group can be left with a SINGLE member — there's nothing to sync or animate
- *  with anymore. That lone id is an orphan: it still lights the "synced" border
- *  and the inspector's sync UI even though the element is effectively standalone
- *  (e.g. duplicate a slide, then delete the copy — the original kept its syncId).
- *
- *  This strips the orphaned id — sync and link independently — from every lone
- *  group across the deck, leaving genuine multi-member groups untouched. A group
- *  is counted by its identity (`syncId ?? _syncId`, `linkId ?? _linkId`) so a
- *  member that's only *remembering* the group still keeps a partner alive — the
- *  SAME membership the sync badge uses, so border + badge stay consistent.
- *
- *  Pure; returns a NEW slides array only when something changed (so the store's
- *  referential-equality checks don't see spurious updates). */
-export function pruneOrphanedGroups(slides: Slide[]): Slide[] {
-  const syncCount = new Map<string, number>();
-  const linkCount = new Map<string, number>();
-  for (const s of slides) for (const el of s.elements) {
-    const sid = el.syncId ?? el._syncId;
-    if (sid) syncCount.set(sid, (syncCount.get(sid) ?? 0) + 1);
-    const lid = el.linkId ?? el._linkId;
-    if (lid) linkCount.set(lid, (linkCount.get(lid) ?? 0) + 1);
-  }
-  let changed = false;
-  const next = slides.map((s) => {
-    let slideChanged = false;
-    const elements = s.elements.map((el) => {
-      const sid = el.syncId ?? el._syncId;
-      const lid = el.linkId ?? el._linkId;
-      const dropSync = sid != null && syncCount.get(sid) === 1;
-      const dropLink = lid != null && linkCount.get(lid) === 1;
-      if (!dropSync && !dropLink) return el;
-      slideChanged = true;
-      const copy: SlideElement = { ...el };
-      if (dropSync) { delete copy.syncId; delete copy._syncId; }
-      if (dropLink) { delete copy.linkId; delete copy._linkId; }
-      return copy;
-    });
-    if (slideChanged) { changed = true; return { ...s, elements }; }
-    return s;
-  });
-  return changed ? next : slides;
+/** Grey S badge: resync is possible only while the remembered element is shown on
+ *  ANOTHER slide and not already on this one (DESIGN_DECISIONS.md, "Sync badge
+ *  visibility"). Computed from the slides; deletes never rewrite _syncId, so an
+ *  undone deletion brings the badge back. */
+export function canResync(slides: Slide[], slideIndex: number, el: Pick<SlideElement, '_syncId'>): boolean {
+  const row = el._syncId;
+  if (!row) return false;
+  if (slides[slideIndex]?.elements.some((e) => e.id === row)) return false;
+  return slides.some((s, i) => i !== slideIndex && s.elements.some((e) => e.id === row));
+}
+
+/** Grey A badge: relink is possible only while another slide still carries the
+ *  remembered link. */
+export function canRelink(slides: Slide[], slideIndex: number, el: Pick<SlideElement, '_linkId'>): boolean {
+  const l = el._linkId;
+  if (!l) return false;
+  return slides.some((s, i) => i !== slideIndex && s.elements.some((e) => e.linkId === l));
+}
+
+/** A live link has a partner: a DIFFERENT element on another slide with the same
+ *  link (a synced copy of the same element is not a partner). */
+export function hasLinkPartner(slides: Slide[], slideIndex: number, el: Pick<SlideElement, 'id' | 'linkId'>): boolean {
+  const l = el.linkId;
+  if (!l) return false;
+  return slides.some((s, i) => i !== slideIndex && s.elements.some((e) => e.linkId === l && e.id !== el.id));
 }
 
 /** How a pasted copy of element `sourceId` lands on slide `targetSlideIndex`

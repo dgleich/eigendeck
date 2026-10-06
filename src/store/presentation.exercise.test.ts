@@ -327,7 +327,11 @@ describe('presentation store — full lifecycle exercise', () => {
     assertInvariants('after arrow sync');
 
     // --- unlink / relink ---
+    // A synced element has nothing to unlink (it links only to its own copies), so
+    // free the re-synced arrow first and exercise unlink on the freed element.
+    store.freeElement(usePresentationStore.getState().presentation.slides[0].elements[0].id);
     const uid = usePresentationStore.getState().presentation.slides[0].elements[0].id;
+    expect(usePresentationStore.getState().presentation.slides[0].elements[0].syncId).toBeUndefined();
     upd(uid, { linkId: 'LX' });
     store.unlinkElement(uid);
     expect((usePresentationStore.getState().presentation.slides[0].elements[0] as { _linkId?: string })._linkId).toBe('LX');

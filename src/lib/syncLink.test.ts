@@ -1,14 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   IDENTITY_KEYS, freeDelta, resyncDelta, unlinkDelta, relinkDelta,
-  detachDelta, linkPairDeltas, pruneOrphanedGroups, deriveSyncIds, pasteDecision,
+  detachDelta, linkPairDeltas, deriveSyncIds, pasteDecision, canResync, canRelink, hasLinkPartner,
 } from './syncLink';
 import type { Slide } from '../types/presentation';
 
-// Minimal slide/element builder for prune tests.
-const slide = (...els: any[]): Slide => ({ id: 's', elements: els, notes: '' } as any);
-const el = (id: string, extra: any = {}) =>
-  ({ id, type: 'text', preset: 'body', html: '', position: { x: 0, y: 0, width: 1, height: 1 }, ...extra });
 
 describe('syncLink delta helpers', () => {
   it('freeDelta drops syncId and remembers it; no-op when not synced', () => {
@@ -95,56 +91,6 @@ describe('IDENTITY_KEYS', () => {
   });
 });
 
-describe('pruneOrphanedGroups', () => {
-  it('strips a syncId/linkId left with a single member (duplicate→delete)', () => {
-    // One slide whose element kept syncId+linkId after its partner slide was cut.
-    const out = pruneOrphanedGroups([slide(el('a', { syncId: 'g', linkId: 'L' }))]);
-    expect(out[0].elements[0].syncId).toBeUndefined();
-    expect(out[0].elements[0].linkId).toBeUndefined();
-  });
-
-  it('keeps a genuine multi-member group intact', () => {
-    const before = [
-      slide(el('a', { syncId: 'g', linkId: 'L' })),
-      slide(el('b', { syncId: 'g', linkId: 'L' })),
-    ];
-    const out = pruneOrphanedGroups(before);
-    expect(out).toBe(before); // unchanged → same reference
-    expect(out[0].elements[0].syncId).toBe('g');
-  });
-
-  it('counts a REMEMBERED group member (_syncId) as keeping the partner alive', () => {
-    // One active (syncId) + one freed-but-remembering (_syncId) = 2 → not orphaned.
-    const before = [
-      slide(el('a', { syncId: 'g' })),
-      slide(el('b', { _syncId: 'g' })),
-    ];
-    expect(pruneOrphanedGroups(before)).toBe(before);
-  });
-
-  it('drops a lone REMEMBERED-only id too (group truly gone)', () => {
-    const out = pruneOrphanedGroups([slide(el('a', { _syncId: 'g' }))]);
-    expect((out[0].elements[0] as any)._syncId).toBeUndefined();
-  });
-
-  it('prunes sync and link INDEPENDENTLY', () => {
-    // sync group of 2 (kept), link group of 1 (pruned), on the same element.
-    const before = [
-      slide(el('a', { syncId: 'g', linkId: 'L' })),
-      slide(el('b', { syncId: 'g' })),
-    ];
-    const out = pruneOrphanedGroups(before);
-    expect(out[0].elements[0].syncId).toBe('g');     // sync kept
-    expect(out[0].elements[0].linkId).toBeUndefined(); // lone link pruned
-  });
-
-  it('returns the same array reference when nothing is orphaned (no churn)', () => {
-    const before = [slide(el('a'), el('b'))]; // no sync/link at all
-    expect(pruneOrphanedGroups(before)).toBe(before);
-  });
-});
-
-// Rule 3 of the "SQLite is the source of truth" addendum: synced is derived.
 describe('deriveSyncIds', () => {
   const s = (id: string, ids: string[], syncs: (string | undefined)[] = []) =>
     ({ id, layout: 'default', notes: '', elements: ids.map((e, i) => ({
@@ -184,4 +130,30 @@ describe('pasteDecision', () => {
     expect(pasteDecision('X', 2, deck, false, false)).toBe('independent'));
   it('is independent on the same slide', () =>
     expect(pasteDecision('X', 0, deck, true, true)).toBe('independent'));
+});
+
+// Badge visibility is computed from the current slides (DESIGN_DECISIONS.md, "Sync
+// badge visibility"), never by rewriting the remembered ids on delete.
+describe('badge helpers', () => {
+  const e = (id: string, extra: Record<string, string> = {}) => ({ id, type: 'text', ...extra });
+  const sl = (id: string, els: Record<string, string>[]) => ({ id, layout: 'default', notes: '', elements: els }) as unknown as Slide;
+
+  it('canResync: only while the remembered element is on ANOTHER slide and not on this one', () => {
+    const freed = e('F', { _syncId: 'G' });
+    expect(canResync([sl('a', [freed]), sl('b', [e('G')])], 0, freed as never)).toBe(true);
+    expect(canResync([sl('a', [freed]), sl('b', [])], 0, freed as never)).toBe(false);          // every other copy deleted
+    expect(canResync([sl('a', [freed, e('G')]), sl('b', [e('G')])], 0, freed as never)).toBe(false); // already here
+    expect(canResync([sl('a', [e('F')])], 0, e('F') as never)).toBe(false);                     // nothing remembered
+  });
+  it('canRelink: only while another slide still carries the remembered link', () => {
+    const un = e('U', { _linkId: 'L' });
+    expect(canRelink([sl('a', [un]), sl('b', [e('V', { linkId: 'L' })])], 0, un as never)).toBe(true);
+    expect(canRelink([sl('a', [un]), sl('b', [e('V')])], 0, un as never)).toBe(false);
+  });
+  it('hasLinkPartner: a different element on another slide shares the link', () => {
+    const a = e('A', { linkId: 'L' });
+    expect(hasLinkPartner([sl('a', [a]), sl('b', [e('B', { linkId: 'L' })])], 0, a as never)).toBe(true);
+    // the same element on another slide (a synced copy) is not a partner
+    expect(hasLinkPartner([sl('a', [a]), sl('b', [a])], 0, a as never)).toBe(false);
+  });
 });

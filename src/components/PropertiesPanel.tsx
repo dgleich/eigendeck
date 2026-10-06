@@ -235,10 +235,10 @@ export function PropertiesPanel() {
                       Unsync All
                     </button>
                   )}
-                  {slide.elements.some((el) => el.linkId) && (
+                  {slide.elements.some((el) => el.linkId && !el.syncId) && (
                     <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '3px 8px' }}
                       onClick={() => {
-                        for (const el of slide.elements) if (el.linkId) unlinkElement(el.id);
+                        for (const el of slide.elements) if (el.linkId && !el.syncId) unlinkElement(el.id);
                       }}
                       title="Remove animation links from all elements on this slide">
                       Unlink All
@@ -896,7 +896,8 @@ export function PropertiesPanel() {
                 </div>
               </PropSection>
             )}
-            {selectedEl.linkId && (
+            {/* A synced element links only to its own copies: nothing to unlink. */}
+            {selectedEl.linkId && !selectedEl.syncId && (
               <PropSection label="Animated">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ fontSize: 11, color: '#6b7280', flex: 1 }}>Linked across slides for animation</span>

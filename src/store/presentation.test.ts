@@ -10,6 +10,7 @@ import {
 } from './presentation';
 import { createDefaultPresentation } from '../types/presentation';
 import type { Presentation, Slide } from '../types/presentation';
+import { hasLinkPartner } from '../lib/syncLink';
 
 // EXHAUSTIVE persistence coverage. `Record<keyof T, ...>` forces every model field
 // to be classified as HOW it persists — adding a field to Presentation/Slide without
@@ -541,7 +542,10 @@ describe('presentation store', () => {
       expect(after.presentation.slides).toHaveLength(1);
       const lone = after.presentation.slides[0].elements[0];
       expect(lone.syncId).toBeUndefined();
-      expect(lone.linkId).toBeUndefined();   // the duplicate-created link is gone too
+      // Deletes no longer rewrite link ids (pruneOrphanedGroups is gone; the A badge
+      // is computed, docs/sync-and-link.md addendum): the duplicate's linkId stays on
+      // the element, but it has no partner, so no badge shows and undo restores it.
+      expect(hasLinkPartner(after.presentation.slides, 0, lone)).toBe(false);
       expect((lone as any)._syncId).toBeUndefined();
     });
 
@@ -863,6 +867,35 @@ describe('presentation store', () => {
       st = usePresentationStore.getState();
       expect((st.presentation.slides[0].elements[0] as any).html).toBe('Edited');
       expect(st.presentation.slides[0].elements[0].position).toMatchObject({ x: 125, y: 135 });
+    });
+
+    it('deleting the other copies keeps a freed element\'s remembered _syncId (the badge is computed)', () => {
+      // Deletes never rewrite remembered ids; canResync hides the S badge while
+      // nothing is left to rejoin, and an undone deletion brings it back.
+      const store = usePresentationStore.getState();
+      store.duplicateSlide(0);                     // G on slides 0 and 1
+      store.selectSlide(0);
+      const g = usePresentationStore.getState().presentation.slides[0].elements[0].id;
+      store.freeElement(g);                        // slide 0: F (_syncId G); slide 1: G
+      store.selectSlide(1);
+      store.deleteElement(g);                      // the last copy of G is gone
+      const f = usePresentationStore.getState().presentation.slides[0].elements[0] as any;
+      expect(f._syncId).toBe(g);
+    });
+
+    it('unlinkElement does nothing on a synced element (Unlink is only for unsynced ones)', () => {
+      // A synced element is one element with one link; to stop a copy animating,
+      // free it first. (Unlinking one synced copy never survived a reopen: A1.)
+      const store = usePresentationStore.getState();
+      store.duplicateSlide(0);
+      store.selectSlide(0);
+      const el = usePresentationStore.getState().presentation.slides[0].elements[0];
+      expect(el.syncId).toBeTruthy();
+      expect(el.linkId).toBeTruthy();
+      store.unlinkElement(el.id);
+      const after = usePresentationStore.getState().presentation.slides[0].elements[0];
+      expect(after.linkId).toBe(el.linkId);
+      expect((after as any)._linkId).toBeUndefined();
     });
 
     it('linkElements refuses a link that would put two members of one group on a slide (R1)', () => {
