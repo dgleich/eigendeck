@@ -339,11 +339,13 @@ group collapse.
 
 ---
 
-## Addendum: the session must hold the storage model (planned, #194–#201)
+## Addendum: SQLite is the source of truth (planned, #194–#201)
 
-> **Status: planned, not yet implemented (2026-10).** This records how the
-> in-session store will be brought in line with the storage model above. The
-> acceptance tests already exist and currently fail (see *Testing* below).
+> **Status: planned, not yet implemented (2026-10).** SQLite's model, described
+> above, is the truth. The in-memory store is a working copy of it and must use
+> the same shape, so that saving is a plain write of that copy and reopening
+> gives back exactly what was in memory. The acceptance tests already exist and
+> currently fail (see *Testing* below).
 
 ### The gap
 
