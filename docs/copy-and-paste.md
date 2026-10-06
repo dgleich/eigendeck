@@ -126,13 +126,16 @@ animations) or in a **sync group** (shared content). The private JSON captures
 the full element(s) *plus* their link/sync metadata, so paste can re-resolve:
 
 - **Same slide** → independent copy (fresh ids, offset position).
-- **Cross-slide, same deck** → optionally re-link to the source if it still
-  exists (join its sync group / share its `linkId`) — the existing
-  `pasteElementDelta` + `linkElements` logic, now fed from the clipboard JSON
-  instead of `clipboardRef`.
+- **Cross-slide, same deck** → resolved at paste time by `pasteDecision`
+  (`syncLink.ts`) from the deck as it is then. If the source is synced, the paste
+  joins it: it is the same element (same id) and shows its current data. If the
+  source exists but is not synced, the paste is a new element linked to it
+  (`linkElements`, shared `linkId`). If the source is gone, or the target slide
+  already shows the element, it is an independent copy.
 - **Cross-deck** → independent copy; asset-bearing elements carry their asset so
   the bytes travel (embedded, or via the existing asset-copy path) and refs
-  don't dangle.
+  don't dangle. The clip records the copying deck's `deckToken` as `fromDeck`, so
+  paste can tell another deck from this one even when an id happens to match.
 
 "Enough JSON does wonders": the payload is self-describing; the *paste context*
 (same slide / cross-slide / cross-deck) decides how references resolve.

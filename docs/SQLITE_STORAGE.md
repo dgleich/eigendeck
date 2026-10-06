@@ -102,8 +102,8 @@ CREATE TABLE elements (
 `data` holds ALL element properties EXCEPT the promoted columns
 (`link_id`, `asset_id`). The promoted fields are stripped from
 `data` before INSERT and reassembled into the JSON on
-`db_load_presentation` — see `db_add_element` / `db_update_element` in
-`storage.rs`. One UPDATE handles any change (text edit, move,
+`db_load_presentation` — see `db_write_slide` (and `db_add_element` /
+`db_update_element`, used by import and the CLI) in `storage.rs`. One UPDATE handles any change (text edit, move,
 resize, style change).
 
 ### `slide_elements` — Junction table (temporal)
@@ -305,13 +305,16 @@ instantly.
 
 ### In the Zustand store
 
-The frontend uses a different shape: each slide has its own copy
-of the element in its `elements[]` array, with a `syncId` field
-linking them. The `updateElement` action propagates changes to all
-elements with the same `syncId`.
+The store holds the same shape (docs/sync-and-link.md, "SQLite is the source of
+truth"). Each slide's `elements[]` lists the element, and a synced element has
+the **same id** on every slide that shows it. `syncId` is derived, never set:
+`deriveSyncIds` gives `syncId = id` to every id on more than one slide after
+every change. `updateElement` writes the updated element to every slide that
+shows that id.
 
-On export to JSON (`db_load_presentation`), if an element appears on
-multiple slides, the JSON gets `syncId` set to the element ID.
+On load (`db_load_presentation`), if an element is referenced by junctions on
+more than one **live** slide, the JSON gets `syncId` set to the element ID.
+Junctions left on a deleted slide are ignored (#199).
 
 On import from JSON (`db_import_json`), elements with the same
 `syncId` map to one row in `elements` plus multiple `slide_elements`
@@ -319,9 +322,10 @@ rows.
 
 ### Freeing a synced element
 
-1. The Zustand store sets `syncId: undefined, _syncId: oldSyncId`
-2. The Rust backend creates a new element row (copy of `data`) and
-   updates the `slide_elements` row for that slide to point at the new copy
+1. The Zustand store gives this slide's copy a new id, with
+   `_syncId` set to the row it left and the shared `linkId` kept
+2. Writing that slide (`db_write_slide`) inserts the new element row (a copy of
+   the data) and points the slide's junction at it
 3. The old element continues serving other slides
 
 ## How Animation Works
@@ -345,8 +349,8 @@ The app does NOT query SQLite on every render. Instead:
 │   Zustand Store  │ ───> │   SQLite (.eigendeck)│
 │  (in-memory)     │      │   (on disk / memory) │
 │                  │ <─── │                      │
-│ Source of truth  │      │ Persistence layer    │
-│ during editing   │      │                      │
+│ Working copy of  │      │ Source of truth      │
+│ the deck         │      │                      │
 └──────────────────┘      └──────────────────────┘
 ```
 
@@ -362,11 +366,28 @@ The app does NOT query SQLite on every render. Instead:
 
 ### During editing
 1. User edits → Zustand store updates
-2. Subscriber diffs `prevPresentation` vs current; tracks dirty:
-   - `dirtyElements`, `dirtySlides`, `dirtyZOrder`,
-     `addedSlides`/`deletedSlides`,
-     `addedElements`/`deletedElements`
-3. `scheduleFlush()` debounces (1s) then writes only dirty items
+2. Subscriber compares `prevPresentation` with the current deck and marks
+   what is dirty: each slide whose elements changed (`dirtySlideIds`), the
+   slide list when slides were added, removed, reordered or their metadata
+   changed (`dirtySlideList`), and the title/config (`dirtyPresentation`)
+3. `scheduleFlush()` debounces (1s) then writes only the dirty items, whole:
+   `db_update_presentation`, then `db_set_slides` for the slide list, then
+   `db_write_slide` for each dirty slide. Sync and link actions flush
+   immediately and checkpoint (`flushSyncLinkNow`, #200)
+
+The two slide commands are idempotent, so writing a slide twice, or again after
+undo restores it, never inserts a row that is already saved:
+
+- **`db_write_slide(slideId, elements)`** upserts each element's row and writes a
+  new version only when the row differs (or when more than one
+  current row exists, which it heals). It then sets the slide's junctions to
+  exactly that list in that order: junctions not in the list are closed,
+  missing ones are inserted with `z_order` = the index. An element listed twice
+  on one slide is rejected. The remembered `_syncId`/`_linkId` are saved in
+  `data`; `syncId` is not stored.
+- **`db_set_slides(slides)`** upserts the slide rows (order, layout, notes,
+  group, config) and closes every live slide not in the list, with its
+  junctions.
 
 There is **one** import command, `db_import_json`, and one file-write
 command, `db_save_to_file`. `db_import_json` resets only the
@@ -408,14 +429,8 @@ leaves no stale pages.
 
 | Change | Detection | Flush action |
 |--------|-----------|--------------|
-| Element data (text, position, style) | `pel !== cel` reference compare | `db_update_element` |
-| Slide metadata (notes, groupId, config overrides) | Field compare | `db_update_slide` |
-| Slide order (reordering) | ID-array compare | `db_update_slide` (position) |
-| Element z-order | ID-array compare | `db_update_z_order` per element |
-| Element added | New ID not in prev | `db_add_element` + `slide_elements` insert |
-| Element deleted | Old ID not in current | `slide_elements` UPDATE valid_to |
-| Slide added | New ID not in prev | `db_add_slide` |
-| Slide deleted | Old ID not in current | `db_delete_slide` |
+| Element data, added, deleted or reordered on a slide | element object, count or order differs | `db_write_slide` for that slide |
+| Slide added, deleted or reordered; slide metadata (notes, groupId, config overrides) | ID-array or metadata compare | `db_set_slides` |
 | Presentation config | Title/config compare | `db_update_presentation` |
 
 ### Critical invariant

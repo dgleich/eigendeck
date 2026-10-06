@@ -105,8 +105,10 @@ Defined in `src/lib/themes.ts` — single file, easy to modify. Maps preset name
 - After save, incremental write-through to disk
 
 ### Write-through subscriber
-- Zustand subscriber detects changes by diffing `prevPresentation` vs current
-- Only dirty elements/slides get written (never full resync)
+- Zustand subscriber detects changes by comparing `prevPresentation` with the current deck
+- It marks dirty slides (an element changed, was added or removed, or the order changed) and the slide list (slides added, removed, reordered, or their metadata changed)
+- Only dirty items are written (never full resync), and each is written whole: `db_write_slide` upserts a slide's element rows and sets its junctions to exactly that list; `db_set_slides` writes the slide list. Both are idempotent, so undo restoring a slide updates rows instead of inserting them again (docs/sync-and-link.md, "SQLite is the source of truth", 2026-10-06)
+- Each edit is still one new version row; a row whose data is unchanged gets no new version
 - `sqliteDbPath` is set to `null` during project load to prevent the subscriber from treating loaded data as "new"
 - `prevPresentation` is reset after load so the subscriber doesn't diff against stale state
 

@@ -733,9 +733,9 @@ Replaced JSON directory format with a single `.eigendeck` SQLite file.
 
 **Incremental write-through (not full reimport):**
 - Zustand is the interaction layer (fast, synchronous for UI)
-- Subscriber diffs previous and current state after each change
-- Only dirty items are written to SQLite (elements, slides, metadata)
-- Structural changes (add/delete slide/element) tracked explicitly
+- Subscriber compares previous and current state after each change and marks dirty slides and the slide list
+- Only dirty items are written to SQLite, each whole: `db_write_slide` (a slide's element rows and exactly its junctions) and `db_set_slides` (the slide list). Both are idempotent (docs/sync-and-link.md, "SQLite is the source of truth")
+- The store holds the same shape as SQLite: one id per element, the same on every slide that shows it; `syncId` is derived from "id on more than one slide"
 - `db_import_json` is NEVER used in normal editing flow — only to materialize a whole deck (New Project, import, first save / Save As); it resets structure but preserves assets
 - This preserves temporal history (each edit = new version row)
 
