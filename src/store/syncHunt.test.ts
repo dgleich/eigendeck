@@ -72,6 +72,8 @@ class FakeBackend {
   seq = 0;
   unknown = new Set<string>();
   log: string[] = [];
+  /** Test hook: db_write_slide fails for this slide id (a backend error). */
+  failWriteSlide: string | null = null;
 
   ts(): string { return `T${String(++this.seq).padStart(9, '0')}`; }
   get c(): DatabaseSync { if (!this.db) throw new Error('No database open'); return this.db; }
@@ -136,6 +138,9 @@ class FakeBackend {
     for (const r of c.prepare(seSql).all(...args) as Row[]) {
       const sid = r.slide_id as string, eid = r.element_id as string;
       if (!seBySlide.has(sid)) seBySlide.set(sid, []);
+      // Mirrors storage.rs: one element at most once per slide (a #195 duplicate
+      // junction is skipped, keeping the lowest z).
+      if (seBySlide.get(sid)!.includes(eid)) continue;
       seBySlide.get(sid)!.push(eid);
       elCount.set(eid, (elCount.get(eid) ?? 0) + 1);
     }
@@ -188,6 +193,7 @@ class FakeBackend {
       case 'db_write_slide': {
         const ts = this.ts();
         const els = a.elements as { id: string; type: string; data: string; linkId: string | null; assetId: string | null }[];
+        if (a.slideId === this.failWriteSlide) throw new Error(`write failed for ${a.slideId}`);
         const seen = new Set<string>();
         for (const e of els) {
           if (seen.has(e.id)) throw new Error(`element ${e.id} appears twice on slide ${a.slideId}`);
@@ -196,8 +202,10 @@ class FakeBackend {
         this.tx(() => {
           for (const e of els) {
             const live = (c().prepare('SELECT COUNT(*) AS n FROM elements WHERE id = ? AND valid_to IS NULL').get(e.id) as Row).n as number;
-            const same = live === 1 && !!(c().prepare('SELECT (type = ? AND data = ? AND link_id IS ? AND asset_id IS ?) AS s FROM elements WHERE id = ? AND valid_to IS NULL')
-              .get(e.type, e.data, e.linkId ?? null, e.assetId ?? null, e.id) as Row).s;
+            // Mirrors storage.rs: data compares as JSON values, so key order is no change.
+            const cur = live === 1 ? c().prepare('SELECT type, data, link_id, asset_id FROM elements WHERE id = ? AND valid_to IS NULL').get(e.id) as Row : null;
+            const same = !!cur && cur.type === e.type && cur.link_id === (e.linkId ?? null) && cur.asset_id === (e.assetId ?? null)
+              && canon(JSON.parse(cur.data as string)) === canon(JSON.parse(e.data));
             if (!same) {
               c().prepare('UPDATE elements SET valid_to = ? WHERE id = ? AND valid_to IS NULL').run(ts, e.id);
               c().prepare('INSERT INTO elements (id, type, data, link_id, asset_id, valid_from, valid_to) VALUES (?, ?, ?, ?, ?, ?, NULL)')
@@ -848,6 +856,39 @@ describe('sync/link persistence: reopen reproduces the session', () => {
       expect(r.findings, `${r.findings.join('\n')}\n--- trace ---\n${r.trace.join('\n')}`).toEqual([]);
     });
   }
+});
+
+// Final review, Critical #1: a deck damaged by #195 has two live junctions for one
+// element on one slide. It must open with the element once, and edits must save.
+describe('damaged decks and failed writes', () => {
+  it('[#195] a duplicate junction loads once and an edit on that slide saves', async () => {
+    const path = await openFixture('solo', false);
+    backend.files.get(path)!.prepare("INSERT INTO slide_elements (slide_id, element_id, z_order, valid_from, valid_to) VALUES ('S0', 'A', 5, 'T999999998', NULL)").run();
+    await reopen(path, false);
+    expect(st().presentation.slides[0].elements.map((e) => e.id)).toEqual(['A', 'B']);
+    expect(st().presentation.slides[0].elements[0].syncId).toBeUndefined();
+    st().updateElement('A', { html: 'edited' } as Partial<SlideElement>);
+    await flushToSqlite();
+    await reopen(path, false);
+    expect((st().presentation.slides[0].elements[0] as { html?: string }).html).toBe('edited');
+    expect(backend.dbViolations().filter((v) => v.startsWith('db:dupjunction'))).toEqual([]);
+  });
+
+  it('a slide whose write fails does not stop the other dirty slides from saving', async () => {
+    const path = await openFixture('solo', false);
+    backend.failWriteSlide = 'S0';
+    try {
+      st().updateElement('A', { html: 'lost-for-now' } as Partial<SlideElement>);
+      st().updateElement('C', { html: 'saved' } as Partial<SlideElement>);
+      await flushToSqlite();
+    } finally { backend.failWriteSlide = null; }
+    const R = backend.build();
+    expect((R.slides[1].elements[0] as { html?: string }).html).toBe('saved');
+    // the failed slide stays pending and saves on the next flush
+    await flushToSqlite();
+    await reopen(path, false);
+    expect((st().presentation.slides[0].elements[0] as { html?: string }).html).toBe('lost-for-now');
+  });
 });
 
 describe('hunt debug', () => {

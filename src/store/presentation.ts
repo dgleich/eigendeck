@@ -1188,11 +1188,20 @@ async function flushSqliteBatch(): Promise<boolean> {
       });
     }
 
+    // Each slide is written on its own, so one failing slide does not keep the
+    // others from saving; it stays pending and is retried on the next flush.
+    let ok = true;
     for (const slide of state.presentation.slides) {
       if (!batchSlides.has(slide.id)) continue;
-      await invoke('db_write_slide', { slideId: slide.id, elements: slide.elements.map(elementWrite) });
+      try {
+        await invoke('db_write_slide', { slideId: slide.id, elements: slide.elements.map(elementWrite) });
+      } catch (e) {
+        ok = false;
+        dirtySlideIds.add(slide.id);
+        console.error(`SQLite write of slide ${slide.id} failed:`, e);
+      }
     }
-    return true;
+    return ok;
   } catch (e) {
     // A failed batch stays pending and is retried on the next flush.
     dirtyPresentation ||= batchPresentation;

@@ -1067,10 +1067,14 @@ fn build_presentation_value(conn: &Connection) -> SqlResult<Value> {
         })?;
         for row in rows {
             let (slide_id, element_id, z_order) = row?;
-            se_by_slide
-                .entry(slide_id)
-                .or_default()
-                .push((element_id.clone(), z_order));
+            let on_slide = se_by_slide.entry(slide_id).or_default();
+            // One element appears at most once per slide. A duplicate junction (left
+            // by #195) is skipped, keeping the lowest z, so the next write of the
+            // slide heals it instead of being rejected.
+            if on_slide.iter().any(|(id, _)| id == &element_id) {
+                continue;
+            }
+            on_slide.push((element_id.clone(), z_order));
             *el_count.entry(element_id).or_insert(0) += 1;
         }
 
@@ -1544,10 +1548,14 @@ pub fn db_get_state_at(at: String) -> Result<String, String> {
         })?;
         for row in rows {
             let (slide_id, element_id, z_order) = row?;
-            se_by_slide
-                .entry(slide_id)
-                .or_default()
-                .push((element_id.clone(), z_order));
+            let on_slide = se_by_slide.entry(slide_id).or_default();
+            // One element appears at most once per slide. A duplicate junction (left
+            // by #195) is skipped, keeping the lowest z, so the next write of the
+            // slide heals it instead of being rejected.
+            if on_slide.iter().any(|(id, _)| id == &element_id) {
+                continue;
+            }
+            on_slide.push((element_id.clone(), z_order));
             *el_count.entry(element_id).or_insert(0) += 1;
         }
 
@@ -2068,13 +2076,28 @@ pub fn db_write_slide(slide_id: String, elements: Vec<ElementWrite>) -> Result<(
                 params![&el.id],
                 |r| r.get(0),
             )?;
+            // Compare data as JSON values, not strings: a loaded element comes back
+            // with its keys in a different order, which is not a change.
             let same = live == 1
-                && tx.query_row(
-                    "SELECT type = ?2 AND data = ?3 AND link_id IS ?4 AND asset_id IS ?5 \
-                     FROM elements WHERE id = ?1 AND valid_to IS NULL",
-                    params![&el.id, &el.el_type, &el.data, &el.link_id, &el.asset_id],
-                    |r| r.get::<_, bool>(0),
+                && {
+                    let (el_type, data, link_id, asset_id) = tx.query_row(
+                    "SELECT type, data, link_id, asset_id FROM elements WHERE id = ?1 AND valid_to IS NULL",
+                    params![&el.id],
+                    |r| {
+                        Ok((
+                            r.get::<_, String>(0)?,
+                            r.get::<_, String>(1)?,
+                            r.get::<_, Option<String>>(2)?,
+                            r.get::<_, Option<String>>(3)?,
+                        ))
+                    },
                 )?;
+                    el_type == el.el_type
+                        && link_id == el.link_id
+                        && asset_id == el.asset_id
+                        && serde_json::from_str::<Value>(&data).ok()
+                            == serde_json::from_str::<Value>(&el.data).ok()
+                };
             if !same {
                 tx.execute(
                     "UPDATE elements SET valid_to = ?1 WHERE id = ?2 AND valid_to IS NULL",
@@ -5804,6 +5827,53 @@ mod tests {
                 |r| r.get(0),
             )?;
             assert_eq!((rows, js), (1, 1));
+            Ok(())
+        })
+        .unwrap();
+        teardown_global_db();
+    }
+
+    #[test]
+    fn test_load_shows_an_element_once_per_slide_despite_a_duplicate_junction() {
+        // A #195-damaged deck: two live junctions for A on one slide. The loader must
+        // list A once (the lowest z), and A is on one slide, so it is not synced.
+        // Listing it twice made every later db_write_slide of that slide fail.
+        setup_global_db();
+        db_set_slides(vec![sw("s1", 0)]).unwrap();
+        with_db(|c| {
+            c.execute("INSERT INTO elements (id,type,data,link_id,asset_id,valid_from,valid_to) VALUES ('A','text','{}',NULL,NULL,'t0',NULL)", [])?;
+            for (z, t) in [(0, "t0"), (1, "t1")] {
+                c.execute("INSERT INTO slide_elements (slide_id,element_id,z_order,valid_from,valid_to) VALUES ('s1','A',?1,?2,NULL)", params![z, t])?;
+            }
+            Ok(())
+        })
+        .unwrap();
+        for json in [
+            db_load_presentation().unwrap(),
+            db_get_state_at("t9".into()).unwrap(),
+        ] {
+            let deck: Value = serde_json::from_str(&json).unwrap();
+            let els = deck["slides"][0]["elements"].as_array().unwrap().clone();
+            assert_eq!(els.len(), 1);
+            assert!(els[0].get("syncId").is_none());
+        }
+        teardown_global_db();
+    }
+
+    #[test]
+    fn test_write_slide_adds_no_version_when_only_the_key_order_differs() {
+        // Loaded elements come back with sorted keys, so the first write after a
+        // reopen sends the same data in a different key order: that is no change.
+        setup_global_db();
+        db_set_slides(vec![sw("s1", 0)]).unwrap();
+        db_write_slide("s1".into(), vec![ew("A", r#"{"b":1,"a":2}"#, None)]).unwrap();
+        db_write_slide("s1".into(), vec![ew("A", r#"{"a":2,"b":1}"#, None)]).unwrap();
+        with_db(|c| {
+            let versions: i64 =
+                c.query_row("SELECT COUNT(*) FROM elements WHERE id='A'", [], |r| {
+                    r.get(0)
+                })?;
+            assert_eq!(versions, 1);
             Ok(())
         })
         .unwrap();
