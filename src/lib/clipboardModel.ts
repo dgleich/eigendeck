@@ -27,6 +27,9 @@ export interface EigendeckClip {
   slide?: unknown;
   fromSlideId?: string;
   fromSlideIndex?: number;
+  /** The source deck's token (config.deckToken): a paste only joins or links
+   *  within the same deck; from another deck it is an independent copy. */
+  fromDeck?: string;
 }
 
 // UTF-8-safe base64 (non-ASCII in text content would corrupt a plain btoa/atob).

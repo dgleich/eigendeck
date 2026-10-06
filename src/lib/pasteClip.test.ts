@@ -106,6 +106,63 @@ describe('pasteInternalClip', () => {
   });
 });
 
+// The join table (docs/sync-and-link.md), resolved at PASTE time (copy-and-paste.md),
+// under one id per element: a joined paste IS the element.
+describe('pasteInternalClip: join / link / independent at paste time', () => {
+  /** s0 and s1 show X (synced), s2 is empty and current; this deck's token is 'this-deck'. */
+  function seedSynced(xOn: number[], html = 'NOW') {
+    const x = el('X', { html, linkId: 'L' } as Partial<SlideElement>);
+    usePresentationStore.setState({
+      presentation: {
+        ...createDefaultPresentation(),
+        config: { ...createDefaultPresentation().config, deckToken: 'this-deck' },
+        slides: [0, 1, 2].map((i) => ({ id: `s${i}`, notes: '', elements: xOn.includes(i) ? [x] : [] })),
+      },
+      currentSlideIndex: 2, selectedObject: { type: 'slide' },
+    });
+  }
+  const clipX = (fromDeck: string | undefined, html = 'OLD') => ({
+    v: 1, kind: 'elements' as const, fromSlideId: 's0', fromSlideIndex: 0, fromDeck,
+    elements: [el('X', { html, syncId: 'X', linkId: 'L' } as Partial<SlideElement>)],
+  });
+
+  it('a joining paste is the same element, showing its CURRENT data (P1)', () => {
+    seedSynced([0, 1]);
+    pasteInternalClip(clipX('this-deck'));
+    const [p] = slide(2).elements;
+    expect(p.id).toBe('X');
+    expect((p as { html?: string }).html).toBe('NOW');
+  });
+
+  it('a paste from another deck never joins, even when the id exists here', () => {
+    seedSynced([0, 1]);
+    pasteInternalClip(clipX('other-deck'));
+    const [p] = slide(2).elements;
+    expect(p.id).not.toBe('X');
+  });
+
+  it('a paste onto a slide that already shows the element is an independent copy (B1)', () => {
+    seedSynced([0, 1]);
+    usePresentationStore.setState({ currentSlideIndex: 1 });
+    pasteInternalClip(clipX('this-deck'));
+    const els = slide(1).elements;
+    expect(els).toHaveLength(2);
+    const p = els[1];
+    expect(p.id).not.toBe('X');
+    expect(p.linkId).toBeUndefined();          // independent: no link, no sync
+  });
+
+  it('a paste after the group dissolved links to the source instead of joining (U1/U3)', () => {
+    seedSynced([0]);                           // X is on one slide now: not synced
+    pasteInternalClip(clipX('this-deck'));     // the clip was copied while X was synced
+    const [p] = slide(2).elements;
+    expect(p.id).not.toBe('X');                // not the same element
+    expect(slide(0).elements[0].syncId).toBeUndefined();  // X stays unsynced
+    expect(p.linkId).toBeTruthy();
+    expect(p.linkId).toBe(slide(0).elements[0].linkId);   // animation-linked to the source
+  });
+});
+
 describe('linkPastedToSource', () => {
   beforeEach(() => seed(1));
 

@@ -347,8 +347,13 @@ describe('presentation store — full lifecycle exercise', () => {
           { id: 'B', type: 'text', preset: 'body', html: 'b', position: pos(), linkId: 'g1' } as unknown as SlideElement,
           { id: 'C', type: 'image', assetId: 'x', position: pos() } as unknown as SlideElement,
         ] } as Slide,
+        // A link group has at most one element per slide (R1), so g2's two members
+        // sit on two slides. (This fixture used to put D and E on the same slide,
+        // a group the link rule now refuses to merge.)
         { id: 'l2', notes: '', elements: [
           { id: 'D', type: 'text', preset: 'body', html: 'd', position: pos(), linkId: 'g2' } as unknown as SlideElement,
+        ] } as Slide,
+        { id: 'l3', notes: '', elements: [
           { id: 'E', type: 'text', preset: 'body', html: 'e', position: pos(), linkId: 'g2' } as unknown as SlideElement,
         ] } as Slide,
       ] },
@@ -368,7 +373,7 @@ describe('presentation store — full lifecycle exercise', () => {
     const linkOf = (sid: string, eid: string) =>
       g.slides.find((s) => s.id === sid)!.elements.find((e) => e.id === eid)!.linkId;
     expect(linkOf('l0', 'A')).toBe(linkOf('l2', 'D'));
-    expect(linkOf('l1', 'B')).toBe(linkOf('l2', 'E'));
+    expect(linkOf('l1', 'B')).toBe(linkOf('l3', 'E'));
     store.linkElements('A', 5, 'ghost');      // out-of-range target → no-op
     assertInvariants('after linkElements');
 

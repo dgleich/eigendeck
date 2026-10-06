@@ -865,6 +865,31 @@ describe('presentation store', () => {
       expect(st.presentation.slides[0].elements[0].position).toMatchObject({ x: 125, y: 135 });
     });
 
+    it('linkElements refuses a link that would put two members of one group on a slide (R1)', () => {
+      // A link group pairs different elements on DIFFERENT slides ("different
+      // elements on different slides", docs/sync-and-link.md): N joining Q's group K
+      // would put N next to P (already in K) on slide 0.
+      usePresentationStore.setState({
+        presentation: {
+          ...createDefaultPresentation(),
+          slides: [
+            { id: 's0', elements: [
+              { id: 'P', type: 'text', preset: 'body', html: 'P', linkId: 'K', position: { x: 0, y: 0, width: 10, height: 10 } } as any,
+              { id: 'N', type: 'text', preset: 'body', html: 'N', position: { x: 0, y: 0, width: 10, height: 10 } } as any,
+            ] } as any,
+            { id: 's1', elements: [
+              { id: 'Q', type: 'text', preset: 'body', html: 'Q', linkId: 'K', position: { x: 0, y: 0, width: 10, height: 10 } } as any,
+            ] } as any,
+          ],
+        },
+        currentSlideIndex: 0,
+      });
+      usePresentationStore.getState().linkElements('N', 1, 'Q');
+      const s0 = usePresentationStore.getState().presentation.slides[0];
+      expect(s0.elements.find((e) => e.id === 'N')!.linkId).toBeUndefined();
+      expect(s0.elements.find((e) => e.id === 'P')!.linkId).toBe('K');
+    });
+
     it('promoteToSync upgrades an animation link to ONE synced entry (master wins)', () => {
       const store = usePresentationStore.getState();
       usePresentationStore.setState({

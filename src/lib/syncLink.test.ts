@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   IDENTITY_KEYS, freeDelta, resyncDelta, unlinkDelta, relinkDelta,
-  detachDelta, linkPairDeltas, pasteElementDelta, pruneOrphanedGroups, deriveSyncIds,
+  detachDelta, linkPairDeltas, pruneOrphanedGroups, deriveSyncIds, pasteDecision,
 } from './syncLink';
 import type { Slide } from '../types/presentation';
 
@@ -87,27 +87,6 @@ describe('linkPairDeltas — animation link only, non-destructive', () => {
   });
 });
 
-describe('pasteElementDelta (copy/paste join rules)', () => {
-  it('same slide → independent copy (fully detached, no link)', () => {
-    const r = pasteElementDelta({ syncId: 'g' }, true);
-    expect(r.link).toBe(false);
-    expect(r.delta).toEqual(detachDelta());   // even a synced source detaches on same-slide paste
-  });
-
-  it('different slide + synced source → JOIN the sync group (keep syncId, drop _ids)', () => {
-    const r = pasteElementDelta({ syncId: 'g' }, false);
-    expect(r.link).toBe(false);
-    expect(r.delta).toEqual({ _syncId: undefined, _linkId: undefined });
-    expect('syncId' in r.delta).toBe(false);   // syncId left intact on the copy → joins the group
-  });
-
-  it('different slide + un-synced source → detach now, LINK to source', () => {
-    const r = pasteElementDelta({ syncId: undefined }, false);
-    expect(r.link).toBe(true);
-    expect(r.delta).toEqual(detachDelta());
-  });
-});
-
 describe('IDENTITY_KEYS', () => {
   // Copies of one element are one row, so link and remembered ids are data shared
   // by every copy; only the id and the derived syncId are identity.
@@ -185,4 +164,24 @@ describe('deriveSyncIds', () => {
     expect(out[1]).toBe(slides[1]);
     expect(deriveSyncIds(out)).toBe(out);
   });
+});
+
+// How a pasted copy lands: the join table (docs/sync-and-link.md), resolved at
+// PASTE time, "if it still exists" (copy-and-paste.md).
+describe('pasteDecision', () => {
+  const sl = (id: string, ids: string[]) =>
+    ({ id, layout: 'default', notes: '', elements: ids.map((e) => ({ id: e, type: 'text' })) }) as unknown as Slide;
+  const deck = [sl('a', ['X']), sl('b', ['X', 'Y']), sl('c', [])];
+  it('joins when the source is synced now and absent from the target', () =>
+    expect(pasteDecision('X', 2, deck, true, false)).toBe('join'));
+  it('links when the source exists but is not synced', () =>
+    expect(pasteDecision('Y', 2, deck, true, false)).toBe('link'));
+  it('is independent when the target slide already shows the element', () =>
+    expect(pasteDecision('X', 1, deck, true, false)).toBe('independent'));
+  it('is independent when the source is gone', () =>
+    expect(pasteDecision('Z', 2, deck, true, false)).toBe('independent'));
+  it('is independent from another deck even if the id exists here', () =>
+    expect(pasteDecision('X', 2, deck, false, false)).toBe('independent'));
+  it('is independent on the same slide', () =>
+    expect(pasteDecision('X', 0, deck, true, true)).toBe('independent'));
 });

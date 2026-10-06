@@ -123,21 +123,24 @@ export function pruneOrphanedGroups(slides: Slide[]): Slide[] {
   return changed ? next : slides;
 }
 
-/** Decide how a pasted copy of `el` joins (or doesn't join) a group, by where
- *  it lands:
- *   - SAME slide  → independent copy (detached); you can't animate within a slide.
- *   - DIFFERENT slide, source is SYNCED → JOIN the sync group: keep its
- *     syncId/linkId, drop only the remembered (_*) ids.
- *   - DIFFERENT slide, source NOT synced → detached now, then LINK to the source
- *     (the caller does the actual cross-element link); `link` flags that.
- *  Returns the sync/link delta to merge onto the new element + whether to link. */
-export function pasteElementDelta(
-  el: Pick<SlideElement, 'syncId'>, sameSlide: boolean,
-): { delta: SyncLinkDelta; link: boolean } {
-  if (!sameSlide && el.syncId) {
-    return { delta: { _syncId: undefined, _linkId: undefined }, link: false };
-  }
-  return { delta: detachDelta(), link: !sameSlide };
+/** How a pasted copy of element `sourceId` lands on slide `targetSlideIndex`
+ *  (docs/sync-and-link.md join table; copy-and-paste.md resolves references at
+ *  PASTE time, "if it still exists"):
+ *   - same slide, or from another deck → an independent copy;
+ *   - the target slide already shows the element → an independent copy (one
+ *     element appears at most once per slide);
+ *   - the source is synced now (on more than one slide) → JOIN: the same element;
+ *   - the source exists but is not synced → LINK to it (animation);
+ *   - the source is gone → an independent copy. */
+export function pasteDecision(
+  sourceId: string, targetSlideIndex: number, slides: Slide[], sameDeck: boolean, sameSlide: boolean,
+): 'join' | 'link' | 'independent' {
+  if (sameSlide || !sameDeck) return 'independent';
+  if (slides[targetSlideIndex]?.elements.some((e) => e.id === sourceId)) return 'independent';
+  const onSlides = slides.filter((s) => s.elements.some((e) => e.id === sourceId)).length;
+  if (onSlides > 1) return 'join';
+  if (onSlides === 1) return 'link';
+  return 'independent';
 }
 
 /** Shared linkId + the symmetric per-side delta for an ANIMATION link between a

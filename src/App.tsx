@@ -1346,6 +1346,8 @@ function App() {
       const sel = state.selectedObject;
       const slide = state.presentation.slides[state.currentSlideIndex];
       if (!slide) return;
+      // Which deck this clip came from: a paste only joins or links within one deck.
+      const fromDeck = state.presentation.config.deckToken;
 
       // Write the PRIVATE Eigendeck flavor (element/slide JSON, base64 in
       // text/html) onto the OS clipboard for every copy, so paste reads an
@@ -1360,7 +1362,7 @@ function App() {
       if (sel?.type === 'element') {
         const el = slide.elements.find((x) => x.id === sel.id);
         if (el) {
-          clip = { kind: 'elements', elements: [el], fromSlideId: slide.id, fromSlideIndex: state.currentSlideIndex };
+          clip = { kind: 'elements', elements: [el], fromSlideId: slide.id, fromSlideIndex: state.currentSlideIndex, fromDeck };
           if (el.type === 'text') {
             const r = textElementClipboardHtml(el, slide, state.presentation.config, state.presentation.theme);
             visibleHtml = r.styledHtml; plain = r.plain;
@@ -1375,9 +1377,9 @@ function App() {
         }
       } else if (sel?.type === 'multi') {
         const els = slide.elements.filter((x) => sel.ids.includes(x.id));
-        if (els.length) clip = { kind: 'elements', elements: els, fromSlideId: slide.id, fromSlideIndex: state.currentSlideIndex };
+        if (els.length) clip = { kind: 'elements', elements: els, fromSlideId: slide.id, fromSlideIndex: state.currentSlideIndex, fromDeck };
       } else if (!sel || sel.type === 'slide') {
-        clip = { kind: 'slide', slide, fromSlideId: slide.id, fromSlideIndex: state.currentSlideIndex };
+        clip = { kind: 'slide', slide, fromSlideId: slide.id, fromSlideIndex: state.currentSlideIndex, fromDeck };
       }
       if (!clip) { void clearInternalClip(); return; }
 

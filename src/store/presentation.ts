@@ -679,6 +679,14 @@ export const usePresentationStore = create<PresentationState>()(
         // animates between them. "L" must NOT sync/merge — that's destructive
         // and only the duplicate junction model produces a clean single entry.
         const { delta, mergeIds } = linkPairDeltas(source, target);
+        // A link group pairs different elements on DIFFERENT slides: refuse a link
+        // that would leave two members of the merged group on one slide (R1).
+        const groupIds = new Set([...mergeIds, source.linkId, target.linkId].filter(Boolean) as string[]);
+        const crowded = st.presentation.slides.some((s, idx) => new Set(s.elements
+          .filter((el) => (idx === csi && el.id === sourceId) || (idx === targetSlideIndex && el.id === targetId)
+            || (el.linkId != null && groupIds.has(el.linkId)))
+          .map((el) => el.id)).size > 1);
+        if (crowded) return;
         // Re-point the two endpoints AND every member of any group being merged
         // in, so sequential links from one anchor build a single group rather
         // than stranding the anchor's earlier partner (#S9).

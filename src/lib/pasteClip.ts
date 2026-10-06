@@ -4,11 +4,11 @@
 // (clipboardData on Linux/Windows, the native pasteboard on macOS).
 //
 // Elements → objects on the current slide, re-resolving cross-slide link/sync
-// (pasteElementDelta + docs/sync-and-link.md). Slide → a new independent slide
+// (pasteDecision + docs/sync-and-link.md). Slide → a new independent slide
 // built from the COPIED slide (store.pasteSlide), not a duplicate of the current.
 
-import { usePresentationStore } from '../store/presentation';
-import { pasteElementDelta } from './syncLink';
+import { usePresentationStore, getDeckToken } from '../store/presentation';
+import { pasteDecision, detachDelta } from './syncLink';
 import { offsetElement } from './offsetElement';
 import { runCopyHook } from './elementLifecycle';
 import { normalizeUntrustedElement } from './normalizePresentation';
@@ -60,25 +60,22 @@ export function pasteInternalClip(clip: EigendeckClip): void {
   // Same slide if pasting back onto the slide we copied from (by id, so slide
   // reordering doesn't fool it).
   const sameSlide = targetSlide?.id === clip.fromSlideId;
+  // A clip without a deck token (older clips, tests) is treated as this deck.
+  const sameDeck = !clip.fromDeck || clip.fromDeck === getDeckToken();
 
   const newIds: string[] = [];
   const toLink: Array<{ pastedId: string; sourceId: string }> = [];
   for (const el of els) {
     // Same slide → independent copy; cross-slide → join the source's sync group
     // (if synced) else link to the source (animation).
-    const { delta } = pasteElementDelta(el, sameSlide);
-    let { link } = pasteElementDelta(el, sameSlide);
-    // Joining a sync group means showing the SAME element (one id per element), so
-    // a join reuses the source's id with its current data. If that element is no
-    // longer in the deck, or this slide already shows it, link instead.
-    const joins = !sameSlide && !!el.syncId;
-    const current = joins && !targetSlide?.elements.some((e) => e.id === el.id)
-      ? state.presentation.slides.flatMap((s) => s.elements).find((e) => e.id === el.id)
-      : undefined;
-    if (joins && !current) link = true;
-    const newEl = current
-      ? ({ ...current } as SlideElement)
-      : ({ ...JSON.parse(JSON.stringify(el)), id: crypto.randomUUID(), ...delta } as SlideElement);
+    // Decided at PASTE time from the deck as it is now (copy-and-paste.md): a join
+    // IS the element (same id, its current data); a link is a new element animated
+    // from the source; otherwise an independent copy.
+    const decision = pasteDecision(el.id, state.currentSlideIndex, state.presentation.slides, sameDeck, sameSlide);
+    const link = decision === 'link';
+    const newEl = decision === 'join'
+      ? ({ ...state.presentation.slides.flatMap((s) => s.elements).find((e) => e.id === el.id)! } as SlideElement)
+      : ({ ...JSON.parse(JSON.stringify(el)), id: crypto.randomUUID(), ...detachDelta() } as SlideElement);
     if (sameSlide) offsetElement(newEl, 40, 40);
     state.addElement(newEl);
     newIds.push(newEl.id);
