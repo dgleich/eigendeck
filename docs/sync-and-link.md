@@ -375,6 +375,8 @@ junctions on deleted slides (#199), the immediate flush skipping the checkpoint
    `_syncId`/`_linkId`. `_syncId` is the id of the row the element was freed from;
    `_linkId` is the link it was removed from. They are kept so an accidental free
    or unlink can be undone later from the badges, after Cmd+Z history has moved on.
+   All of these belong to the element, so every slide that shows it has the same
+   values; copies of one element never differ.
 3. **Synced is derived, never set.** An element is synced exactly when its id
    appears on more than one live slide, the rule the loader already uses. The
    session computes `syncId` with that rule in one place after every change.
@@ -392,7 +394,10 @@ These are already decided in this document, `copy-and-paste.md` and
 
 - **Duplicate / build slide** (join table above): the copies keep the element's
   id, so the new slide's junctions reference the same rows and they are synced.
-  They share the row's `link_id`, so they stay animation-capable after a free.
+  They need no link to each other: the presenter (`planPresentTransition`) already
+  treats the same id on consecutive slides as static. Duplicate still gives the
+  row a `link_id`, which is dormant while the element is synced and is what a
+  later free reuses to animate.
 - **Free** (`SPEC.md`): the instance gets a new id, a new row with a copy of the
   data, and `_syncId` set to the row it left. It stays linked to that row through
   `linkId`, as in the lifecycle above.
@@ -420,14 +425,51 @@ These are already decided in this document, `copy-and-paste.md` and
   makes some slides dirty, and writing them upserts rows, so an element that is
   already saved is updated, not inserted again.
 
-### Open question
+### Links stay on the element (decided 2026-10-06)
 
-**Unlink on a synced element.** `IDENTITY_KEYS` above treats `linkId` as
-per-instance, but a synced element is one row with one `link_id`, so per-instance
-link ids cannot be stored (finding A1: unlinking one instance comes back on
-reopen; A2: unlinking the original unlinks the whole element). Either unlink
-applies to the element everywhere it appears, or Unlink is only offered on an
-element that is not synced. To be decided.
+The original junction-model design (commit `35475c0`, 2026-04-14) put `link_id`
+on the element row and defined an animation link as "two DIFFERENT elements with
+the same `link_id`." That stays, so there is no schema change and no migration.
+A link pairs different elements; the copies of one synced element are the same
+element and are never linked to each other. `linkElements` already refuses to
+link a synced element ("sync and link are mutually exclusive"), and **Unlink is
+likewise only offered on an element that is not synced**: to stop a freed copy
+animating, unlink that copy.
+
+What this gives up: per-copy link control on a synced element. If a title
+synced on slides 1 and 3 animates into a freed copy on slide 2, the link belongs
+to the title, so both steps (1→2 and 2→3) animate or neither does. Unlinking a
+single copy of a synced element was offered before, but never survived a reopen
+(finding A1), so nothing that worked is lost. Moving links to the
+`slide_elements` junction would allow per-copy links; it was considered and
+deferred because it needs a schema migration.
+
+### Code changes
+
+1. **Duplicate keeps ids.** `duplicateSlide` and `addBuildSlide` keep each
+   element's id instead of minting `crypto.randomUUID()`. A paste that joins
+   (`pasteClip.ts`) reuses the source's id, and resync takes the `_syncId` row's
+   id. Fixes #194.
+2. **Replace the save.** The store subscriber's element diff, the add/delete/dirty
+   /z-order queues and `flushSqliteBatch` are replaced by: for each slide that
+   changed, one new Rust command `db_write_slide(slide, elements)` that upserts
+   those elements' rows and sets that slide's junctions to exactly that list in
+   that order; plus one command for the slide list's order and deletions. Fixes
+   #195.
+3. **Derive `syncId`** in one function after every change, instead of setting it
+   in duplicate, paste, free and resync.
+4. **Save the remembered ids**: the new write stores `_syncId`/`_linkId` in the
+   row's data. Fixes #198.
+5. **`IDENTITY_KEYS`** loses `linkId`, `_linkId` and `_syncId`, so edits
+   propagate them to every copy and copies cannot diverge.
+6. **UI**: Unlink hidden on synced elements; S/A badge visibility computed from
+   the current slides; `pruneOrphanedGroups` removed.
+7. **One-liners**: the loader ignores junctions on deleted slides (#199), the
+   immediate sync/link flush also checkpoints (#200), and undo clamps the slide
+   index (#201).
+
+Unchanged: the file format and schema, the store's action API, undo, and the
+presenter.
 
 ### Testing
 
