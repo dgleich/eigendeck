@@ -1051,8 +1051,12 @@ fn build_presentation_value(conn: &Connection) -> SqlResult<Value> {
         let mut el_count: std::collections::HashMap<String, i32> =
             std::collections::HashMap::new();
 
+        // Only junctions on LIVE slides: a stray junction left on a deleted slide
+        // must not count toward "on more than one slide" (synced) — #199.
         let mut stmt = conn.prepare(
-            "SELECT slide_id, element_id, z_order FROM slide_elements WHERE valid_to IS NULL ORDER BY slide_id, z_order",
+            "SELECT se.slide_id, se.element_id, se.z_order FROM slide_elements se \
+             JOIN slides s ON s.id = se.slide_id AND s.valid_to IS NULL \
+             WHERE se.valid_to IS NULL ORDER BY se.slide_id, se.z_order",
         )?;
         let rows = stmt.query_map([], |row| {
             Ok((
@@ -2010,6 +2014,181 @@ pub fn db_update_z_order(
             "INSERT INTO slide_elements (slide_id, element_id, z_order, valid_from, valid_to) VALUES (?1, ?2, ?3, ?4, NULL)",
             params![&slide_id, &element_id, new_z_order, &ts],
         )?;
+        tx.commit()?;
+        Ok(())
+    })
+}
+
+/// One element's row as the in-place save writes it (`db_write_slide`).
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ElementWrite {
+    pub id: String,
+    #[serde(rename = "type")]
+    pub el_type: String,
+    pub data: String,
+    pub link_id: Option<String>,
+    pub asset_id: Option<String>,
+}
+
+/// One slide's row as the in-place save writes it (`db_set_slides`).
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SlideWrite {
+    pub id: String,
+    pub position: i32,
+    pub notes: String,
+    pub group_id: Option<String>,
+    /// JSON string of per-slide overrides, or "" for none (stored as NULL).
+    pub config: String,
+}
+
+/// Write one slide's elements whole (docs/sync-and-link.md, "SQLite is the source
+/// of truth"): upsert each element's row by id, writing a new version only when it
+/// differs (or when duplicate current rows exist, which this heals), then make the
+/// slide's live junctions exactly `elements`, in that order. Idempotent. An element
+/// that leaves the slide keeps its row, like any deleted element.
+#[tauri::command]
+pub fn db_write_slide(slide_id: String, elements: Vec<ElementWrite>) -> Result<(), String> {
+    let mut seen = std::collections::HashSet::new();
+    for el in &elements {
+        if !seen.insert(el.id.as_str()) {
+            return Err(format!(
+                "element {} appears twice on slide {}",
+                el.id, slide_id
+            ));
+        }
+    }
+    let ts = timestamp();
+    with_db(|conn| {
+        let tx = conn.unchecked_transaction()?;
+        for el in &elements {
+            let live: i64 = tx.query_row(
+                "SELECT COUNT(*) FROM elements WHERE id = ?1 AND valid_to IS NULL",
+                params![&el.id],
+                |r| r.get(0),
+            )?;
+            let same = live == 1
+                && tx.query_row(
+                    "SELECT type = ?2 AND data = ?3 AND link_id IS ?4 AND asset_id IS ?5 \
+                     FROM elements WHERE id = ?1 AND valid_to IS NULL",
+                    params![&el.id, &el.el_type, &el.data, &el.link_id, &el.asset_id],
+                    |r| r.get::<_, bool>(0),
+                )?;
+            if !same {
+                tx.execute(
+                    "UPDATE elements SET valid_to = ?1 WHERE id = ?2 AND valid_to IS NULL",
+                    params![&ts, &el.id],
+                )?;
+                tx.execute(
+                    "INSERT INTO elements (id, type, data, link_id, asset_id, valid_from, valid_to) \
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
+                    params![&el.id, &el.el_type, &el.data, &el.link_id, &el.asset_id, &ts],
+                )?;
+            }
+        }
+        // Live junctions on this slide: element id -> every live z (more than one
+        // entry means a duplicate junction, which is closed and rewritten once).
+        let mut current: std::collections::HashMap<String, Vec<i32>> =
+            std::collections::HashMap::new();
+        {
+            let mut stmt = tx.prepare(
+                "SELECT element_id, z_order FROM slide_elements WHERE slide_id = ?1 AND valid_to IS NULL",
+            )?;
+            let rows = stmt.query_map(params![&slide_id], |r| {
+                Ok((r.get::<_, String>(0)?, r.get::<_, i32>(1)?))
+            })?;
+            for row in rows {
+                let (id, z) = row?;
+                current.entry(id).or_default().push(z);
+            }
+        }
+        let desired: std::collections::HashMap<&str, i32> = elements
+            .iter()
+            .enumerate()
+            .map(|(z, e)| (e.id.as_str(), z as i32))
+            .collect();
+        for (id, zs) in &current {
+            let keep = desired
+                .get(id.as_str())
+                .is_some_and(|z| zs.as_slice() == [*z]);
+            if !keep {
+                tx.execute(
+                    "UPDATE slide_elements SET valid_to = ?1 \
+                     WHERE slide_id = ?2 AND element_id = ?3 AND valid_to IS NULL",
+                    params![&ts, &slide_id, id],
+                )?;
+            }
+        }
+        for (z, el) in elements.iter().enumerate() {
+            let kept = current
+                .get(&el.id)
+                .is_some_and(|zs| zs.as_slice() == [z as i32]);
+            if !kept {
+                tx.execute(
+                    "INSERT INTO slide_elements (slide_id, element_id, z_order, valid_from, valid_to) \
+                     VALUES (?1, ?2, ?3, ?4, NULL)",
+                    params![&slide_id, &el.id, z as i32, &ts],
+                )?;
+            }
+        }
+        tx.commit()?;
+        Ok(())
+    })
+}
+
+/// Write the slide list whole: upsert each slide's row (a new version only when it
+/// differs) and close every live slide not in `slides`, with its junctions.
+#[tauri::command]
+pub fn db_set_slides(slides: Vec<SlideWrite>) -> Result<(), String> {
+    let ts = timestamp();
+    with_db(|conn| {
+        let tx = conn.unchecked_transaction()?;
+        let keep: std::collections::HashSet<&str> = slides.iter().map(|s| s.id.as_str()).collect();
+        let live: Vec<String> = tx
+            .prepare("SELECT id FROM slides WHERE valid_to IS NULL")?
+            .query_map([], |r| r.get(0))?
+            .collect::<Result<_, _>>()?;
+        for id in live.iter().filter(|id| !keep.contains(id.as_str())) {
+            tx.execute(
+                "UPDATE slides SET valid_to = ?1 WHERE id = ?2 AND valid_to IS NULL",
+                params![&ts, id],
+            )?;
+            tx.execute(
+                "UPDATE slide_elements SET valid_to = ?1 WHERE slide_id = ?2 AND valid_to IS NULL",
+                params![&ts, id],
+            )?;
+        }
+        for s in &slides {
+            let config: Option<&str> = if s.config.is_empty() {
+                None
+            } else {
+                Some(s.config.as_str())
+            };
+            let n: i64 = tx.query_row(
+                "SELECT COUNT(*) FROM slides WHERE id = ?1 AND valid_to IS NULL",
+                params![&s.id],
+                |r| r.get(0),
+            )?;
+            let same = n == 1
+                && tx.query_row(
+                    "SELECT position = ?2 AND notes IS ?3 AND group_id IS ?4 AND config IS ?5 \
+                     FROM slides WHERE id = ?1 AND valid_to IS NULL",
+                    params![&s.id, s.position, &s.notes, &s.group_id, &config],
+                    |r| r.get::<_, bool>(0),
+                )?;
+            if !same {
+                tx.execute(
+                    "UPDATE slides SET valid_to = ?1 WHERE id = ?2 AND valid_to IS NULL",
+                    params![&ts, &s.id],
+                )?;
+                tx.execute(
+                    "INSERT INTO slides (id, position, notes, group_id, config, valid_from, valid_to) \
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
+                    params![&s.id, s.position, &s.notes, &s.group_id, &config, &ts],
+                )?;
+            }
+        }
         tx.commit()?;
         Ok(())
     })
@@ -5528,6 +5707,156 @@ mod tests {
         assert_eq!(second["removedVersions"], 0);
         assert_eq!(second["removedCacheRows"], 0);
 
+        teardown_global_db();
+    }
+    // ── whole-slide writes (docs/sync-and-link.md addendum, #195/#199) ──────────
+
+    fn sw(id: &str, pos: i32) -> SlideWrite {
+        SlideWrite {
+            id: id.into(),
+            position: pos,
+            notes: String::new(),
+            group_id: None,
+            config: String::new(),
+        }
+    }
+    fn ew(id: &str, data: &str, link: Option<&str>) -> ElementWrite {
+        ElementWrite {
+            id: id.into(),
+            el_type: "text".into(),
+            data: data.into(),
+            link_id: link.map(Into::into),
+            asset_id: None,
+        }
+    }
+
+    #[test]
+    fn test_write_slide_upserts_rows_and_sets_junctions_exactly() {
+        setup_global_db();
+        db_set_slides(vec![sw("s1", 0)]).unwrap();
+        let a = ew("A", r#"{"html":"a"}"#, None);
+        let b = ew("B", r#"{"html":"b"}"#, Some("L"));
+        db_write_slide("s1".into(), vec![a.clone(), b.clone()]).unwrap();
+        db_write_slide("s1".into(), vec![a.clone(), b.clone()]).unwrap(); // idempotent
+        with_db(|c| {
+            let rows: i64 = c.query_row("SELECT COUNT(*) FROM elements", [], |r| r.get(0))?;
+            assert_eq!(rows, 2, "a second identical write must not add versions");
+            let js: Vec<(String, i32)> = c
+                .prepare("SELECT element_id, z_order FROM slide_elements WHERE slide_id='s1' AND valid_to IS NULL ORDER BY z_order")?
+                .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?
+                .collect::<Result<_, _>>()?;
+            assert_eq!(js, vec![("A".to_string(), 0), ("B".to_string(), 1)]);
+            Ok(())
+        })
+        .unwrap();
+        // drop A, change B's data: B moves to z=0, A's row is left alone
+        db_write_slide("s1".into(), vec![ew("B", r#"{"html":"B2"}"#, Some("L"))]).unwrap();
+        with_db(|c| {
+            let live: Vec<(String, i32)> = c
+                .prepare("SELECT element_id, z_order FROM slide_elements WHERE slide_id='s1' AND valid_to IS NULL")?
+                .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?
+                .collect::<Result<_, _>>()?;
+            assert_eq!(live, vec![("B".to_string(), 0)]);
+            let data: String = c.query_row("SELECT data FROM elements WHERE id='B' AND valid_to IS NULL", [], |r| r.get(0))?;
+            assert_eq!(data, r#"{"html":"B2"}"#);
+            let a_live: i64 = c.query_row("SELECT COUNT(*) FROM elements WHERE id='A' AND valid_to IS NULL", [], |r| r.get(0))?;
+            assert_eq!(a_live, 1, "an unreferenced row is left alone, like any deleted element");
+            Ok(())
+        })
+        .unwrap();
+        teardown_global_db();
+    }
+
+    #[test]
+    fn test_write_slide_rejects_an_element_twice_on_one_slide() {
+        setup_global_db();
+        db_set_slides(vec![sw("s1", 0)]).unwrap();
+        let err = db_write_slide("s1".into(), vec![ew("A", "{}", None), ew("A", "{}", None)])
+            .unwrap_err();
+        assert!(err.contains("appears twice"), "{err}");
+        teardown_global_db();
+    }
+
+    #[test]
+    fn test_write_slide_heals_duplicate_rows_and_junctions() {
+        setup_global_db();
+        db_set_slides(vec![sw("s1", 0)]).unwrap();
+        with_db(|c| {
+            // Two current versions with distinct timestamps: the shape #195 left in
+            // real decks (an undo re-inserting an already-saved row).
+            for t in ["t0", "t1"] {
+                c.execute("INSERT INTO elements (id,type,data,link_id,asset_id,valid_from,valid_to) VALUES ('A','text','{}',NULL,NULL,?1,NULL)", [t])?;
+                c.execute("INSERT INTO slide_elements (slide_id,element_id,z_order,valid_from,valid_to) VALUES ('s1','A',0,?1,NULL)", [t])?;
+            }
+            Ok(())
+        })
+        .unwrap();
+        db_write_slide("s1".into(), vec![ew("A", "{}", None)]).unwrap();
+        with_db(|c| {
+            let rows: i64 = c.query_row(
+                "SELECT COUNT(*) FROM elements WHERE id='A' AND valid_to IS NULL",
+                [],
+                |r| r.get(0),
+            )?;
+            let js: i64 = c.query_row(
+                "SELECT COUNT(*) FROM slide_elements WHERE element_id='A' AND valid_to IS NULL",
+                [],
+                |r| r.get(0),
+            )?;
+            assert_eq!((rows, js), (1, 1));
+            Ok(())
+        })
+        .unwrap();
+        teardown_global_db();
+    }
+
+    #[test]
+    fn test_set_slides_upserts_and_closes_missing_slides_with_their_junctions() {
+        setup_global_db();
+        db_set_slides(vec![sw("s1", 0), sw("s2", 1)]).unwrap();
+        db_write_slide("s2".into(), vec![ew("A", "{}", None)]).unwrap();
+        db_set_slides(vec![sw("s1", 0), sw("s2", 1)]).unwrap(); // unchanged: no new versions
+        db_set_slides(vec![sw("s1", 0)]).unwrap(); // s2 deleted
+        with_db(|c| {
+            let versions: i64 =
+                c.query_row("SELECT COUNT(*) FROM slides WHERE id='s1'", [], |r| {
+                    r.get(0)
+                })?;
+            assert_eq!(versions, 1);
+            let live_s2: i64 = c.query_row(
+                "SELECT COUNT(*) FROM slides WHERE id='s2' AND valid_to IS NULL",
+                [],
+                |r| r.get(0),
+            )?;
+            let live_j: i64 = c.query_row(
+                "SELECT COUNT(*) FROM slide_elements WHERE slide_id='s2' AND valid_to IS NULL",
+                [],
+                |r| r.get(0),
+            )?;
+            assert_eq!((live_s2, live_j), (0, 0));
+            Ok(())
+        })
+        .unwrap();
+        teardown_global_db();
+    }
+
+    #[test]
+    fn test_loader_ignores_junctions_on_deleted_slides() {
+        setup_global_db();
+        db_set_slides(vec![sw("s1", 0), sw("s2", 1)]).unwrap();
+        db_write_slide("s1".into(), vec![ew("A", "{}", None)]).unwrap();
+        // a stray live junction on a CLOSED slide (the #199 shape)
+        with_db(|c| {
+            c.execute("UPDATE slides SET valid_to='t9' WHERE id='s2'", [])?;
+            c.execute("INSERT INTO slide_elements (slide_id,element_id,z_order,valid_from,valid_to) VALUES ('s2','A',0,'t9',NULL)", [])?;
+            Ok(())
+        })
+        .unwrap();
+        let v: Value = serde_json::from_str(&db_load_presentation().unwrap()).unwrap();
+        assert!(
+            v["slides"][0]["elements"][0].get("syncId").is_none(),
+            "A is on one live slide only"
+        );
         teardown_global_db();
     }
 }

@@ -1098,6 +1098,8 @@ pub fn run() {
             storage::db_move_slide,
             storage::db_update_slide,
             storage::db_update_z_order,
+            storage::db_write_slide,
+            storage::db_set_slides,
             storage::db_free_element,
             storage::db_store_asset,
             storage::db_store_asset_raw,

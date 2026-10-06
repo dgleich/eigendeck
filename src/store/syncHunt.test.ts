@@ -128,7 +128,12 @@ class FakeBackend {
       elements.set(r.id as string, { data: parsed, link: r.link_id as string | null, asset: r.asset_id as string | null });
     }
     const seBySlide = new Map<string, string[]>(); const elCount = new Map<string, number>();
-    for (const r of c.prepare(`SELECT slide_id, element_id, z_order FROM slide_elements WHERE ${alive} ORDER BY slide_id, z_order`).all(...args) as Row[]) {
+    // Mirrors storage.rs: the live loader only counts junctions on LIVE slides (#199);
+    // the as-of (db_get_state_at) path is unchanged.
+    const seSql = at
+      ? `SELECT slide_id, element_id, z_order FROM slide_elements WHERE ${alive} ORDER BY slide_id, z_order`
+      : 'SELECT se.slide_id, se.element_id, se.z_order FROM slide_elements se JOIN slides s ON s.id = se.slide_id AND s.valid_to IS NULL WHERE se.valid_to IS NULL ORDER BY se.slide_id, se.z_order';
+    for (const r of c.prepare(seSql).all(...args) as Row[]) {
       const sid = r.slide_id as string, eid = r.element_id as string;
       if (!seBySlide.has(sid)) seBySlide.set(sid, []);
       seBySlide.get(sid)!.push(eid);
@@ -176,6 +181,71 @@ class FakeBackend {
         const ts = this.ts();
         c().prepare("INSERT INTO slides (id, position, notes, group_id, config, valid_from, valid_to) VALUES (?, ?, '', ?, NULL, ?, NULL)")
           .run(a.id as string, a.position as number, (a.groupId as string) ?? null, ts);
+        return undefined;
+      }
+      // Mirrors storage.rs db_write_slide: upsert rows (new version only when they
+      // differ or have duplicates), then set this slide's junctions to exactly the list.
+      case 'db_write_slide': {
+        const ts = this.ts();
+        const els = a.elements as { id: string; type: string; data: string; linkId: string | null; assetId: string | null }[];
+        const seen = new Set<string>();
+        for (const e of els) {
+          if (seen.has(e.id)) throw new Error(`element ${e.id} appears twice on slide ${a.slideId}`);
+          seen.add(e.id);
+        }
+        this.tx(() => {
+          for (const e of els) {
+            const live = (c().prepare('SELECT COUNT(*) AS n FROM elements WHERE id = ? AND valid_to IS NULL').get(e.id) as Row).n as number;
+            const same = live === 1 && !!(c().prepare('SELECT (type = ? AND data = ? AND link_id IS ? AND asset_id IS ?) AS s FROM elements WHERE id = ? AND valid_to IS NULL')
+              .get(e.type, e.data, e.linkId ?? null, e.assetId ?? null, e.id) as Row).s;
+            if (!same) {
+              c().prepare('UPDATE elements SET valid_to = ? WHERE id = ? AND valid_to IS NULL').run(ts, e.id);
+              c().prepare('INSERT INTO elements (id, type, data, link_id, asset_id, valid_from, valid_to) VALUES (?, ?, ?, ?, ?, ?, NULL)')
+                .run(e.id, e.type, e.data, e.linkId ?? null, e.assetId ?? null, ts);
+            }
+          }
+          const current = new Map<string, number[]>();
+          for (const r of c().prepare('SELECT element_id, z_order FROM slide_elements WHERE slide_id = ? AND valid_to IS NULL').all(a.slideId as string) as Row[]) {
+            const k = r.element_id as string;
+            current.set(k, [...(current.get(k) ?? []), r.z_order as number]);
+          }
+          const desired = new Map(els.map((e, z) => [e.id, z]));
+          for (const [id, zs] of current) {
+            const z = desired.get(id);
+            if (!(z !== undefined && zs.length === 1 && zs[0] === z))
+              c().prepare('UPDATE slide_elements SET valid_to = ? WHERE slide_id = ? AND element_id = ? AND valid_to IS NULL').run(ts, a.slideId as string, id);
+          }
+          els.forEach((e, z) => {
+            const zs = current.get(e.id);
+            if (!(zs && zs.length === 1 && zs[0] === z))
+              c().prepare('INSERT INTO slide_elements (slide_id, element_id, z_order, valid_from, valid_to) VALUES (?, ?, ?, ?, NULL)').run(a.slideId as string, e.id, z, ts);
+          });
+        });
+        return undefined;
+      }
+      // Mirrors storage.rs db_set_slides: upsert slide rows, close slides not listed (with junctions).
+      case 'db_set_slides': {
+        const ts = this.ts();
+        const ss = a.slides as { id: string; position: number; notes: string; groupId: string | null; config: string }[];
+        this.tx(() => {
+          const keep = new Set(ss.map((s) => s.id));
+          for (const r of c().prepare('SELECT id FROM slides WHERE valid_to IS NULL').all() as Row[]) {
+            if (keep.has(r.id as string)) continue;
+            c().prepare('UPDATE slides SET valid_to = ? WHERE id = ? AND valid_to IS NULL').run(ts, r.id as string);
+            c().prepare('UPDATE slide_elements SET valid_to = ? WHERE slide_id = ? AND valid_to IS NULL').run(ts, r.id as string);
+          }
+          for (const s of ss) {
+            const cfg = s.config === '' ? null : s.config;
+            const n = (c().prepare('SELECT COUNT(*) AS n FROM slides WHERE id = ? AND valid_to IS NULL').get(s.id) as Row).n as number;
+            const same = n === 1 && !!(c().prepare('SELECT (position = ? AND notes IS ? AND group_id IS ? AND config IS ?) AS s FROM slides WHERE id = ? AND valid_to IS NULL')
+              .get(s.position, s.notes, s.groupId ?? null, cfg, s.id) as Row).s;
+            if (!same) {
+              c().prepare('UPDATE slides SET valid_to = ? WHERE id = ? AND valid_to IS NULL').run(ts, s.id);
+              c().prepare('INSERT INTO slides (id, position, notes, group_id, config, valid_from, valid_to) VALUES (?, ?, ?, ?, ?, ?, NULL)')
+                .run(s.id, s.position, s.notes, s.groupId ?? null, cfg, ts);
+            }
+          }
+        });
         return undefined;
       }
       case 'db_delete_slide': {
