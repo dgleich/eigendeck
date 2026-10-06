@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   IDENTITY_KEYS, freeDelta, resyncDelta, unlinkDelta, relinkDelta,
-  detachDelta, linkPairDeltas, pasteElementDelta, pruneOrphanedGroups,
+  detachDelta, linkPairDeltas, pasteElementDelta, pruneOrphanedGroups, deriveSyncIds,
 } from './syncLink';
 import type { Slide } from '../types/presentation';
 
@@ -109,9 +109,10 @@ describe('pasteElementDelta (copy/paste join rules)', () => {
 });
 
 describe('IDENTITY_KEYS', () => {
-  it('covers exactly the id + sync/link linkage fields', () => {
-    expect([...IDENTITY_KEYS].sort()).toEqual(
-      ['_linkId', '_syncId', 'id', 'linkId', 'syncId']);
+  // Copies of one element are one row, so link and remembered ids are data shared
+  // by every copy; only the id and the derived syncId are identity.
+  it('is exactly the id and the derived syncId', () => {
+    expect([...IDENTITY_KEYS].sort()).toEqual(['id', 'syncId']);
   });
 });
 
@@ -161,5 +162,27 @@ describe('pruneOrphanedGroups', () => {
   it('returns the same array reference when nothing is orphaned (no churn)', () => {
     const before = [slide(el('a'), el('b'))]; // no sync/link at all
     expect(pruneOrphanedGroups(before)).toBe(before);
+  });
+});
+
+// Rule 3 of the "SQLite is the source of truth" addendum: synced is derived.
+describe('deriveSyncIds', () => {
+  const s = (id: string, ids: string[], syncs: (string | undefined)[] = []) =>
+    ({ id, layout: 'default', notes: '', elements: ids.map((e, i) => ({
+      id: e, type: 'text', preset: 'body', html: e, position: { x: 0, y: 0, width: 1, height: 1 },
+      ...(syncs[i] ? { syncId: syncs[i] } : {}),
+    })) }) as unknown as Slide;
+  it('marks an id synced exactly when it is on more than one slide', () => {
+    const out = deriveSyncIds([s('a', ['X', 'Y']), s('b', ['X'])]);
+    expect(out[0].elements.map((e) => e.syncId)).toEqual(['X', undefined]);
+    expect(out[1].elements[0].syncId).toBe('X');
+  });
+  it('clears a stale syncId and keeps untouched slides and arrays identical', () => {
+    const slides = [s('a', ['X'], ['OLD']), s('b', ['Z'])];
+    const out = deriveSyncIds(slides);
+    expect(out[0].elements[0].syncId).toBeUndefined();
+    expect('syncId' in out[0].elements[0]).toBe(false);
+    expect(out[1]).toBe(slides[1]);
+    expect(deriveSyncIds(out)).toBe(out);
   });
 });

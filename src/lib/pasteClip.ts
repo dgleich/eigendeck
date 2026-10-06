@@ -66,8 +66,19 @@ export function pasteInternalClip(clip: EigendeckClip): void {
   for (const el of els) {
     // Same slide → independent copy; cross-slide → join the source's sync group
     // (if synced) else link to the source (animation).
-    const { delta, link } = pasteElementDelta(el, sameSlide);
-    const newEl = { ...JSON.parse(JSON.stringify(el)), id: crypto.randomUUID(), ...delta } as SlideElement;
+    const { delta } = pasteElementDelta(el, sameSlide);
+    let { link } = pasteElementDelta(el, sameSlide);
+    // Joining a sync group means showing the SAME element (one id per element), so
+    // a join reuses the source's id with its current data. If that element is no
+    // longer in the deck, or this slide already shows it, link instead.
+    const joins = !sameSlide && !!el.syncId;
+    const current = joins && !targetSlide?.elements.some((e) => e.id === el.id)
+      ? state.presentation.slides.flatMap((s) => s.elements).find((e) => e.id === el.id)
+      : undefined;
+    if (joins && !current) link = true;
+    const newEl = current
+      ? ({ ...current } as SlideElement)
+      : ({ ...JSON.parse(JSON.stringify(el)), id: crypto.randomUUID(), ...delta } as SlideElement);
     if (sameSlide) offsetElement(newEl, 40, 40);
     state.addElement(newEl);
     newIds.push(newEl.id);

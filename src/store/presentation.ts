@@ -8,11 +8,15 @@ import {
   createBlankSlide,
 } from '../types/presentation';
 import {
-  IDENTITY_KEYS, resyncDelta, unlinkDelta, relinkDelta, linkPairDeltas,
+  unlinkDelta, relinkDelta, linkPairDeltas, deriveSyncIds,
   pruneOrphanedGroups,
 } from '../lib/syncLink';
 import { runFreeHook, runResyncHook, runMergeHook } from '../lib/elementLifecycle';
 import { flushAllOverlays } from '../lib/overlayFlushRegistry';
+// Static, like fileOps.ts: concurrent dynamic imports of this module (the flush
+// and the post-flush checkpoint) could resolve to different instances under the
+// test runner's module mocking, sending some writes to the unmocked Tauri bridge.
+import { invoke } from '@tauri-apps/api/core';
 
 export type SelectedObject =
   | { type: 'slide' }
@@ -116,6 +120,14 @@ function shiftArrow(el: Extract<SlideElement, { type: 'arrow' }>, dx: number, dy
   if (el.c2y != null) out.c2y = el.c2y + dy;
   if (el.points) out.points = el.points.map((p) => ({ x: p.x + dx, y: p.y + dy }));
   return out;
+}
+
+/** Point a selection that named `from` at `to` (an element that changed id). */
+function remapSelection(sel: SelectedObject, from: string, to: string): SelectedObject {
+  if (!sel) return sel;
+  if (sel.type === 'element' && sel.id === from) return { type: 'element', id: to };
+  if (sel.type === 'multi' && sel.ids.includes(from)) return { type: 'multi', ids: sel.ids.map((i) => (i === from ? to : i)) };
+  return sel;
 }
 
 function updateCurrentSlide(
@@ -232,7 +244,24 @@ function writeShowInspector(v: boolean): void {
 
 export const usePresentationStore = create<PresentationState>()(
   temporal(
-    (set, get) => ({
+    (rawSet, get) => {
+      // Rule 3 of the "SQLite is the source of truth" addendum: syncId is derived
+      // ("this id is on more than one slide") after EVERY change, in this one place,
+      // never set by an action. Undo/redo restore snapshots taken through this set,
+      // so they are already derived.
+      const derive = <T,>(part: T): T => {
+        const p = part as { presentation?: Presentation } | null;
+        if (!p || !p.presentation) return part;
+        const slides = deriveSyncIds(p.presentation.slides);
+        return slides === p.presentation.slides ? part : { ...p, presentation: { ...p.presentation, slides } } as T;
+      };
+      const set = ((partial: unknown, replace?: boolean) => (rawSet as (p: unknown, r?: boolean) => void)(
+        typeof partial === 'function'
+          ? (st: PresentationState) => derive((partial as (s: PresentationState) => unknown)(st))
+          : derive(partial),
+        replace,
+      )) as typeof rawSet;
+      return ({
       presentation: createSeededPresentation(),
       currentSlideIndex: 0,
       isPresenting: false,
@@ -298,26 +327,18 @@ export const usePresentationStore = create<PresentationState>()(
         set((state) => {
           const slides = [...state.presentation.slides];
           const original = slides[index];
-          // Set up linkIds for animation, and syncIds for content sync.
-          // syncId defaults to the element's OWN id so the sync group's
-          // identity (and thus the shared notebook-overlay key, syncId??id)
-          // is stable across duplicate → save → Save As. Synced instances
-          // are the SAME thing: they share one overlay (B2).
-          // Clear _syncId/_linkId to sever old sync groups.
-          const updatedOriginalElements = original.elements.map((el) => {
-            const linkId = el.linkId || crypto.randomUUID();
-            const syncId = el.syncId || el.id;
-            return { ...el, linkId, syncId, _syncId: undefined, _linkId: undefined };
-          });
+          // One id per element ("SQLite is the source of truth"): the copy shows the
+          // SAME elements, so it keeps their ids, and they are synced because their
+          // id is now on two slides (syncId is derived, never set here). The element
+          // gets a dormant linkId that a later free reuses to animate. Clear
+          // _syncId/_linkId to sever old groups, as before.
+          const updatedOriginalElements = original.elements.map((el) => ({
+            ...el, linkId: el.linkId || crypto.randomUUID(), _syncId: undefined, _linkId: undefined,
+          }) as SlideElement);
           slides[index] = { ...original, elements: updatedOriginalElements };
           const copy: Slide = {
             ...JSON.parse(JSON.stringify(slides[index])),
             id: crypto.randomUUID(),
-            elements: updatedOriginalElements.map((el) => ({
-              ...JSON.parse(JSON.stringify(el)),
-              id: crypto.randomUUID(),
-              // linkId and syncId preserved from original → shares its overlay
-            })),
           };
           // If the slide is part of a group, insert after the last slide in the group
           let insertAt = index + 1;
@@ -451,26 +472,20 @@ export const usePresentationStore = create<PresentationState>()(
           const original = slides[idx];
           const groupId = original.groupId || crypto.randomUUID();
 
-          // Ensure original elements have linkIds and syncIds. syncId
-          // defaults to the element's own id so synced instances share one
-          // notebook overlay (keyed by syncId??id) across save/Save As.
-          const updatedElements = original.elements.map((el) => {
-            const linkId = el.linkId || crypto.randomUUID();
-            return { ...el, linkId, syncId: el.syncId || el.id };
-          });
+          // One id per element: the build step shows the SAME elements (same ids,
+          // so they are synced; syncId is derived). Give each a dormant linkId that
+          // a later free reuses to animate.
+          const updatedElements = original.elements.map((el) => ({
+            ...el, linkId: el.linkId || crypto.randomUUID(),
+          }) as SlideElement);
 
-          // Set groupId and link/sync ids on original if needed
+          // Set groupId and the link ids on the original if needed
           slides[idx] = { ...original, groupId, elements: updatedElements };
 
           const copy: Slide = {
             ...JSON.parse(JSON.stringify(slides[idx])),
             id: crypto.randomUUID(),
             groupId,
-            elements: updatedElements.map((el) => ({
-              ...JSON.parse(JSON.stringify(el)),
-              id: crypto.randomUUID(),
-              // linkId + syncId preserved from original → shares its overlay
-            })),
           };
 
           // Insert after the last slide in this group
@@ -541,45 +556,16 @@ export const usePresentationStore = create<PresentationState>()(
           // Apply changes to the target element
           const updatedElement = { ...element, ...changes } as SlideElement;
 
-          // If element has syncId, propagate changes across all slides.
-          // Synced instances are the SAME element (one shared DB row), so
-          // EVERY data change propagates — not a hand-picked subset. That
-          // covers content (html, position), styling, and notebook display
-          // options (hideHeader, syntaxHighlight, hideMarkdown, showBorder,
-          // editable, fontSize/fontSizeName, visibleCells, …). Strip only
-          // identity / sync-linkage so we never clobber per-instance ids.
-          const syncId = updatedElement.syncId;
-          if (syncId) {
-            // Only DATA changes propagate to synced peers — strip identity /
-            // linkage so each instance keeps its own ids (IDENTITY_KEYS is the
-            // single source of truth, shared with the delta helpers).
-            const identity: readonly string[] = IDENTITY_KEYS;
-            const syncChanges = Object.fromEntries(
-              Object.entries(changes).filter(([k]) => !identity.includes(k))
-            ) as Partial<SlideElement>;
-
-            if (Object.keys(syncChanges).length > 0) {
-              const slides = state.presentation.slides.map((slide) => ({
-                ...slide,
-                elements: slide.elements.map((el) => {
-                  if (el.id === elementId) return updatedElement;
-                  if (el.syncId === syncId) return { ...el, ...syncChanges } as SlideElement;
-                  return el;
-                }),
-              }));
-              return { presentation: { ...state.presentation, slides }, isDirty: true };
-            }
-          }
-
-          // No sync — update the element's OWN slide (ownIndex), which may differ
-          // from currentSlideIndex when a commit fires after the slide changed (#177).
-          const slides = [...state.presentation.slides];
-          slides[ownIndex] = {
-            ...slides[ownIndex],
-            elements: slides[ownIndex].elements.map((el) =>
-              el.id === elementId ? updatedElement : el
-            ),
-          };
+          // Copies of one synced element are the SAME element (one row), so the
+          // change applies wherever this id appears, every field included (content,
+          // position, styling, notebook display options, its link). That also
+          // covers a commit that fires after the slide changed (#177). Slides that
+          // don't show the element are left untouched (the save compares by
+          // reference). syncId is derived by the store's set, not copied here.
+          const slides = state.presentation.slides.map((slide) =>
+            slide.elements.some((el) => el.id === elementId)
+              ? { ...slide, elements: slide.elements.map((el) => (el.id === elementId ? updatedElement : el)) }
+              : slide);
           return { presentation: { ...state.presentation, slides }, isDirty: true };
         });
       },
@@ -594,53 +580,32 @@ export const usePresentationStore = create<PresentationState>()(
         const csi = st.currentSlideIndex;
         const el = st.presentation.slides[csi]?.elements.find((e) => e.id === elementId);
         if (!el || !el.syncId) return;   // only a synced element can be freed
-        const oldSyncId = el.syncId;
-        // Give the freed instance its OWN id so it persists as its own DB row.
-        // A sync group is ONE shared row; after reload its instances share the
-        // canonical id, so without a fresh id the freed frame can't be written
-        // separately and collapses back into the group on save (the S5c bug).
+        // Free = this slide's copy becomes its OWN element (SPEC.md: "duplicate the
+        // element row, update the junction"): a new id, remembering the row it left
+        // in _syncId. The copies still on other slides keep the row's id and share
+        // one linkId with the freed copy, so duplicate -> free -> move -> animate works.
+        const rowId = el.id;
         const newId = crypto.randomUUID();
-        // Ensure the freed frame and its (former) sync peers share ONE animation
-        // linkId so duplicate→free→move→animate works even for sync groups not
-        // created by duplicate (which already seeds one). Reuse any existing.
-        const sharedLinkId = el.linkId
-          || st.presentation.slides.flatMap((s) => s.elements)
-               .find((e) => e.syncId === oldSyncId && e.linkId)?.linkId
-          || crypto.randomUUID();
+        const sharedLinkId = el.linkId || crypto.randomUUID();
         // Type hook (notebook clone-on-unsync) fires before the flip, onto the
         // freed instance's NEW key, so it can seed caches synchronously.
         void runFreeHook(el, newId);
         set((state) => ({
           presentation: {
             ...state.presentation,
-            slides: state.presentation.slides.map((slide, idx) => ({
-              ...slide,
-              elements: slide.elements.map((e) => {
-                // Only the instance on the CURRENT slide is freed. Scope by
-                // slide index, not id alone — after a reload synced instances
-                // SHARE the canonical id, so `e.id === elementId` would match
-                // (and wrongly free) every mirror.
-                if (idx === csi && e.id === elementId) {
-                  return { ...e, id: newId, syncId: undefined,
-                    _syncId: oldSyncId, linkId: sharedLinkId } as SlideElement;
-                }
-                // Still-synced peers (other slides) get the same (dormant)
-                // linkId so they animate with the freed frame; no-op if shared.
-                if (idx !== csi && e.syncId === oldSyncId && e.linkId !== sharedLinkId) {
-                  return { ...e, linkId: sharedLinkId } as SlideElement;
-                }
-                return e;
-              }),
-            })),
+            slides: state.presentation.slides.map((slide, idx) => {
+              if (!slide.elements.some((e) => e.id === rowId)) return slide;
+              return {
+                ...slide,
+                elements: slide.elements.map((e) => {
+                  if (e.id !== rowId) return e;
+                  if (idx === csi) return { ...e, id: newId, _syncId: rowId, linkId: sharedLinkId } as SlideElement;
+                  return e.linkId === sharedLinkId ? e : ({ ...e, linkId: sharedLinkId } as SlideElement);
+                }),
+              };
+            }),
           },
-          selectedObject: (() => {
-            const sel = state.selectedObject;
-            if (!sel) return sel;
-            if (sel.type === 'element' && sel.id === elementId) return { type: 'element' as const, id: newId };
-            if (sel.type === 'multi' && sel.ids.includes(elementId))
-              return { type: 'multi' as const, ids: sel.ids.map((i: string) => i === elementId ? newId : i) };
-            return sel;
-          })(),
+          selectedObject: remapSelection(state.selectedObject, elementId, newId),
           isDirty: true,
         }));
         flushSyncLinkNow();
@@ -650,51 +615,28 @@ export const usePresentationStore = create<PresentationState>()(
         const csi = st.currentSlideIndex;
         const el = st.presentation.slides[csi]?.elements.find((e) => e.id === elementId);
         if (!el || !el._syncId) return;
-        const syncId = el._syncId;
-        // Re-syncing means "this is the same element again" (decision, David
-        // 2026-06, recorded in e2e/resync-position-probe.mjs): it ADOPTS the
-        // group's state, and anything changed while freed (a move, an edit) is
-        // discarded; to keep it, stay freed. The save repoints this slide at the
-        // group's row, so adopting a still-synced peer's data keeps the session
-        // identical to what reload shows. Identity/linkage fields stay this
-        // instance's own. Without this the group sat at two positions (S2).
-        const peer = st.presentation.slides.flatMap((s) => s.elements)
-          .find((e) => e.id !== elementId && e.syncId === syncId);
-        const identity: readonly string[] = IDENTITY_KEYS;
-        const pick = (src: object, keepIdentity: boolean) => Object.fromEntries(
-          Object.entries(src).filter(([k]) => identity.includes(k) === keepIdentity));
-        // Data from the group (or this instance, if no peer remains), identity
-        // from this instance; then the resync flip and the fresh id below.
-        const rejoined = { ...pick(peer ?? el, false), ...pick(el, true), ...resyncDelta(el) };
+        const rowId = el._syncId;
+        // Resync = the reverse of free: this slide's copy becomes the element in
+        // _syncId again (same id, so the save points this slide back at that row),
+        // showing that element's current data. Decision (David, 2026-06, recorded in
+        // e2e/resync-position-probe.mjs): it is "the same element again", so changes
+        // made while freed are discarded; to keep them, stay freed. Only possible
+        // while that element is on another slide and not already on this one.
+        if (st.presentation.slides[csi].elements.some((e) => e.id === rowId)) return;
+        const peer = st.presentation.slides
+          .flatMap((s, i) => (i === csi ? [] : s.elements))
+          .find((e) => e.id === rowId);
+        if (!peer) return;
         void runResyncHook(el);
-        // Rejoin is the mirror of free. Free gave this instance its own id, so the
-        // save wrote it as its own row + junction. Rejoining means this slide
-        // references the GROUP's row again, so mint a fresh instance id (as free
-        // does) carrying the group's syncId: the save then sees the freed instance
-        // removed (closes its junction; the freed row is simply unreferenced, like
-        // any deleted element) and a synced instance added (a junction-only insert
-        // onto the group's existing row). Keeping the freed id instead left this a
-        // plain content update, which never repoints the junction, so the rejoin
-        // was lost on reload (#192, S2). Same shape duplicateSlide produces.
-        const newId = crypto.randomUUID();
         set((state) => ({
           presentation: {
             ...state.presentation,
             slides: state.presentation.slides.map((slide, idx) => (idx !== csi ? slide : {
               ...slide,
-              elements: slide.elements.map((e) => (e.id === elementId
-                ? { ...rejoined, id: newId } as SlideElement
-                : e)),
+              elements: slide.elements.map((e) => (e.id === elementId ? peer : e)),
             })),
           },
-          selectedObject: (() => {
-            const sel = state.selectedObject;
-            if (!sel) return sel;
-            if (sel.type === 'element' && sel.id === elementId) return { type: 'element' as const, id: newId };
-            if (sel.type === 'multi' && sel.ids.includes(elementId))
-              return { type: 'multi' as const, ids: sel.ids.map((i: string) => (i === elementId ? newId : i)) };
-            return sel;
-          })(),
+          selectedObject: remapSelection(state.selectedObject, elementId, rowId),
           isDirty: true,
         }));
         flushSyncLinkNow();
@@ -788,16 +730,20 @@ export const usePresentationStore = create<PresentationState>()(
         set((state) => ({
           presentation: {
             ...state.presentation,
-            slides: state.presentation.slides.map((slide) => ({
-              ...slide,
-              elements: slide.elements.map((el) => {
-                if (el.id === masterId) return { ...el, syncId: masterId } as SlideElement;
-                if (el.linkId === linkId) {
-                  return { ...master, syncId: masterId, linkId } as SlideElement;
-                }
-                return el;
-              }),
-            })),
+            // One id per element: a partner on another slide BECOMES the master (same
+            // id, so the element is synced by being on several slides; syncId is
+            // derived). A slide that already shows the master keeps what it has: one
+            // element appears at most once per slide.
+            slides: state.presentation.slides.map((slide) => {
+              if (slide.elements.some((el) => el.id === masterId)) return slide;
+              let done = false;
+              const elements = slide.elements.map((el) => {
+                if (done || el.linkId !== linkId) return el;
+                done = true;
+                return { ...master } as SlideElement;
+              });
+              return done ? { ...slide, elements } : slide;
+            }),
           },
           isDirty: true,
         }));
@@ -861,42 +807,19 @@ export const usePresentationStore = create<PresentationState>()(
 
       moveElementsBy: (elementIds, dx, dy) =>
         set((state) => {
-          const currentSlide = state.presentation.slides[state.currentSlideIndex];
-          // Collect syncIds of moved elements. Position is governed by syncId:
-          // synced instances mirror position (move one → move all). Independent
-          // position (for animation) comes from FREEING an element (removing its
-          // syncId), not from a linkId — duplicated elements carry a linkId yet
-          // must stay position-synced until freed.
-          const syncIds = new Set<string>();
-          for (const el of currentSlide.elements) {
-            if (elementIds.includes(el.id) && el.syncId) syncIds.add(el.syncId);
-          }
-
-          if (syncIds.size > 0) {
-            // Sync move across all slides
-            const slides = state.presentation.slides.map((slide) => ({
-              ...slide,
-              elements: slide.elements.map((el) => {
-                if (!elementIds.includes(el.id) && !(el.syncId && syncIds.has(el.syncId))) return el;
-                if (el.type === 'arrow') {
-                  return shiftArrow(el, dx, dy);
-                }
-                return { ...el, position: { ...el.position, x: el.position.x + dx, y: el.position.y + dy } };
-              }),
-            }));
-            return { presentation: { ...state.presentation, slides }, isDirty: true };
-          }
-
-          return updateCurrentSlide(state, (slide) => ({
-            ...slide,
-            elements: slide.elements.map((el) => {
-              if (!elementIds.includes(el.id)) return el;
-              if (el.type === 'arrow') {
-                return shiftArrow(el, dx, dy);
-              }
-              return { ...el, position: { ...el.position, x: el.position.x + dx, y: el.position.y + dy } };
-            }),
-          }));
+          // Position is governed by sync: a synced element is ONE element shown on
+          // several slides (same id), so moving it moves every copy. Independent
+          // position (for animation) comes from FREEING a copy (a new id), not from
+          // a linkId. Slides that don't show a moved element are left untouched.
+          const moved = new Set(elementIds);
+          const shift = (el: SlideElement): SlideElement => (el.type === 'arrow'
+            ? shiftArrow(el, dx, dy)
+            : { ...el, position: { ...el.position, x: el.position.x + dx, y: el.position.y + dy } } as SlideElement);
+          const slides = state.presentation.slides.map((slide) =>
+            slide.elements.some((el) => moved.has(el.id))
+              ? { ...slide, elements: slide.elements.map((el) => (moved.has(el.id) ? shift(el) : el)) }
+              : slide);
+          return { presentation: { ...state.presentation, slides }, isDirty: true };
         }),
 
       toggleSelectElement: (id) =>
@@ -976,7 +899,8 @@ export const usePresentationStore = create<PresentationState>()(
         set((state) => ({ snapToGrid: !state.snapToGrid })),
       toggleShowGrid: () =>
         set((state) => ({ showGrid: !state.showGrid })),
-    }),
+    });
+    },
     {
       partialize: (state) => ({
         presentation: state.presentation,
@@ -1105,7 +1029,6 @@ const UNDO_SEED_LIMIT = 40;
 
 export async function seedUndoHistory(): Promise<number> {
   try {
-    const { invoke } = await import('@tauri-apps/api/core');
     // Reconstructed history is a SECOND deck-content ingress, separate from the
     // on-open normalize — so it must run the SAME boundary. Otherwise a crafted deck
     // can hide executable markup (onerror=/js: URLs) or a breakout property
@@ -1154,48 +1077,15 @@ let sqliteDbPath: string | null = null;
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let flushInFlight: Promise<void> | null = null;
 
-// Dirty tracking: which items need to be written to SQLite
-const dirtyElements = new Set<string>();    // element IDs whose data changed
-const dirtySlides = new Set<string>();      // slide IDs whose metadata changed
-const dirtyZOrder = new Set<string>();      // slide IDs whose element z-order changed
+// Dirty tracking ("SQLite is the source of truth", docs/sync-and-link.md). A slide
+// is dirty when its element list changed (a different element object, or a
+// different order or count); the slide list is dirty when slides were added,
+// removed, reordered, or their metadata changed. The writes are whole-slide and
+// idempotent (db_write_slide / db_set_slides), so nothing about which elements were
+// added or removed is inferred from the diff.
+const dirtySlideIds = new Set<string>();
+let dirtySlideList = false;
 let dirtyPresentation = false;              // config/title changed
-
-// Structural changes tracked explicitly.
-// Element maps are keyed PER JUNCTION — `${slideId}\0${instanceId}` — not by
-// element id alone, because a synced element appears on several slides under
-// ONE shared id (after a save/reopen all instances share the canonical id).
-// Keying by id alone would let two instances collide; keying by (slide,id)
-// addresses each junction distinctly, which is what add/delete operate on.
-const jkey = (slideId: string, elementId: string) => `${slideId} ${elementId}`;
-const addedSlides = new Map<string, { position: number; groupId?: string }>();
-const deletedSlides = new Set<string>();
-const addedElements = new Map<string, { slideId: string; element: any; zOrder: number }>();
-// junction key → the slide + the CANONICAL row id (syncId ?? id) whose
-// slide_elements junction must be closed. A duplicated synced instance has a
-// fresh in-session id but its DB junction is under the canonical id, so we
-// must remove by canonical, not by the in-session instance id.
-const deletedElements = new Map<string, { slideId: string; junctionId: string }>();
-
-/** Mark an element as dirty (will be flushed to SQLite) */
-export function markElementDirty(elementId: string) {
-  if (!sqliteDbPath) return;
-  dirtyElements.add(elementId);
-  scheduleFlush();
-}
-
-/** Mark a slide as dirty */
-export function markSlideDirty(slideId: string) {
-  if (!sqliteDbPath) return;
-  dirtySlides.add(slideId);
-  scheduleFlush();
-}
-
-/** Mark presentation metadata as dirty */
-export function markPresentationDirty() {
-  if (!sqliteDbPath) return;
-  dirtyPresentation = true;
-  scheduleFlush();
-}
 
 /** The presentation-level rows written to the `presentation` KV table. SINGLE
  *  SOURCE for both the flush (which writes them) and the change-detector (which
@@ -1228,252 +1118,72 @@ export function slideMeta(s: Slide): { notes: string; groupId: string; config: R
 }
 
 function hasPendingSqliteChanges(): boolean {
-  return dirtyPresentation
-    || dirtyElements.size > 0
-    || dirtySlides.size > 0
-    || dirtyZOrder.size > 0
-    || addedSlides.size > 0
-    || deletedSlides.size > 0
-    || addedElements.size > 0
-    || deletedElements.size > 0;
+  return dirtyPresentation || dirtySlideList || dirtySlideIds.size > 0;
 }
 
-/** Write one detached batch. New edits accumulate in the live queues while the
- * awaited database calls below are in flight, so completing this batch can
- * never clear work that arrived after it started (#186). */
+/** One element's row: promoted columns (link_id, asset_id) out of the JSON, the
+ *  derived syncId and legacy src/demoSrc dropped, and everything else kept,
+ *  including the remembered _syncId/_linkId (#198). */
+function elementWrite(el: SlideElement): { id: string; type: string; data: string; linkId: string | null; assetId: string | null } {
+  const { linkId, syncId, assetId, src, demoSrc, ...data } = el as SlideElement & {
+    linkId?: string; syncId?: string; assetId?: string; src?: string; demoSrc?: string;
+  };
+  void syncId; void src; void demoSrc;  // syncId is derived on load; src/demoSrc are legacy
+  return { id: el.id, type: el.type, data: JSON.stringify(data), linkId: linkId || null, assetId: assetId || null };
+}
+
 async function flushSqliteBatch(): Promise<boolean> {
   if (!sqliteDbPath) return true;
-
-  let batchDirtyPresentation = false;
-  let batchDirtyElements = new Set<string>();
-  let batchDirtySlides = new Set<string>();
-  let batchDirtyZOrder = new Set<string>();
-  let batchAddedSlides = new Map<string, { position: number; groupId?: string }>();
-  let batchDeletedSlides = new Set<string>();
-  let batchAddedElements = new Map<string, { slideId: string; element: any; zOrder: number }>();
-  let batchDeletedElements = new Map<string, { slideId: string; junctionId: string }>();
 
   // Force any pending notebook overlays to disk as part of the same save, so a
   // deck saved/autosaved within the overlay's 800ms debounce can't drop it
   // (#123). No-op when no overlay changed.
   await flushAllOverlays();
 
+  // Detach the pending state before the first await: edits made while this batch
+  // is in flight stay pending for the next one.
+  const batchPresentation = dirtyPresentation; dirtyPresentation = false;
+  const batchSlideList = dirtySlideList; dirtySlideList = false;
+  const batchSlides = new Set(dirtySlideIds); dirtySlideIds.clear();
+
   try {
-    const { invoke } = await import('@tauri-apps/api/core');
+    // Write the CURRENT state: whole-slide writes are idempotent, so writing the
+    // latest version of a slide covers every change made to it so far.
     const state = usePresentationStore.getState();
 
-    // Detach every pending queue before the first database await. The store
-    // subscriber continues writing to the live queues; a same-ID edit made
-    // during this flush is therefore retained for the next batch instead of
-    // being erased by a later clear().
-    batchDirtyPresentation = dirtyPresentation;
-    dirtyPresentation = false;
-    batchDirtyElements = new Set(dirtyElements);
-    for (const id of batchDirtyElements) dirtyElements.delete(id);
-    batchDirtySlides = new Set(dirtySlides);
-    for (const id of batchDirtySlides) dirtySlides.delete(id);
-    batchDirtyZOrder = new Set(dirtyZOrder);
-    for (const id of batchDirtyZOrder) dirtyZOrder.delete(id);
-    batchAddedSlides = new Map(addedSlides);
-    for (const id of batchAddedSlides.keys()) addedSlides.delete(id);
-    batchDeletedSlides = new Set(deletedSlides);
-    for (const id of batchDeletedSlides) deletedSlides.delete(id);
-    batchAddedElements = new Map(addedElements);
-    for (const id of batchAddedElements.keys()) addedElements.delete(id);
-    batchDeletedElements = new Map(deletedElements);
-    for (const id of batchDeletedElements.keys()) deletedElements.delete(id);
-
-    // --- Reconcile structural add/delete that CANCEL within this one flush ---
-    // A never-flushed row (queued in addedSlides/addedElements) has no DB row, so its
-    // DELETE is always a no-op → always drop the delete. The only decision is whether to
-    // keep the ADD, and that must follow the FINAL state, not mere queue membership:
-    //   - absent from the final state → genuine create-then-delete → cancel the add
-    //     (e.g. delete a freshly-duplicated mirror / its slide — must not resurrect;
-    //     dca9005 / #65), and
-    //   - present in the final state → undo→redo churned a still-present row into both
-    //     queues → KEEP the add so it gets written (dropping it here silently lost the
-    //     row on save — #185).
-    const finalSlideIds = new Set(state.presentation.slides.map((s) => s.id));
-    const finalElemKeys = new Set<string>();
-    for (const s of state.presentation.slides)
-      for (const el of s.elements) finalElemKeys.add(jkey(s.id, el.id));
-
-    for (const slideId of [...batchDeletedSlides]) {
-      if (batchAddedSlides.has(slideId)) {
-        batchDeletedSlides.delete(slideId);
-        if (!finalSlideIds.has(slideId)) {
-          batchAddedSlides.delete(slideId);
-          // …and any element junctions queued onto that never-persisted slide.
-          for (const k of [...batchAddedElements.keys()]) {
-            if (batchAddedElements.get(k)!.slideId === slideId) batchAddedElements.delete(k);
-          }
-        }
-      }
-    }
-    for (const k of [...batchDeletedElements.keys()]) {
-      if (batchAddedElements.has(k)) {
-        batchDeletedElements.delete(k);
-        if (!finalElemKeys.has(k)) batchAddedElements.delete(k);
-      }
-    }
-
-    // Structural changes: delete slides + element junctions first, then add.
-    for (const slideId of batchDeletedSlides) {
-      try { await invoke('db_delete_slide', { slideId }); } catch (e) { console.warn('delete slide failed:', e); }
-    }
-
-    for (const [slideId, info] of batchAddedSlides) {
-      try {
-        await invoke('db_add_slide', { id: slideId, position: info.position, groupId: info.groupId || null });
-      } catch (e) { console.warn('add slide failed:', e); }
-    }
-
-    // Close junctions by the CANONICAL row id (syncId ?? id). A duplicated
-    // synced instance has a fresh in-session id but its DB junction was written
-    // under the canonical id, so removing by the instance id would miss the
-    // junction and the element would resurrect on reload.
-    for (const { slideId, junctionId } of batchDeletedElements.values()) {
-      try {
-        await invoke('db_remove_element_from_slide', { slideId, elementId: junctionId });
-      } catch (e) { console.warn('remove element failed:', e); }
-    }
-
-    // Added elements in TWO passes so junctions never precede their row:
-    //   pass 1 — instances that OWN their row (canonical === own id) → db_add_element
-    //   pass 2 — synced instances → a slide_elements junction to the canonical row
-    // The canonical row id for a synced instance is its syncId (the original's
-    // id; preserved across duplicate/save). A junction is written only when
-    // that row exists (created this flush, or already persisted); otherwise the
-    // canonical instance was deleted, so THIS instance is promoted to the row.
-    const flushSyncCanonical = new Map<string, string>();  // syncId → row id that exists
-    const addElementRow = async (el: any, slideId: string, zOrder: number) => {
-      // Strip promoted columns (linkId, assetId) and sync metadata from the
-      // JSON `data` blob — they're their own columns / reassembled by export.
-      const { linkId, syncId: _s, _syncId, _linkId, assetId, src, demoSrc, ...data } = el;
-      void src; void _s; void demoSrc;  // intentionally dropped from data JSON
-      await invoke('db_add_element', {
-        slideId, elementId: el.id, elementType: el.type,
-        data: JSON.stringify(data), linkId: linkId || null, assetId: assetId || null, zOrder,
-      });
-      if (el.syncId) flushSyncCanonical.set(el.syncId, el.id);
-    };
-    // Use the CURRENT element (not the snapshot captured when it was first
-    // added): a sync/link transition after the add but before the flush —
-    // free / resync — changes syncId, which decides row-vs-junction. The
-    // snapshot would be stale (e.g. a freed-then-resynced instance would be
-    // written as a stray row instead of a junction).
-    const liveOf = (info: { slideId: string; element: any }) =>
-      state.presentation.slides.find((s) => s.id === info.slideId)
-        ?.elements.find((e) => e.id === info.element.id) ?? info.element;
-    for (const info of batchAddedElements.values()) {
-      const el = liveOf(info);
-      const canonical = el.syncId ?? el.id;
-      if (canonical === el.id) {
-        try { await addElementRow(el, info.slideId, info.zOrder); }
-        catch (e) { console.warn('add element row failed:', e); }
-      }
-    }
-    for (const info of batchAddedElements.values()) {
-      const el = liveOf(info);
-      const syncId: string | undefined = el.syncId;
-      const canonical = syncId ?? el.id;
-      if (canonical === el.id) continue;  // already written as a row in pass 1
-      try {
-        const rowId = flushSyncCanonical.get(syncId!) ?? canonical;
-        const exists = flushSyncCanonical.has(syncId!)
-          || (await invoke('db_element_exists', { elementId: rowId }) as boolean);
-        if (exists) {
-          await invoke('db_add_element_to_slide', {
-            slideId: info.slideId, elementId: rowId, zOrder: info.zOrder,
-          });
-        } else {
-          // Canonical row is gone (its instance was deleted this session) →
-          // this instance becomes the surviving row for the group.
-          await addElementRow(el, info.slideId, info.zOrder);
-        }
-      } catch (e) { console.warn('add element junction failed:', e); }
-    }
-
-    // Incremental: only write dirty items
-    if (batchDirtyPresentation) {
+    if (batchPresentation) {
       for (const [key, value] of Object.entries(presentationRows(state.presentation))) {
         await invoke('db_update_presentation', { key, value });
       }
     }
 
-    for (const elementId of batchDirtyElements) {
-      // Find the element in the current state
-      for (const slide of state.presentation.slides) {
-        const el = slide.elements.find((e) => e.id === elementId);
-        if (el) {
-          // Same strip as the add-element path: promoted columns
-          // (linkId, assetId) and sync-related metadata don't go into
-          // the JSON blob.
-          const { linkId, syncId, _syncId, _linkId, assetId, src, demoSrc, ...data } = el as any;
-          void src; void syncId; void demoSrc;  // intentionally dropped from data JSON
-          await invoke('db_update_element', {
-            id: elementId,
-            data: JSON.stringify(data),
-            linkId: linkId || null,
-            assetId: assetId || null,
-          });
-          break;
-        }
-      }
+    // The slide list first, so a new slide exists before its junctions.
+    if (batchSlideList || batchSlides.size > 0) {
+      await invoke('db_set_slides', {
+        slides: state.presentation.slides.map((slide, position) => {
+          const m = slideMeta(slide);
+          return {
+            id: slide.id,
+            position,
+            notes: m.notes,
+            groupId: m.groupId || null,
+            config: Object.keys(m.config).length === 0 ? '' : JSON.stringify(m.config),
+          };
+        }),
+      });
     }
 
-    // Slide metadata changes (notes, groupId, position, config)
-    // The `config` JSON holds per-slide overrides (theme + per-preset
-    // font slots). Build it from the slide's override fields and pass:
-    // - JSON string when there are overrides
-    // - empty string to CLEAR overrides (storage maps to NULL column)
-    for (const slideId of batchDirtySlides) {
-      const idx = state.presentation.slides.findIndex((s) => s.id === slideId);
-      const slide = state.presentation.slides[idx];
-      if (slide) {
-        const m = slideMeta(slide);
-        const config = Object.keys(m.config).length === 0 ? '' : JSON.stringify(m.config);
-        await invoke('db_update_slide', {
-          slideId,
-          position: idx,
-          notes: m.notes || null,
-          groupId: m.groupId || null,
-          config,
-        });
-      }
+    for (const slide of state.presentation.slides) {
+      if (!batchSlides.has(slide.id)) continue;
+      await invoke('db_write_slide', { slideId: slide.id, elements: slide.elements.map(elementWrite) });
     }
-
-    // Z-order changes — update all element positions on affected slides
-    for (const slideId of batchDirtyZOrder) {
-      const slide = state.presentation.slides.find((s) => s.id === slideId);
-      if (slide) {
-        for (let j = 0; j < slide.elements.length; j++) {
-          const el = slide.elements[j];
-          await invoke('db_update_z_order', {
-            slideId,
-            // Junctions are keyed by the canonical row id (syncId ?? id); a
-            // duplicated synced instance's fresh in-session id has no junction.
-            elementId: el.syncId ?? el.id,
-            newZOrder: j,
-          });
-        }
-      }
-    }
-
     return true;
   } catch (e) {
-    // A failed batch remains pending. Prefer any newer map value already queued
-    // for the same key; it describes a later state than this detached batch.
-    dirtyPresentation ||= batchDirtyPresentation;
-    for (const id of batchDirtyElements) dirtyElements.add(id);
-    for (const id of batchDirtySlides) dirtySlides.add(id);
-    for (const id of batchDirtyZOrder) dirtyZOrder.add(id);
-    for (const [id, value] of batchAddedSlides) if (!addedSlides.has(id)) addedSlides.set(id, value);
-    for (const id of batchDeletedSlides) deletedSlides.add(id);
-    for (const [id, value] of batchAddedElements) if (!addedElements.has(id)) addedElements.set(id, value);
-    for (const [id, value] of batchDeletedElements) if (!deletedElements.has(id)) deletedElements.set(id, value);
+    // A failed batch stays pending and is retried on the next flush.
+    dirtyPresentation ||= batchPresentation;
+    dirtySlideList ||= batchSlideList;
+    for (const id of batchSlides) dirtySlideIds.add(id);
     console.error('SQLite flush failed:', e);
-    // Don't wipe history on failure — just log and retry next flush
     return false;
   }
 }
@@ -1502,7 +1212,16 @@ export async function flushToSqlite(): Promise<void> {
  *  debounce, a crash / OS-shutdown / non-graceful close in that 1s window strands
  *  the change. Fire-and-forget (the subscriber has already queued the diff by the
  *  time an action returns), and a no-op without an open DB (tests). */
-function flushSyncLinkNow(): void { void flushToSqlite(); }
+function flushSyncLinkNow(): void {
+  // Also checkpoint, so the change reaches the MAIN .eigendeck file (what a copy or
+  // a cloud sync reads), not just the WAL (#200). The debounced flush checkpoints
+  // too, but this immediate flush cancels its timer.
+  void flushToSqlite().then(async () => {
+    try {
+      await invoke('db_checkpoint');
+    } catch { /* no open DB (tests) */ }
+  });
+}
 
 /** Debounced flush — called when dirty items accumulate */
 function scheduleFlush() {
@@ -1512,7 +1231,6 @@ function scheduleFlush() {
     await flushToSqlite();
     // Periodic WAL checkpoint
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
       await invoke('db_checkpoint');
     } catch { /* ignore */ }
   }, 1000); // 1s debounce
@@ -1528,7 +1246,6 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
   olog(`start ${dbPath.split('/').pop()}`);
 
   try {
-    const { invoke } = await import('@tauri-apps/api/core');
 
     // Close previous project cleanly (flush pending writes, checkpoint WAL,
     // tear down its file watchers).
@@ -1545,14 +1262,9 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
     sqliteDbPath = null;
 
     // Clear dirty state
-    dirtyElements.clear();
-    dirtySlides.clear();
-    dirtyZOrder.clear();
+    dirtySlideIds.clear();
+    dirtySlideList = false;
     dirtyPresentation = false;
-    addedSlides.clear();
-    deletedSlides.clear();
-    addedElements.clear();
-    deletedElements.clear();
 
     // Clear cached blob URLs from previous project
     const { clearAssetCache } = await import('../lib/demoAssets');
@@ -1720,7 +1432,6 @@ export async function closeSqliteProject(): Promise<void> {
   if (!sqliteDbPath) return;
   try {
     await flushToSqlite();
-    const { invoke } = await import('@tauri-apps/api/core');
     // Tear down the watcher registry for the closing project. project_id
     // is the registry key; read it before db_close clears the handle.
     let projectId: string | null = null;
@@ -1747,13 +1458,12 @@ export function isSqliteOpen(): boolean {
 /** Set the SQLite DB path (used by saveProject when saving for the first time) */
 export function setSqliteDbPath(path: string) {
   sqliteDbPath = path;
-  dirtyElements.clear();
-  dirtySlides.clear();
+  dirtySlideIds.clear();
+  dirtySlideList = false;
   dirtyPresentation = false;
-  addedSlides.clear();
-  deletedSlides.clear();
-  addedElements.clear();
-  deletedElements.clear();
+  // The file now holds exactly the current deck, so that is the baseline the
+  // write-through diffs later changes against (not a previously opened deck).
+  prevPresentation = usePresentationStore.getState().presentation;
 }
 
 // ============================================================================
@@ -1777,123 +1487,43 @@ usePresentationStore.subscribe((state) => {
 
   const prev = prevPresentation;
   prevPresentation = curr;
+  let changed = false;
 
-  // Detect presentation metadata changes by diffing the SAME rows the flush writes
-  // (presentationRows) — so every persisted row is automatically change-detected;
-  // they can't drift apart (that's how the deck theme silently stopped saving).
+  // Presentation rows: diff the SAME rows the flush writes (presentationRows), so a
+  // persisted row can't go undetected (that's how the deck theme once never saved).
   if (JSON.stringify(presentationRows(prev)) !== JSON.stringify(presentationRows(curr))) {
-    markPresentationDirty();
+    dirtyPresentation = true;
+    changed = true;
   }
 
-  // Detect added/deleted slides
-  const prevSlideIds = new Set(prev.slides.map((s) => s.id));
-  const currSlideIds = new Set(curr.slides.map((s) => s.id));
-  let structuralChange = false;
+  // The slide list: added, removed or reordered slides.
+  if (prev.slides.length !== curr.slides.length || prev.slides.some((s, i) => s.id !== curr.slides[i].id)) {
+    dirtySlideList = true;
+    changed = true;
+  }
 
+  const prevById = new Map(prev.slides.map((s) => [s.id, s]));
   for (const cs of curr.slides) {
-    if (!prevSlideIds.has(cs.id)) {
-      // New slide added
-      const idx = curr.slides.indexOf(cs);
-      addedSlides.set(cs.id, { position: idx, groupId: cs.groupId });
-      // All elements on this slide are new
-      for (let j = 0; j < cs.elements.length; j++) {
-        const el = cs.elements[j];
-        addedElements.set(jkey(cs.id, el.id), { slideId: cs.id, element: el, zOrder: j });
-      }
-      structuralChange = true;
-      scheduleFlush();
+    const ps = prevById.get(cs.id);
+    if (!ps) {
+      // A new slide: write its elements too.
+      dirtySlideIds.add(cs.id);
+      changed = true;
+      continue;
     }
-  }
-
-  for (const ps of prev.slides) {
-    if (!currSlideIds.has(ps.id)) {
-      // Slide deleted
-      deletedSlides.add(ps.id);
-      structuralChange = true;
-      scheduleFlush();
-    }
-  }
-
-  // Detect slide reordering OR position shifts from add/delete
-  // Any change in the slide ID sequence means positions need updating
-  let orderChanged = false;
-  if (structuralChange) {
-    // Adding/deleting slides shifts positions of subsequent slides
-    orderChanged = true;
-  } else if (prev.slides.length === curr.slides.length) {
-    for (let i = 0; i < curr.slides.length; i++) {
-      if (prev.slides[i]?.id !== curr.slides[i]?.id) {
-        orderChanged = true;
-        break;
-      }
-    }
-  }
-  if (orderChanged) {
-    // Mark ALL existing slides as dirty so their positions get flushed
-    for (const cs of curr.slides) {
-      if (prevSlideIds.has(cs.id)) markSlideDirty(cs.id);
-    }
-  }
-
-  // Detect per-slide changes (only for slides that exist in both)
-  for (const cs of curr.slides) {
-    const ps = prev.slides.find((s) => s.id === cs.id);
-    if (!ps) continue;
-
-    // Slide metadata (notes, groupId, theme, per-preset font overrides): diff the
-    // SAME shape the flush writes (slideMeta) so a new override can't be written but
-    // not change-detected. Any change → flush dirty so slides.config gets rewritten.
+    if (ps === cs) continue;
+    // Slide metadata: diff the SAME shape the flush writes (slideMeta).
     if (JSON.stringify(slideMeta(ps)) !== JSON.stringify(slideMeta(cs))) {
-      markSlideDirty(cs.id);
+      dirtySlideList = true;
+      changed = true;
     }
-
-    // Element changes
-    if (ps.elements !== cs.elements) {
-      const prevElIds = new Set(ps.elements.map((e) => e.id));
-      const currElIds = new Set(cs.elements.map((e) => e.id));
-
-      // New elements added to this slide
-      for (let j = 0; j < cs.elements.length; j++) {
-        const el = cs.elements[j];
-        if (!prevElIds.has(el.id)) {
-          addedElements.set(jkey(cs.id, el.id), { slideId: cs.id, element: el, zOrder: j });
-          scheduleFlush();
-        }
-      }
-
-      // Elements removed from this slide. Record the CANONICAL row id
-      // (syncId ?? id) so the right slide_elements junction is closed even
-      // when the instance carried a fresh in-session id (duplicated mirror).
-      for (const pel of ps.elements) {
-        if (!currElIds.has(pel.id)) {
-          deletedElements.set(jkey(cs.id, pel.id), {
-            slideId: cs.id, junctionId: (pel as any).syncId ?? pel.id,
-          });
-          scheduleFlush();
-        }
-      }
-
-      // Elements that changed (same ID, different data)
-      for (let j = 0; j < cs.elements.length; j++) {
-        const cel = cs.elements[j];
-        if (prevElIds.has(cel.id)) {
-          const pel = ps.elements.find((e) => e.id === cel.id);
-          if (pel && pel !== cel) {
-            markElementDirty(cel.id);
-          }
-        }
-      }
-
-      // Detect z-order changes (element IDs in different array positions)
-      if (ps.elements.length === cs.elements.length) {
-        for (let j = 0; j < cs.elements.length; j++) {
-          if (ps.elements[j]?.id !== cs.elements[j]?.id) {
-            dirtyZOrder.add(cs.id);
-            scheduleFlush();
-            break;
-          }
-        }
-      }
+    // Element list: any different element object, order or count.
+    if (ps.elements !== cs.elements
+      && (ps.elements.length !== cs.elements.length || cs.elements.some((el, j) => el !== ps.elements[j]))) {
+      dirtySlideIds.add(cs.id);
+      changed = true;
     }
   }
+
+  if (changed) scheduleFlush();
 });

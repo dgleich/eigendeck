@@ -3,7 +3,6 @@ import { invoke } from '@tauri-apps/api/core';
 import {
   closeSqliteProject,
   flushToSqlite,
-  markElementDirty,
   presentationRows,
   setSqliteDbPath,
   slideMeta,
@@ -120,10 +119,12 @@ describe('SQLite flush concurrency (#186)', () => {
     });
     setSqliteDbPath('/tmp/flush-race.eigendeck');
 
+    // The real subscriber marks the slide dirty; the first whole-slide write is held
+    // in flight while a second edit arrives, which must be written by the next batch.
     let releaseFirstWrite!: () => void;
     const firstWriteStarted = new Promise<void>((resolve) => {
       mockedInvoke.mockImplementation(async (command) => {
-        if (command === 'db_update_element' && !releaseFirstWrite) {
+        if (command === 'db_write_slide' && !releaseFirstWrite) {
           resolve();
           await new Promise<void>((release) => { releaseFirstWrite = release; });
         }
@@ -131,25 +132,23 @@ describe('SQLite flush concurrency (#186)', () => {
       });
     });
 
-    markElementDirty('e-race');
+    usePresentationStore.getState().updateElement('e-race', {
+      position: { x: 400, y: 100, width: 400, height: 300 },
+    });
     const flush = flushToSqlite();
     await firstWriteStarted;
 
     usePresentationStore.getState().updateElement('e-race', {
       position: { x: 482, y: 100, width: 400, height: 300 },
     });
-    // openSqliteProject normally establishes the subscriber's private
-    // prevPresentation baseline. This isolated unit setup skips open, so model
-    // the subscriber's queue event explicitly.
-    markElementDirty('e-race');
     releaseFirstWrite();
     await flush;
 
     const writes = mockedInvoke.mock.calls
-      .filter(([command]) => command === 'db_update_element')
-      .map(([, args]) => JSON.parse((args as { data: string }).data));
+      .filter(([command]) => command === 'db_write_slide')
+      .map(([, args]) => JSON.parse((args as { elements: { data: string }[] }).elements[0].data));
     expect(writes).toHaveLength(2);
-    expect(writes[0].position.x).toBe(360);
+    expect(writes[0].position.x).toBe(400);
     expect(writes[1].position.x).toBe(482);
 
     await closeSqliteProject();
@@ -281,16 +280,21 @@ describe('presentation store', () => {
     expect(state.currentSlideIndex).toBe(1);
   });
 
-  it('duplicates a slide with new element IDs', () => {
+  // One id per element ("SQLite is the source of truth"): the duplicate is a new
+  // slide showing the SAME elements, so they keep their ids and are synced. (This
+  // test used to assert fresh element ids, the old in-memory shape.)
+  it('duplicates a slide; the copy shows the same elements (same ids, synced)', () => {
     usePresentationStore.getState().duplicateSlide(0);
     const state = usePresentationStore.getState();
     expect(state.presentation.slides).toHaveLength(2);
     expect(state.currentSlideIndex).toBe(1);
     expect(state.presentation.slides[0].id).not.toBe(state.presentation.slides[1].id);
     if (state.presentation.slides[0].elements.length > 0) {
-      expect(state.presentation.slides[0].elements[0].id).not.toBe(
-        state.presentation.slides[1].elements[0].id
-      );
+      const a = state.presentation.slides[0].elements[0];
+      const b = state.presentation.slides[1].elements[0];
+      expect(b.id).toBe(a.id);
+      expect(a.syncId).toBe(a.id);
+      expect(b.syncId).toBe(a.id);
     }
   });
 
@@ -581,7 +585,10 @@ describe('presentation store', () => {
       // Free sync on slide 3's title
       store.selectSlide(2);
       const slide3El = usePresentationStore.getState().presentation.slides[2].elements[0];
-      store.updateElement(slide3El.id, { syncId: undefined, _syncId: slide3El.syncId } as any);
+      // Free through the store API. (This test used to free with a hand-built
+      // {syncId, _syncId} delta, which the docs forbid and which can no longer free
+      // anything: synced is derived from the id being on several slides.)
+      store.freeElement(slide3El.id);
 
       // Verify slide 3 title is freed
       const freed = usePresentationStore.getState().presentation.slides[2].elements[0];
@@ -642,9 +649,11 @@ describe('presentation store', () => {
       expect((freed as any)._syncId).toBe(el.syncId);
       // NEW id → the freed frame persists as its own DB row (S5c)
       expect(freed.id).not.toBe(oldId);
-      // peer stays synced and shares the freed frame's animation linkId
+      // the other copy keeps the element's id; it is now on ONE slide, so it is not
+      // synced any more (synced is derived; this used to assert it stayed synced)
       const peer = usePresentationStore.getState().presentation.slides[1].elements[0];
-      expect(peer.syncId).toBe(el.syncId);
+      expect(peer.id).toBe(oldId);
+      expect(peer.syncId).toBeUndefined();
       expect(freed.linkId).toBeTruthy();
       expect(peer.linkId).toBe(freed.linkId);
     });
@@ -669,12 +678,11 @@ describe('presentation store', () => {
       expect(back.position.x).toBe(canonX);            // snapped; the move is discarded
     });
 
-    it('resyncElement mints a fresh instance id (mirror of free) so the save repoints the junction (#192)', () => {
-      // The freed instance was persisted as its OWN row + junction (006d924 flushes
-      // free immediately). Rejoining must reach the save as "freed instance removed
-      // + synced instance added" (junction-only insert onto the group's row). If the
-      // freed id were kept, the save would see a plain content update that never
-      // repoints the junction, and the rejoin would be lost on reload.
+    it('resyncElement takes back the id of the element it was freed from (#192)', () => {
+      // Resync is the reverse of free: this slide's copy becomes the remembered
+      // element again (same id), so the whole-slide save points this slide back at
+      // that row. (This test used to assert a FRESH id, the #192 fix under the old
+      // in-memory model; one id per element replaced it.)
       const store = usePresentationStore.getState();
       store.duplicateSlide(0);
       store.selectSlide(0);
@@ -686,9 +694,8 @@ describe('presentation store', () => {
       store.resyncElement(freedId);
       const st = usePresentationStore.getState();
       const back = st.presentation.slides[0].elements[0];
-      expect(back.id).not.toBe(freedId);               // fresh id → structural change for the save
-      expect(back.id).not.toBe(gid);                   // not the group's row id (that would duplicate the row)
-      expect(back.syncId).toBe(gid);                   // references the group again
+      expect(back.id).toBe(gid);                       // the remembered element again
+      expect(back.syncId).toBe(gid);                   // on two slides again, so synced
       expect(st.selectedObject).toEqual({ type: 'element', id: back.id });   // selection follows
       // the peer on the other slide is untouched
       expect(st.presentation.slides[1].elements[0].syncId).toBe(gid);
@@ -839,14 +846,15 @@ describe('presentation store', () => {
         currentSlideIndex: 0,
       });
       store.duplicateSlide(0);
-      // duplicateSlide selects the COPY (slide index 1); the two instances have
-      // DIFFERENT ids in-session but a shared syncId.
+      // duplicateSlide selects the COPY (slide index 1); both slides show the SAME
+      // element (one id per element), so it is synced. (This used to assert
+      // different in-session ids, the old shape.)
       let st = usePresentationStore.getState();
       expect(st.currentSlideIndex).toBe(1);
       const orig = st.presentation.slides[0].elements[0];
       const copy = st.presentation.slides[1].elements[0];
-      expect(copy.id).not.toBe(orig.id);          // different ids in-session
-      expect(copy.syncId).toBe(orig.syncId);       // same sync group
+      expect(copy.id).toBe(orig.id);              // the same element
+      expect(copy.syncId).toBe(orig.id);          // synced: on two slides
 
       // Edit + move on the COPY → the ORIGINAL must reflect it immediately,
       // with NO save/reload (pure in-memory propagation).

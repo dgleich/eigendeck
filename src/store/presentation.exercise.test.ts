@@ -304,7 +304,9 @@ describe('presentation store — full lifecycle exercise', () => {
           { id: 'sa', type: 'arrow', x1: 0, y1: 0, x2: 100, y2: 100,
             position: pos(), syncId: 'sa' } as unknown as SlideElement ] } as Slide,
         { id: 'as1', notes: '', elements: [
-          { id: 'sa2', type: 'arrow', x1: 0, y1: 0, x2: 100, y2: 100,
+          // one id per element: the synced arrow is 'sa' on both slides (this
+          // fixture used the old shape, a second id 'sa2' sharing syncId 'sa')
+          { id: 'sa', type: 'arrow', x1: 0, y1: 0, x2: 100, y2: 100,
             position: pos(), syncId: 'sa' } as unknown as SlideElement ] } as Slide,
       ] },
       currentSlideIndex: 0,
@@ -544,20 +546,27 @@ describe('presentation store — SQLite write-through exercise', () => {
       // Flush everything — exercises flushSqliteBatch top to bottom.
       await flushToSqlite();
 
-      const commands = (mockInvoke.mock.calls as unknown[][]).map((c) => c[0] as string);
-      // A representative spread of writers must have run.
-      expect(commands).toContain('db_add_slide');
-      expect(commands).toContain('db_update_element');
-      expect(commands).toContain('db_update_slide');
+      // The whole-slide save: the slide list, each dirty slide, and the
+      // presentation rows. (This used to assert the old per-element commands.)
+      const calls = mockInvoke.mock.calls as unknown[][];
+      const commands = calls.map((c) => c[0] as string);
+      expect(commands).toContain('db_set_slides');
+      expect(commands).toContain('db_write_slide');
       expect(commands).toContain('db_update_presentation');
 
-      // The dirty-element write carries the edited data (not a vacuous call check).
-      const updElemCalls = (mockInvoke.mock.calls as unknown[][])
-        .filter((c) => c[0] === 'db_update_element')
-        .map((c) => JSON.parse((c[1] as { data: string }).data));
-      const edited = updElemCalls.find((d) => d.id === 'be');
-      expect(edited).toBeTruthy();
-      expect((edited as { html: string }).html).toBe('base-edited');
+      // The slide list written is exactly the final deck, in order: the slide that
+      // was added and deleted inside the window never reaches the database.
+      const lastSet = calls.filter((c) => c[0] === 'db_set_slides').pop()![1] as { slides: { id: string }[] };
+      expect(lastSet.slides.map((s) => s.id)).toEqual(usePresentationStore.getState().presentation.slides.map((s) => s.id));
+
+      // The edited element is written with its new data, and the element added
+      // then deleted inside the window is never written.
+      const written = calls.filter((c) => c[0] === 'db_write_slide')
+        .flatMap((c) => (c[1] as { elements: { id: string; data: string }[] }).elements);
+      const edited = written.filter((e) => e.id === 'be').map((e) => JSON.parse(e.data));
+      expect(edited.length).toBeGreaterThan(0);
+      expect(edited.every((d) => d.html === 'base-edited')).toBe(true);
+      expect(written.some((e) => e.id === 'tmp-el')).toBe(false);
 
       assertInvariants('after write-through flush');
 
@@ -724,5 +733,68 @@ describe('presentation store — SQLite write-through exercise', () => {
       await closeSqliteProject();
       expect(isSqliteOpen()).toBe(false);
     }
+  });
+});
+
+// Review-focus tests for "SQLite is the source of truth"
+// (docs/superpowers/plans/2026-10-06-sqlite-source-of-truth.md).
+describe('one id per element: write scope and identity', () => {
+  const text = (id: string, extra: Record<string, unknown> = {}) =>
+    ({ id, type: 'text', preset: 'body', html: id, position: pos(), ...extra }) as unknown as SlideElement;
+
+  it('a synced edit on a big deck writes only the slides that show the element', async () => {
+    mockInvoke.mockReset();
+    mockInvoke.mockImplementation((() => Promise.resolve(undefined)) as unknown as typeof invoke);
+    const showsS = new Set([3, 10, 20]);
+    const slides = Array.from({ length: 50 }, (_, i) => ({
+      id: `s${i}`, notes: '',
+      elements: [text(`e${i}`), ...(showsS.has(i) ? [text('S', { syncId: 'S' })] : [])],
+    }) as Slide);
+    usePresentationStore.setState({
+      presentation: { ...createDefaultPresentation(), slides }, currentSlideIndex: 3, selectedObject: { type: 'slide' },
+    });
+    setSqliteDbPath('/tmp/write-scope.eigendeck');
+    try {
+      upd('S', { html: 'edited once' });
+      await flushToSqlite();
+      const written = (mockInvoke.mock.calls as unknown[][])
+        .filter((c) => c[0] === 'db_write_slide')
+        .map((c) => (c[1] as { slideId: string }).slideId)
+        .sort();
+      expect(written).toEqual(['s10', 's20', 's3']);
+    } finally {
+      await closeSqliteProject();
+    }
+  });
+
+  it('an edit that commits after switching slides lands on its element (#177)', () => {
+    usePresentationStore.setState({
+      presentation: { ...createDefaultPresentation(), slides: [
+        { id: 'a', notes: '', elements: [text('e0')] } as Slide,
+        { id: 'b', notes: '', elements: [] } as Slide,
+      ] },
+      currentSlideIndex: 1, selectedObject: { type: 'slide' },
+    });
+    upd('e0', { html: 'late' });
+    const e0 = usePresentationStore.getState().presentation.slides[0].elements[0] as unknown as { html: string };
+    expect(e0.html).toBe('late');
+  });
+
+  it('a duplicated then freed notebook keeps its recording key; the freed copy gets its own', () => {
+    usePresentationStore.setState({
+      presentation: { ...createDefaultPresentation(), slides: [
+        { id: 'a', notes: '', elements: [{ id: 'nb', type: 'notebook', position: pos() } as unknown as SlideElement] } as Slide,
+      ] },
+      currentSlideIndex: 0, selectedObject: { type: 'slide' },
+    });
+    const store = usePresentationStore.getState();
+    store.duplicateSlide(0);              // the copy (slide 1) is current
+    store.freeElement('nb');
+    const [orig] = usePresentationStore.getState().presentation.slides[0].elements;
+    const [freed] = usePresentationStore.getState().presentation.slides[1].elements;
+    expect(orig.syncId ?? orig.id).toBe('nb');                 // the original keeps its key
+    expect(freed.id).not.toBe('nb');
+    expect(freed.syncId ?? freed.id).toBe(freed.id);           // the freed copy is keyed by its own id
+    expect((freed as unknown as { _syncId: string })._syncId).toBe('nb');
   });
 });

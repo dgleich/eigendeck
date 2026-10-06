@@ -17,10 +17,37 @@ export type SyncLinkDelta = Partial<
   Pick<SlideElement, 'syncId' | '_syncId' | 'linkId' | '_linkId'>
 >;
 
-/** Identity / linkage keys that must NEVER propagate from one synced instance
- *  to its peers (each instance keeps its own ids; only data syncs). Consumed
- *  by the store's sync-propagation strip. */
-export const IDENTITY_KEYS = ['id', 'syncId', '_syncId', 'linkId', '_linkId'] as const;
+/** The keys of an element that are not its data. Copies of one synced element are
+ *  the SAME element (one row; docs/sync-and-link.md, "SQLite is the source of
+ *  truth"), so only its id and the derived syncId are identity; linkId and the
+ *  remembered _syncId/_linkId belong to the element and are shared by every copy. */
+export const IDENTITY_KEYS = ['id', 'syncId'] as const;
+
+/** Rule 3 of the addendum: an element is synced exactly when its id appears on more
+ *  than one slide. Sets syncId = id for those and clears it for the rest. Returns
+ *  the SAME array, slide and element objects when nothing changes, so callers can
+ *  compare by reference. */
+export function deriveSyncIds(slides: Slide[]): Slide[] {
+  const count = new Map<string, number>();
+  for (const s of slides) for (const el of s.elements) count.set(el.id, (count.get(el.id) ?? 0) + 1);
+  let changed = false;
+  const next = slides.map((s) => {
+    let slideChanged = false;
+    const elements = s.elements.map((el) => {
+      const want = (count.get(el.id) ?? 0) > 1 ? el.id : undefined;
+      if (el.syncId === want) return el;
+      slideChanged = true;
+      const copy = { ...el } as SlideElement;
+      if (want) copy.syncId = want;
+      else delete copy.syncId;
+      return copy;
+    });
+    if (!slideChanged) return s;
+    changed = true;
+    return { ...s, elements };
+  });
+  return changed ? next : slides;
+}
 
 /** Free a synced element: drop its syncId but remember it so the element can
  *  re-sync later. `{}` (no change) when it isn't synced. */
