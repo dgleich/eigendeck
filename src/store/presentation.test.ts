@@ -1119,6 +1119,19 @@ describe('undo/redo follows the change to its slide', () => {
   }
   const idx = () => usePresentationStore.getState().currentSlideIndex;
 
+  it('keeps the slide index in range after undoing a duplicate of the last slide (#201)', () => {
+    setup();
+    usePresentationStore.getState().selectSlide(1);
+    pauseUndo();
+    usePresentationStore.getState().duplicateSlide(1);
+    resumeUndo();
+    expect(idx()).toBe(2);
+    undoWithNav();
+    const n = usePresentationStore.getState().presentation.slides.length;
+    expect(n).toBe(2);
+    expect(idx()).toBe(1);
+  });
+
   it('jumps to the other slide when the undone change was off-screen', () => {
     setup();
     // change an element on slide 1 (one deterministic undo step)

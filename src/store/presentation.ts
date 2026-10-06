@@ -1006,6 +1006,12 @@ function firstChangedSlide(before: Slide[], after: Slide[]): number | null {
 function followUndoChange(beforeSlides: Slide[], curIdx: number): void {
   const st = usePresentationStore.getState();
   const after = st.presentation.slides;
+  // The undo removed the slide you were on (e.g. undoing a duplicate of the last
+  // slide): land on the last slide that still exists (#201).
+  if (st.currentSlideIndex > after.length - 1) {
+    st.selectSlide(Math.max(0, after.length - 1));
+    return;
+  }
   // The slide you're on changed → you already see it, don't yank focus.
   if (JSON.stringify(beforeSlides[curIdx]) !== JSON.stringify(after[curIdx])) return;
   const changed = firstChangedSlide(beforeSlides, after);
