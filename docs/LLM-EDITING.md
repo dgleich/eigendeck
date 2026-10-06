@@ -115,9 +115,9 @@ All elements share these base fields:
 | `id` | string | Unique UUID |
 | `position` | `{x, y, width, height}` | Position in slide coordinates |
 | `linkId` | string? | Animation link: elements with same linkId animate between slides |
-| `syncId` | string? | Content sync: elements with same syncId stay in sync across slides |
+| `syncId` | string? | Derived, not set by hand: equals `id` when the same element (same `id`) is on more than one slide |
 | `_linkId` | string? | Stored linkId when temporarily unlinked |
-| `_syncId` | string? | Stored syncId when temporarily unsynced |
+| `_syncId` | string? | The id of the element this one was freed from, so it can re-sync |
 
 ### Text Element
 
@@ -473,16 +473,19 @@ Elements with the same `linkId` on consecutive slides animate between positions 
 - Element only on current slide → fade in
 
 ### Content Sync (`syncId`)
-Elements with the same `syncId` stay synchronized across all slides:
-- Moving a synced element updates its position on every slide
-- Editing text on a synced element updates text on every slide
-- Use this for titles, footers, or any content that should be identical everywhere
+A synced element is ONE element shown on several slides. In the JSON it appears
+with the **same `id`** on every slide that shows it, and with `syncId` equal to that
+id. The copies must be identical: editing or moving it changes it on every slide.
+Use this for titles, footers, or any content that should be identical everywhere.
+To sync an element onto another slide, add an identical copy with the same `id`.
 
 ### Workflow
-When duplicating a slide, both `linkId` and `syncId` are set automatically. To make an element animate to a new position:
-1. Remove `syncId` (or set to undefined) — this "frees" the position
-2. Keep `linkId` — this preserves the animation link
-3. Move the element to its new position on the duplicate slide
+Duplicating a slide keeps every element's `id` (so the copies are synced) and gives
+each a `linkId`. To make an element animate to a new position on the duplicate:
+1. Give that copy a **new `id`** and drop its `syncId`. This frees it; a copy that
+   kept the old id with different data would be two elements under one id.
+2. Keep `linkId`, which preserves the animation link
+3. Move the copy to its new position on the duplicate slide
 
 ## Slide Groups
 
@@ -548,7 +551,7 @@ Every `id` must be unique. Use UUID v4 format:
 
 1. **Read the file first** before making changes
 2. **Preserve existing IDs** — don't regenerate IDs for elements you're not creating
-3. **Preserve linkId/syncId** — don't remove these unless asked; they control animations and sync
+3. **Preserve ids and linkId** — don't change them unless asked; a shared id is what makes an element synced, and linkId controls animation
 4. **Add new slides** by appending to the `slides` array
 5. **Reorder slides** by rearranging the array
 6. **Reorder elements** (z-order) by rearranging within `elements` array

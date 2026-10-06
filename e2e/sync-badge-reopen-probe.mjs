@@ -37,6 +37,9 @@ console.log('  badges on selected title:', badges);
 await quit(sid);
 const b=JSON.parse(badges);
 if(!b.S) { console.error('BADGE_BUG: S (el-badge-sync) NOT rendered after reopen'); process.exit(2); }
-if(!b.A || !b.L) { console.error('BADGE_FAIL: A or L missing: '+badges); process.exit(2); }
-console.log('BADGE_PASS: S+A+L all render for the synced title after reopen');
+// A synced element links only to its own copies, so it has no A badge (A's click is
+// Unlink, which is not offered on a synced element; docs/sync-and-link.md addendum).
+if(b.A || b.sOff) { console.error('BADGE_FAIL: a synced element shows an A or grey badge: '+badges); process.exit(2); }
+if(!b.L) { console.error('BADGE_FAIL: L missing: '+badges); process.exit(2); }
+console.log('BADGE_PASS: green S and L render (and no A) for the synced title after reopen');
 process.exit(0);

@@ -148,8 +148,9 @@ present    →  advancing slide animates A → A' (shared linkId L)
 > element itself (same id). A **link** inserts a detached copy with a new id and
 > then links it to the source with `linkElements`. An **independent** paste
 > inserts a detached copy (offset when pasted on the same slide). The clip
-> carries the copying deck's `deckToken` (`fromDeck`), so a paste into another
-> deck never joins or links by a coincidental id. Cmd+D (same-slide duplicate)
+> carries the copying window's paste identity (`fromDeck`, renewed on open, close
+> and Save As), so a paste into another deck, or into the other copy of a Save As,
+> never joins or links by a shared id. Cmd+D (same-slide duplicate)
 > stays a detached copy. The link targets the source slide by its **id**,
 > captured at copy time, so reordering slides between copy and paste doesn't
 > mislink.

@@ -134,8 +134,10 @@ the full element(s) *plus* their link/sync metadata, so paste can re-resolve:
   already shows the element, it is an independent copy.
 - **Cross-deck** → independent copy; asset-bearing elements carry their asset so
   the bytes travel (embedded, or via the existing asset-copy path) and refs
-  don't dangle. The clip records the copying deck's `deckToken` as `fromDeck`, so
-  paste can tell another deck from this one even when an id happens to match.
+  don't dangle. The clip records the copying window's paste identity as
+  `fromDeck` (`getPasteIdentity`). It is renewed on open, close and Save As and is
+  never saved, so paste can tell another deck, or the other copy of a Save As
+  (which shares the ids and the `deckToken`), from this one.
 
 "Enough JSON does wonders": the payload is self-describing; the *paste context*
 (same slide / cross-slide / cross-deck) decides how references resolve.
