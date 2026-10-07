@@ -75,7 +75,8 @@ unchanged from before the branch. The full end-to-end run on the final build gav
 one failure, a2-elprops, compared the saved element's JSON with key order
 significant. Its fixture already held the values the probe sets, so the JSON
 compare in db_write_slide correctly wrote no new version and the row kept the key
-order it was stored with. The probe now compares values, and it passes.
+order it was stored with. The probe now compares values (it still fails on a
+wrong value), and a second full run passed all 154 probes with no retries.
 
 Still open: #190 (watched-asset durability, mitigated) and #191 (David's
 free-reverts-on-reload report, never reproduced). Deferred from the review: the
