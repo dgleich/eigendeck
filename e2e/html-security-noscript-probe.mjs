@@ -55,7 +55,7 @@ await winShot(sid, 'editor');
 await exec(sid, "window.__eigendeck.store.getState().selectSlide(0); window.__eigendeck.store.getState().setPresenting(true);");
 await sleep(1400);
 const pr = JSON.parse(await exec(sid, `
-  const f = document.querySelector('.present-slide iframe[title="HTML element"]');
+  const f = document.querySelector('.present-slide iframe[aria-label="HTML element"]');
   if (!f) return JSON.stringify({ err: 'no present iframe' });
   const sandbox = f.getAttribute('sandbox');
   const srcdoc = f.getAttribute('srcdoc') || '';

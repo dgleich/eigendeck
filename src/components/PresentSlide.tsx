@@ -42,7 +42,7 @@ export function PresentElement({ element: el, zIndex, style, ctx }: {
     case 'demo':
       return <PresentDemoIframe assetId={el.assetId} pos={pos} zIndex={zIndex} style={style} ctx={ctx} />;
     case 'demo-piece':
-      return <PresentDemoIframe assetId={el.assetId} hash={`piece=${el.piece}`} title={`demo-piece: ${el.piece}`} pos={pos} zIndex={zIndex} style={style} ctx={ctx} />;
+      return <PresentDemoIframe assetId={el.assetId} hash={`piece=${el.piece}`} label={`demo-piece: ${el.piece}`} pos={pos} zIndex={zIndex} style={style} ctx={ctx} />;
     case 'video':
       return <PresentVideo element={el} zIndex={zIndex} style={style} />;
     case 'notebook':
@@ -80,7 +80,7 @@ export function PresentElement({ element: el, zIndex, style, ctx }: {
             position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
             overflow: 'hidden', zIndex, ...style,
           }}>
-            <iframe title="HTML element" srcDoc={htmlElementSrcdoc(el.html, el.background, el.vars, htmlTheme)}
+            <iframe aria-label="HTML element" srcDoc={htmlElementSrcdoc(el.html, el.background, el.vars, htmlTheme)}
               sandbox={HTML_SANDBOX_LOCKED} style={{
                 position: 'absolute', left: 0, top: 0, width: L.designW, height: L.designH,
                 border: 'none', background: 'transparent',
@@ -92,7 +92,7 @@ export function PresentElement({ element: el, zIndex, style, ctx }: {
         );
       }
       return (
-        <iframe title="HTML element" srcDoc={htmlElementSrcdoc(el.html, el.background, el.vars, htmlTheme)}
+        <iframe aria-label="HTML element" srcDoc={htmlElementSrcdoc(el.html, el.background, el.vars, htmlTheme)}
           sandbox={HTML_SANDBOX_LOCKED} style={{
             position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
             border: 'none', background: 'transparent',
@@ -162,7 +162,7 @@ function PresentVideo({ element: el, zIndex, style }: {
   };
   if (el.kind === 'embed') {
     if (!embedSrc) return null;
-    return <iframe key={embedSrc} ref={embedRef} src={embedSrc} title="video" allow={VIDEO_EMBED_ALLOW} style={{ ...box, border: 'none' }} />;
+    return <iframe key={embedSrc} ref={embedRef} src={embedSrc} aria-label="video" allow={VIDEO_EMBED_ALLOW} style={{ ...box, border: 'none' }} />;
   }
   if (!src) return null;
   return (
@@ -177,8 +177,8 @@ function PresentVideo({ element: el, zIndex, style }: {
   );
 }
 
-function PresentDemoIframe({ assetId, hash, title, pos, zIndex, style, ctx }: {
-  assetId: string; hash?: string; title?: string;
+function PresentDemoIframe({ assetId, hash, label, pos, zIndex, style, ctx }: {
+  assetId: string; hash?: string; label?: string;
   pos: { x: number; y: number; width: number; height: number }; zIndex: number;
   style?: React.CSSProperties; ctx?: PresentCtx;
 }) {
@@ -195,8 +195,10 @@ function PresentDemoIframe({ assetId, hash, title, pos, zIndex, style, ctx }: {
     fontFacesCss,
   });
   if (!src) return null;
+  // aria-label, not title: while presenting, a title shows a native tooltip under the
+  // cursor the presenter is pointing with (#203). The same holds for every iframe here.
   return (
-    <iframe src={src} sandbox="allow-scripts" className="el-demo-frame" title={title || 'demo'} style={{
+    <iframe src={src} sandbox="allow-scripts" className="el-demo-frame" aria-label={label || 'demo'} style={{
       position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height, border: 'none', zIndex, ...style,
     }} />
   );
@@ -210,7 +212,7 @@ export function PresentControllerIframe({ assetId }: { assetId: string }) {
   const src = useDemoDoc(assetId, { hash: 'role=controller', channelKey: assetId, fontFacesCss });
   if (!src) return null;
   return (
-    <iframe src={src} sandbox="allow-scripts" className="el-demo-frame" title={`controller: ${assetId.slice(0, 8)}`}
+    <iframe src={src} sandbox="allow-scripts" className="el-demo-frame" aria-label={`controller: ${assetId.slice(0, 8)}`}
       style={{ position: 'absolute', width: 0, height: 0, border: 'none', opacity: 0, pointerEvents: 'none' }} />
   );
 }
