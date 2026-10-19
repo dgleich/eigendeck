@@ -22,7 +22,7 @@ await exec(sid, "window.__eigendeck.store.getState().selectSlide(0); window.__ei
 await sleep(1600);
 
 const info = JSON.parse(await exec(sid, `
-  const f = document.querySelector('.present-slide iframe[title="HTML element"]');
+  const f = document.querySelector('.present-slide iframe[aria-label="HTML element"]');
   if (!f) return JSON.stringify({ err: 'no present iframe' });
   const srcdoc = f.getAttribute('srcdoc') || '';
   return JSON.stringify({

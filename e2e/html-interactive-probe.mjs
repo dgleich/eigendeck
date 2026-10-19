@@ -54,7 +54,7 @@ await shot(sid, 'interact-editor');
 // PRESENT: the interactive iframe becomes clickable (pointer-events:auto).
 await exec(sid, "const s=window.__eigendeck.store.getState(); s.selectSlide(0); s.setPresenting(true);");
 await sleep(1200);
-v = await peSel(sid, '.present-mode iframe[title="HTML element"]'); if (v !== 'auto') problems.push(`present interactive pointer-events=${v} (want auto)`);
+v = await peSel(sid, '.present-mode iframe[aria-label="HTML element"]'); if (v !== 'auto') problems.push(`present interactive pointer-events=${v} (want auto)`);
 await shot(sid, 'interact-present');
 await exec(sid, "window.__eigendeck.store.getState().setPresenting(false);");
 

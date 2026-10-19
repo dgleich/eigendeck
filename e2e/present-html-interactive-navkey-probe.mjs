@@ -28,7 +28,7 @@ await exec(sid,"window.__eigendeck.store.getState().setPresenting(true);");
 let info=null;
 for(let i=0;i<20;i++){
   info=await exec(sid,`
-    const f=document.querySelector('iframe[title="HTML element"]');
+    const f=document.querySelector('iframe[title="HTML element"],iframe[aria-label="HTML element"]');
     if(!f) return null;
     return JSON.stringify({
       sandbox: f.getAttribute('sandbox'),

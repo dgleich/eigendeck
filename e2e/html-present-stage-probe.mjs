@@ -21,7 +21,7 @@ await sleep(1600);
 const g = JSON.parse(await exec(sid, `
   const vw=window.innerWidth, vh=window.innerHeight;
   const slide=document.querySelector('.present-slide');
-  const frame=document.querySelector('.present-slide iframe[title="HTML element"]');
+  const frame=document.querySelector('.present-slide iframe[aria-label="HTML element"]');
   const r=e=>{const b=e.getBoundingClientRect();return {w:Math.round(b.width),h:Math.round(b.height)}};
   const center=document.elementFromPoint(vw/2,vh/2);
   return JSON.stringify({ vw, vh, slide: slide?r(slide):null, frame: frame?r(frame):null,

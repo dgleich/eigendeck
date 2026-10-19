@@ -19,7 +19,7 @@ await exec(sid, `window.__eigendeck.store.getState().addElement({id:'ytvid',type
 await exec(sid, "window.__eigendeck.store.getState().setPresenting(true);");
 
 let info = null;
-for (let i = 0; i < 20; i++) { await sleep(500); info = await exec(sid, `const f=document.querySelector('iframe[title="video"]');return f?JSON.stringify({src:f.getAttribute('src'),allow:f.getAttribute('allow')}):null;`); if (info) break; }
+for (let i = 0; i < 20; i++) { await sleep(500); info = await exec(sid, `const f=document.querySelector('iframe[title="video"],iframe[aria-label="video"]');return f?JSON.stringify({src:f.getAttribute('src'),allow:f.getAttribute('allow')}):null;`); if (info) break; }
 if (!info) fail('no video iframe rendered in present mode');
 const { src, allow } = JSON.parse(info);
 console.log('YT iframe src:', src);
@@ -29,7 +29,7 @@ if (!src.includes('/embed/')) fail(`not an /embed/ URL: ${src}`);
 if (!allow) fail('missing iframe allow attribute (VIDEO_EMBED_ALLOW)');
 
 // Best-effort: does the iframe actually load from YouTube in the rig's WebKit?
-const load = await execA(sid, `const d=arguments[arguments.length-1];const f=document.querySelector('iframe[title="video"]');if(!f)return d(JSON.stringify({verdict:'no-iframe'}));let done=false;const fin=(o)=>{if(!done){done=true;d(JSON.stringify(o));}};f.addEventListener('load',()=>fin({verdict:'loaded',cw:!!f.contentWindow}));f.addEventListener('error',()=>fin({verdict:'error'}));setTimeout(()=>fin({verdict:'timeout',cw:!!f.contentWindow}),9000);`);
+const load = await execA(sid, `const d=arguments[arguments.length-1];const f=document.querySelector('iframe[title="video"],iframe[aria-label="video"]');if(!f)return d(JSON.stringify({verdict:'no-iframe'}));let done=false;const fin=(o)=>{if(!done){done=true;d(JSON.stringify(o));}};f.addEventListener('load',()=>fin({verdict:'loaded',cw:!!f.contentWindow}));f.addEventListener('error',()=>fin({verdict:'error'}));setTimeout(()=>fin({verdict:'timeout',cw:!!f.contentWindow}),9000);`);
 console.log('YT load verdict (informational — rig serves the DEV origin):', load);
 
 await quit(sid);
