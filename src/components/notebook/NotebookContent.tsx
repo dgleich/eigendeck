@@ -33,12 +33,26 @@ import { NotebookElement, effectiveFontSize } from '../../types/presentation';
 import { usePresentationStore } from '../../store/presentation';
 import { fontForNotebookProse, fontForNotebookCode } from '../../lib/notebookFonts';
 import { resolveTheme, isDarkTheme, previewThemeSalt } from '../../lib/themes';
+import { NotebookTooltips, useTip } from './tooltips';
 
-export function NotebookContent({ element, interactive, mode = 'editor' }: {
+export function NotebookContent(props: {
   element: NotebookElement;
   interactive: boolean;
   /** 'editor' suppresses autoRun (the inspector toggle is meaningful
    *  only in PresentMode). Defaults to 'editor'. */
+  mode?: 'editor' | 'present';
+}) {
+  // No hover tooltips on the notebook's controls while presenting (#203).
+  return (
+    <NotebookTooltips.Provider value={props.mode !== 'present'}>
+      <NotebookContentBody {...props} />
+    </NotebookTooltips.Provider>
+  );
+}
+
+function NotebookContentBody({ element, interactive, mode = 'editor' }: {
+  element: NotebookElement;
+  interactive: boolean;
   mode?: 'editor' | 'present';
 }) {
   const { notebook, error, loading } = useNotebook(element.assetId);
@@ -402,9 +416,10 @@ function labelForStatus(s: KernelStatus): string {
 }
 
 function StatusDot({ status }: { status: KernelStatus }) {
+  const tip = useTip(labelForStatus(status));
   if (status === 'idle' || status === 'disconnected') return null;
   return (
-    <span className={`nb-status-dot nb-status-dot-${status}`} title={labelForStatus(status)} />
+    <span className={`nb-status-dot nb-status-dot-${status}`} {...tip} />
   );
 }
 

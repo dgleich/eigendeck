@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { CodeCell } from './CodeCell';
+import { NotebookTooltips } from './tooltips';
 import type { CodeCell as CodeCellT } from '../../lib/notebookFormat';
 
 const cell: CodeCellT = {
@@ -95,5 +96,26 @@ describe('CodeCell execution-count prompt', () => {
   it('treats a live "*" placeholder as running', () => {
     const { container } = render(<CodeCell cell={cell} highlight={false} liveExecutionCount="*" />);
     expect(promptOf(container)).toBe('[*]');
+  });
+});
+
+// #203: while presenting, the cursor is the presenter's pointer, so the notebook's
+// controls must not carry a title (a native hover tooltip). They keep the text as
+// an aria-label; in the editor the tooltip stays.
+describe('CodeCell tooltips (#203)', () => {
+  const controls = (presenting: boolean) => (
+    <NotebookTooltips.Provider value={!presenting}>
+      <CodeCell cell={cell} highlight={false} onRun={() => {}} edited onRevert={() => {}} />
+    </NotebookTooltips.Provider>
+  );
+  it('keeps the tooltips in the editor', () => {
+    const { container } = render(controls(false));
+    expect(container.querySelector('.nb-cell-run')!.getAttribute('title')).toBe('Run this cell (Shift-Enter)');
+  });
+  it('shows no tooltip on any control while presenting', () => {
+    const { container } = render(controls(true));
+    expect(container.querySelectorAll('[title]')).toHaveLength(0);
+    expect(container.querySelector('.nb-cell-run')!.getAttribute('aria-label')).toBe('Run this cell (Shift-Enter)');
+    expect(container.querySelector('.nb-cell-revert')!.getAttribute('aria-label')).toBeTruthy();
   });
 });

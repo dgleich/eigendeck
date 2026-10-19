@@ -24,6 +24,7 @@ import { RawCell } from './RawCell';
 import { CellOutput, CodeCell as CodeCellT } from '../../lib/notebookFormat';
 import { MergedCell } from '../../lib/notebookOverlay';
 import { UseOverlayResult } from '../../lib/useOverlay';
+import { useTip } from './tooltips';
 
 /** Transient per-cell run status (the [*] spinner) — keyed by a string
  *  cell key (index for .ipynb cells, id for appended). Not persisted;
@@ -74,6 +75,7 @@ export function NotebookCells({
   loading?: boolean;
   error?: Error | null;
 }) {
+  const tipAddCell = useTip('Add a code cell at the end');
   // Pointer-events gate. In the LIVE editor the body must NOT capture events
   // until interacting (after double-click), so the DraggableBox can drag — see
   // CLAUDE.md rule #8. In the EXPORT (no live, no DraggableBox) the body must
@@ -200,7 +202,7 @@ export function NotebookCells({
         {/* "+ Cell" lives at the END of the body (not the header) so it's
             available even when the kernel header is hidden. */}
         {live && live.editable && (
-          <button className="nb-add-cell" title="Add a code cell at the end"
+          <button className="nb-add-cell" {...tipAddCell}
             onClick={() => live.ov.addAppended(lastIpynbIndex(merged), 'code')}>
             + []
           </button>

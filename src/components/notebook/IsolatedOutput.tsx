@@ -12,8 +12,10 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { buildIsolatedOutputUrl, invalidateIsolatedOutput, useDeckFontFacesCss, useDemoInternetBlocked } from '../../lib/demoMount';
 import { demoVarsCssForSlide } from '../../lib/demoThemeInject';
 import { usePresentationStore } from '../../store/presentation';
+import { useTip } from './tooltips';
 
 export function IsolatedOutput({ html }: { html: string }) {
+  const tip = useTip('notebook output');
   const channelKey = `nbout-${useId()}`;
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState(24);
@@ -56,7 +58,7 @@ export function IsolatedOutput({ html }: { html: string }) {
       src={src}
       sandbox="allow-scripts"
       className="el-demo-frame nb-output nb-html-interactive"
-      title="notebook output"
+      {...tip}
       style={{ width: '100%', height, border: 'none', display: 'block' }}
     />
   );

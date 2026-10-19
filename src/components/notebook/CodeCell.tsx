@@ -26,6 +26,7 @@ import { CodeCell as CodeCellT, CellOutput as CellOutputT } from '../../lib/note
 import { CellOutput } from './CellOutput';
 import { highlightCode } from '../../lib/syntaxHighlight';
 import { NotebookCellEditor } from './NotebookCellEditor';
+import { useTip } from './tooltips';
 
 export interface CodeCellProps {
   cell: CodeCellT;
@@ -75,6 +76,9 @@ export function CodeCell({
   fontSize = 32, onEdit, onCommit, edited, added, onRevert,
   highlightedHtml,
 }: CodeCellProps) {
+  const tipDelete = useTip('Delete this added cell');
+  const tipRevert = useTip("Revert this cell to the notebook's saved source");
+  const tipRun = useTip('Run this cell (Shift-Enter)');
   const effectiveSource = source ?? cell.source;
   // Strip ONE trailing newline for DISPLAY (static + editor) so a cell that
   // ends in "\n" doesn't render a spurious blank last line — which the
@@ -157,21 +161,21 @@ export function CodeCell({
             {added && onRevert && (
               <button className="nb-cell-delete"
                 onClick={(e) => { e.stopPropagation(); onRevert(); }}
-                title="Delete this added cell">
+                {...tipDelete}>
                 ✕
               </button>
             )}
             {!added && edited && onRevert && (
               <button className="nb-cell-revert"
                 onClick={(e) => { e.stopPropagation(); onRevert(); }}
-                title="Revert this cell to the notebook's saved source">
+                {...tipRevert}>
                 ⟲
               </button>
             )}
             {onRun && (
               <button className="nb-cell-run" disabled={running}
                 onClick={(e) => { e.stopPropagation(); onRun(); }}
-                title="Run this cell (Shift-Enter)">
+                {...tipRun}>
                 {running ? '…' : '▶'}
               </button>
             )}
