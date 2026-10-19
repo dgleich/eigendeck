@@ -121,6 +121,15 @@ function shiftArrow(el: Extract<SlideElement, { type: 'arrow' }>, dx: number, dy
   return out;
 }
 
+/** One id is one element (#202): put the updated version of each element in
+ *  `updated` on EVERY slide that shows it, not only on the slide being copied. */
+function replaceEveryCopy(slides: Slide[], updated: Map<string, SlideElement>): void {
+  slides.forEach((s, i) => {
+    if (s.elements.some((e) => updated.has(e.id))) {
+      slides[i] = { ...s, elements: s.elements.map((e) => updated.get(e.id) ?? e) };
+    }
+  });
+}
 /** Point a selection that named `from` at `to` (an element that changed id). */
 function remapSelection(sel: SelectedObject, from: string, to: string): SelectedObject {
   if (!sel) return sel;
@@ -334,7 +343,7 @@ export const usePresentationStore = create<PresentationState>()(
           const updatedOriginalElements = original.elements.map((el) => ({
             ...el, linkId: el.linkId || crypto.randomUUID(), _syncId: undefined, _linkId: undefined,
           }) as SlideElement);
-          slides[index] = { ...original, elements: updatedOriginalElements };
+          replaceEveryCopy(slides, new Map(updatedOriginalElements.map((e) => [e.id, e])));
           const copy: Slide = {
             ...JSON.parse(JSON.stringify(slides[index])),
             id: crypto.randomUUID(),
@@ -478,8 +487,9 @@ export const usePresentationStore = create<PresentationState>()(
             ...el, linkId: el.linkId || crypto.randomUUID(),
           }) as SlideElement);
 
-          // Set groupId and the link ids on the original if needed
-          slides[idx] = { ...original, groupId, elements: updatedElements };
+          // Set the link ids on every copy of each element, and the groupId here
+          replaceEveryCopy(slides, new Map(updatedElements.map((e) => [e.id, e])));
+          slides[idx] = { ...slides[idx], groupId };
 
           const copy: Slide = {
             ...JSON.parse(JSON.stringify(slides[idx])),

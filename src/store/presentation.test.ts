@@ -10,7 +10,7 @@ import {
   usePresentationStore,
 } from './presentation';
 import { createDefaultPresentation } from '../types/presentation';
-import type { Presentation, Slide } from '../types/presentation';
+import type { Presentation, Slide, SlideElement } from '../types/presentation';
 import { hasLinkPartner } from '../lib/syncLink';
 
 // EXHAUSTIVE persistence coverage. `Record<keyof T, ...>` forces every model field
@@ -635,6 +635,43 @@ describe('presentation store', () => {
       // Original slides 1 and 2 should still have their original syncId
       expect(final.presentation.slides[0].elements[0].syncId).toBe(originalSyncId);
       expect(final.presentation.slides[1].elements[0].syncId).toBe(originalSyncId);
+    });
+
+    // #202: copies of one element are one element (one row), so duplicate and build
+    // must update E on EVERY slide that shows it, not just the slide being copied.
+    // Here E is already synced on slides 0 and 2, with no linkId and a remembered
+    // _linkId, before slide 0 is duplicated or built.
+    const seedSyncedE = () => {
+      const E = { id: 'E', type: 'text', preset: 'body', html: 'e', _linkId: 'OLD',
+        position: { x: 0, y: 0, width: 10, height: 10 } } as unknown as SlideElement;
+      usePresentationStore.setState({
+        presentation: { ...createDefaultPresentation(), slides: [
+          { id: 's0', notes: '', elements: [{ ...E }] },
+          { id: 's1', notes: '', elements: [] },
+          { id: 's2', notes: '', elements: [{ ...E }] },
+        ] as Slide[] },
+        currentSlideIndex: 0,
+      });
+    };
+    const copiesOfE = () => usePresentationStore.getState().presentation.slides
+      .flatMap((sl) => sl.elements).filter((e) => e.id === 'E');
+
+    it('duplicate updates every copy of an element that is already on another slide (#202)', () => {
+      seedSyncedE();
+      usePresentationStore.getState().duplicateSlide(0);
+      const copies = copiesOfE();
+      expect(copies).toHaveLength(3);
+      expect(copies[0].linkId).toBeTruthy();
+      for (const c of copies) expect(c).toEqual(copies[0]);
+    });
+
+    it('build updates every copy of an element that is already on another slide (#202)', () => {
+      seedSyncedE();
+      usePresentationStore.getState().addBuildSlide();
+      const copies = copiesOfE();
+      expect(copies).toHaveLength(3);
+      expect(copies[0].linkId).toBeTruthy();
+      for (const c of copies) expect(c).toEqual(copies[0]);
     });
 
     it('duplicate inserts after group when slide is in a group', () => {
