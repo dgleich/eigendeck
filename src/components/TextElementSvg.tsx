@@ -61,11 +61,6 @@ function escAttr(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-/** Escape XML special characters for use as element text content. */
-function escText(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
 /**
  * Build the SVG/foreignObject markup string for a text element.
  * Pure function — no React, no DOM. The iframe pool must already have
@@ -79,9 +74,10 @@ function escText(s: string): string {
  * (fontCache:'none') so they can be moved across documents.
  *
  * Accessibility: the SVG carries role="img" + aria-label with the source
- * text (math marker syntax preserved), and an inner <title> element. Screen
- * readers pick up either; sighted users don't see them as tooltips because
- * we use aria-label instead of relying on title-as-tooltip behavior.
+ * text (math marker syntax preserved), which screen readers read. There is
+ * deliberately no inner <title> element: WebKit shows an SVG <title> as a
+ * native hover tooltip, which covered the text under the presenter's cursor
+ * (#203).
  */
 // applyCodeFont (mono family for <code> runs) lives in lib/textStyle.mjs, shared
 // with the HTML export; imported above.
@@ -125,7 +121,6 @@ export function buildTextElementSvgMarkup(
     `${textShadow ? `text-shadow:${e(textShadow)};` : ''}`;
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${eW} ${eH}" preserveAspectRatio="none" width="${eW}" height="${eH}" overflow="hidden" role="img" aria-label="${escAttr(alt)}" style="display:block;overflow:hidden;">` +
-      `<title>${escText(alt)}</title>` +
       `<foreignObject x="0" y="0" width="${eW}" height="${eH}" overflow="hidden">` +
         `<div xmlns="http://www.w3.org/1999/xhtml" style="${outerStyle}">` +
           `<div style="${innerStyle}">` +

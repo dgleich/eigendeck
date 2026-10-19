@@ -1,10 +1,11 @@
 // #203 guard in the REAL app: while presenting, the cursor is the presenter's pointer,
-// so nothing inside the presenter may carry a `title` attribute (WebKit draws it as a
-// native tooltip on hover). The unit test (PresentSlide.tooltip.test.tsx) checks the
-// element types one at a time; this checks the whole present screen as the app builds
-// it. Deck: the printdemo fixture (a live demo, an html element, a notebook), plus a
-// demo piece of that demo (which also mounts the hidden controller), a YouTube embed,
-// and the static types, all added to slide 0 before presenting.
+// so nothing inside the presenter may carry a `title` attribute or an SVG <title>
+// element (WebKit draws either as a native tooltip on hover). The unit test
+// (PresentSlide.tooltip.test.tsx) checks the element types one at a time; this checks
+// the whole present screen as the app builds it. Deck: the printdemo fixture (a live
+// demo, an html element, a notebook), plus a demo piece of that demo (which also
+// mounts the hidden controller), a YouTube embed, and the static types (text, arrow,
+// cover), all added to slide 0 before presenting.
 import { openApp, waitSeam, exec, sleep, quit } from './_ui.mjs';
 const APP = process.env.E2E_APP, DECK = process.env.E2E_DECK;
 const fail = (m) => { console.error('NO_TOOLTIP_FAIL:', m); process.exit(1); };
@@ -34,7 +35,8 @@ for (let i = 0; i < 20; i++) {
     if (!root) return JSON.stringify({ root: false });
     return JSON.stringify({ root: true,
       iframes: root.querySelectorAll('iframe').length,
-      titled: [...root.querySelectorAll('[title]')].map((n) => n.tagName.toLowerCase() + '[title="' + n.getAttribute('title') + '"]') });`));
+      titled: [...root.querySelectorAll('[title], title')].map((n) => n.tagName.toLowerCase() === 'title'
+        ? '<title>' + n.textContent + '</title>' : n.tagName.toLowerCase() + '[title="' + n.getAttribute('title') + '"]') });`));
   if (r.root && r.iframes >= 5) break;
 }
 await exec(sid, "window.__eigendeck.store.getState().setPresenting(false);");
@@ -43,6 +45,6 @@ await quit(sid);
 if (!r || !r.root) fail('present mode never mounted');
 // Not vacuous: the iframe-backed elements (the tooltip source) must have rendered.
 if (r.iframes < 5) fail(`only ${r.iframes} iframes in the presenter (expected demo, piece, controller, html, video)`);
-if (r.titled.length) fail(`${r.titled.length} element(s) in the presenter carry a title (hover tooltip): ${r.titled.join(', ')}`);
-console.log(`NO_TOOLTIP_PASS: ${r.iframes} iframes in the presenter, no title attributes`);
+if (r.titled.length) fail(`${r.titled.length} hover tooltip(s) in the presenter: ${r.titled.join(', ')}`);
+console.log(`NO_TOOLTIP_PASS: ${r.iframes} iframes in the presenter, no title attributes or <title> elements`);
 process.exit(0);

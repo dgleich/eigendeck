@@ -1,6 +1,7 @@
-// #203: while presenting, the cursor is a pointer. A `title` attribute on anything in
-// the slide makes WebKit show a native tooltip on hover, covering what is being
-// pointed at, so nothing the presenter renders may carry one.
+// #203: while presenting, the cursor is a pointer. A `title` attribute, or an SVG
+// <title> element, on anything in the slide makes WebKit show a native tooltip on
+// hover, covering what is being pointed at, so nothing the presenter renders may
+// carry one.
 import { describe, it, expect, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import { PresentElement, PresentControllerIframe, type PresentCtx } from './PresentSlide';
@@ -25,7 +26,10 @@ function ctx(): PresentCtx {
   return { slide, presentationConfig: config, presentationTheme: 'white' };
 }
 const pos = { x: 100, y: 100, width: 400, height: 300 };
+/** Everything WebKit would show as a hover tooltip. */
+const tooltips = (c: HTMLElement) => [...c.querySelectorAll('[title], title')].map((n) => n.outerHTML.slice(0, 80));
 const elements = [
+  { id: 't1', type: 'text', preset: 'body', html: 'Pointing at this text', position: pos },
   { id: 'd1', type: 'demo', assetId: 'asset-demo', position: pos },
   { id: 'p1', type: 'demo-piece', assetId: 'asset-demo', piece: 'plot', position: pos },
   { id: 'h1', type: 'html', html: '<p>hi</p>', position: pos },
@@ -37,14 +41,15 @@ describe('present mode shows no hover tooltips (#203)', () => {
   for (const el of elements) {
     it(`a ${el.type}${(el as { interactive?: boolean }).interactive ? ' (interactive)' : ''} element carries no title attribute`, () => {
       const { container } = render(<PresentElement element={el} zIndex={0} ctx={ctx()} />);
-      expect(container.querySelector('iframe')).not.toBeNull();
-      expect([...container.querySelectorAll('[title]')].map((n) => n.outerHTML.slice(0, 80))).toEqual([]);
+      if (el.type !== 'text') expect(container.querySelector('iframe')).not.toBeNull();
+      else expect(container.querySelector('svg')).not.toBeNull();
+      expect(tooltips(container)).toEqual([]);
     });
   }
 
   it('the hidden demo controller carries no title attribute', () => {
     const { container } = render(<PresentControllerIframe assetId="asset-demo" />);
     expect(container.querySelector('iframe')).not.toBeNull();
-    expect(container.querySelectorAll('[title]')).toHaveLength(0);
+    expect(tooltips(container)).toEqual([]);
   });
 });
