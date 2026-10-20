@@ -12,7 +12,9 @@ jobs:
   e2e-coverage:
     name: Instrumented e2e coverage (frontend + Rust)
     runs-on: ubuntu-22.04
-    timeout-minutes: 120
+    # 155 probes under coverage instrumentation take a little over two hours (the
+    # 2026-10-20 run was cancelled at 120 minutes after 149 passed, none failing).
+    timeout-minutes: 180
     env:
       # An instrument-coverage build is one heavy rustc per job; the default
       # (= CPU count) OOMs a memory-constrained runner. Cap it.
