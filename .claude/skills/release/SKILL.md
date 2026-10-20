@@ -107,8 +107,25 @@ gh run watch <run-id> --exit-status                # ~10–15 min
 gh release view vYY.M.D --json assets -q '.assets[].name'
 ```
 Expect: both Mac DMGs (`_aarch64.dmg` + `_x64.dmg`) + two `.app.tar.gz`, Linux
-(`.deb` / `.AppImage` / `.rpm`), Windows (`-setup.exe` / `.msi`). Review the
-draft on GitHub and **Publish**.
+(`.deb` / `.AppImage` / `.rpm`), Windows (`-setup.exe` / `.msi`).
+
+### Write the release notes (every release)
+The workflow only sets the body to "See the assets for download links." Replace it
+with real notes before publishing:
+```bash
+git log --oneline --no-merges v<previous>..v<this> | grep -vE "^[0-9a-f]+ (docs|test|chore|ci|refactor)"
+gh release edit vYY.M.D --notes-file <notes.md>     # the draft stays private
+```
+- Write for the people using the app, not for developers: what changed for them and
+  why it matters, in full sentences and short paragraphs under a few `##` headings
+  grouped by area (e.g. editing, presenting, export). Prose, not bullet lists, and
+  no dash-joined clauses.
+- Cite the issue number for each fix (`(#203)`), and call out any behaviour that
+  changed on purpose (e.g. an option that is no longer offered), so nobody is
+  surprised.
+- Leave out internal work (tests, CI, refactors, docs) unless it changes what a user
+  sees.
+- Show David the notes, then he reviews the draft on GitHub and **Publishes**.
 
 ## Website downloads page (eigendeck-web)
 
