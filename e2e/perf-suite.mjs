@@ -10,7 +10,8 @@
 // Env: E2E_APP, E2E_DECK (required); PERF_REPS (default 3); PERF_OUT (file to write
 // the JSON to; also printed after a PERF_SUITE_JSON marker on stdout).
 import { openApp, waitSeam, exec, quit, sleep } from './_ui.mjs';
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, copyFileSync, rmSync } from 'node:fs';
+import { DatabaseSync } from 'node:sqlite';
 
 const APP = process.env.E2E_APP, DECK = process.env.E2E_DECK;
 const REPS = parseInt(process.env.PERF_REPS || '3', 10);
@@ -95,27 +96,70 @@ async function oneRep() {
 
   // all sidebar thumbnails rendered
   const nSlides = await exec(sid, "return window.__eigendeck.store.getState().presentation.slides.length");
-  const tT = Date.now(); let thumbnailsBuild = null;
+  // seamToThumbnails is the stable total (seam -> every thumbnail ready). How it splits
+  // into seamToFirstRender and thumbnailsBuild depends on when the first poll sees the
+  // canvas, so either half alone can swing between runs (#204).
+  const tT = Date.now(); let thumbnailsBuild = null, seamToThumbnails = null;
   for (let i=0;i<150;i++){
     const ready = await exec(sid, `const c=[...document.querySelectorAll('.slide-thumb-clip')]; if(c.length<${nSlides})return false; return c.every(x=>{const im=[...x.querySelectorAll('img')]; return im.length? im.every(y=>y.complete&&y.naturalWidth>0) : !!x.querySelector('.slide-thumb-render')});`);
-    if (ready) { thumbnailsBuild = Date.now()-tT; break; } await sleep(100);
+    if (ready) { thumbnailsBuild = Date.now()-tT; seamToThumbnails = Date.now()-tR; break; } await sleep(100);
   }
 
   const ops = await exec(sid, ACTIVITIES);
   await quit(sid);
-  return { openToSeam, seamToFirstRender, thumbnailsBuild, slides: nSlides, ...(ops || {}) };
+  return { openToSeam, seamToFirstRender, thumbnailsBuild, seamToThumbnails, slides: nSlides, ...(ops || {}) };
+}
+
+// ---- reset the deck between reps ----
+// The activities edit the deck and the app saves them, so each rep after the first
+// starts again from the deck as it was before rep 1. The caches the previous rep
+// filled (rasterized images in asset_cache, rendered math in math_cache) are carried
+// over, so rep 1 stays the cold open and later reps the warm one, as the numbers have
+// always meant.
+const CACHE_TABLES = ['asset_cache', 'math_cache'];
+const PRISTINE = `${DECK}.pristine`;
+copyFileSync(DECK, PRISTINE);
+function resetDeck() {
+  const cur = new DatabaseSync(DECK);
+  const caches = CACHE_TABLES.map((t) => [t, cur.prepare(`SELECT * FROM ${t}`).all()]);
+  cur.close();
+  for (const ext of ['-wal', '-shm']) rmSync(DECK + ext, { force: true });
+  copyFileSync(PRISTINE, DECK);
+  const db = new DatabaseSync(DECK);
+  for (const [table, rows] of caches) {
+    for (const row of rows) {
+      const cols = Object.keys(row);
+      db.prepare(`INSERT OR REPLACE INTO ${table} (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`)
+        .run(...cols.map((c) => row[c]));
+    }
+  }
+  db.close();
+  return caches.map(([t, rows]) => `${rows.length} ${t}`).join(', ');
 }
 
 // ---- run REPS sessions, aggregate ----
 const reps = [];
 for (let r = 0; r < REPS; r++) {
+  if (r > 0) {
+    await sleep(500);   // let the previous app exit and release the deck
+    console.error(`  (deck reset; kept ${resetDeck()})`);
+  }
   const m = await oneRep();
   if (m) { reps.push(m); console.error(`  rep ${r+1}/${REPS}: openToSeam=${m.openToSeam} rapidNav=${m.rapidSlideNav} presentAdvance=${m.presentAdvance}`); }
   else console.error(`  rep ${r+1}/${REPS}: FAILED to open`);
 }
 if (!reps.length) { console.error('PERF_SUITE_FAIL: no successful reps'); process.exit(1); }
+rmSync(PRISTINE, { force: true });
 
-const ACT_KEYS = ['openToSeam','seamToFirstRender','thumbnailsBuild','rapidSlideNav','addText','addImage','moveElements','addSlide','undoRedo','enterPresent','presentAdvance','presentPrev','exitPresent'];
+// Every rep must measure the SAME deck: the activities edit it (add text, image, slide)
+// and the app saves those edits, so without a reset rep 2 would open a bigger deck.
+const counts = reps.map((r) => r.slides);
+if (new Set(counts).size > 1) {
+  console.error(`PERF_SUITE_FAIL: the deck changed between reps (slides per rep: ${counts.join(', ')})`);
+  process.exit(1);
+}
+
+const ACT_KEYS = ['openToSeam','seamToFirstRender','thumbnailsBuild','seamToThumbnails','rapidSlideNav','addText','addImage','moveElements','addSlide','undoRedo','enterPresent','presentAdvance','presentPrev','exitPresent'];
 const stat = (vals) => {
   const a = vals.filter(v => typeof v === 'number');
   if (!a.length) return null;

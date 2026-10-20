@@ -38,6 +38,19 @@ PROBE=e2e/perf-suite.mjs E2E_DECK=/abs/path/deck.eigendeck PERF_OUT=/tmp/r.json 
 
 ## The activities
 
+Each rep is a fresh app session on the same deck. The activities edit the deck
+(adding text, an image and a slide) and the app saves those edits, so
+`perf-suite.mjs` resets the deck to its original state before every rep after the
+first. It carries over only the deck's caches, rasterized images (`asset_cache`) and
+rendered math (`math_cache`), so rep 1 is the cold open and later reps the warm one.
+The probe fails if two reps see a different number of slides.
+
+Before this reset (#204) the deck could grow from rep to rep. Reps 2 and 3 then
+included nearly empty added slides, which pulled the per-switch medians of
+`rapidSlideNav` and `presentAdvance` down. The older snapshots (v26.9.15 and earlier)
+show that same drop on reps 2 and 3, so compare a new snapshot with them by rep 1,
+which always ran on the untouched deck.
+
 Both modes are exercised. Loop activities report the **median per-op** (robust to
 one-off jank); each op is followed by a double-rAF so the number includes the paint.
 
@@ -45,6 +58,11 @@ one-off jank); each op is followed by a double-rAF so the number includes the pa
 - `openToSeam` — app launch → the `__eigendeck` seam is live (deck structure loaded).
 - `seamToFirstRender` — seam → the first slide canvas is painted.
 - `thumbnailsBuild` — all sidebar thumbnails rendered (imgs decoded / render-div present).
+- `seamToThumbnails` — seam → every thumbnail ready: the stable total of the two above.
+  How that time splits between `seamToFirstRender` and `thumbnailsBuild` depends on
+  when the first poll sees the canvas, so either half alone can swing several-fold
+  between identical runs (#204). Compare this one across versions; for files written
+  before it existed, add the other two per rep.
 
 **Editor mode**
 - `rapidSlideNav` — `selectSlide` cycling forward through every slide (twice), per-switch.
