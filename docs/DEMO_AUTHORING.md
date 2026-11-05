@@ -139,6 +139,23 @@ still have to get the `.wasm` *bytes* the same way as any resource:
 Threads/SharedArrayBuffer (cross-origin isolation) aren't available in the sandbox,
 so ship single-threaded wasm builds.
 
+## Slide-advance keys while presenting
+
+When a demo has keyboard focus in present mode, Eigendeck still advances the
+slides. The injected bridge forwards Space, the arrow keys, PageUp/PageDown,
+Home and End to the presenter before the demo's own handlers run, so a demo
+that stops propagation or prevents the default of every key (egui and many
+canvas libraries do) cannot swallow them (#155, #207). The demo still receives
+the keys as well.
+
+The one exception is typing: nothing is forwarded while focus is in an
+`<input>`, `<textarea>`, `<select>` or editable content. A toolkit that draws its
+own text fields usually focuses a hidden `<input>` while you edit one (egui
+does), so editing there is covered too. A widget that uses the arrow keys
+without taking DOM focus (an egui number field you have clicked once, a custom
+stepper) gets the arrows and the slide advances as well; there is no opt-out
+for that yet.
+
 ## Template
 
 ```html
