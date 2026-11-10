@@ -52,6 +52,10 @@ export default defineConfig(async () => ({
   // Vitest configuration
   test: {
     environment: "jsdom",
+    // Node 26 (now lts/*, which CI uses) defines its own global localStorage,
+    // which is undefined without --localstorage-file and shadows jsdom's (#210).
+    // Turn Node's off in the test workers; the flag is also accepted by Node 22/24.
+    execArgv: ["--no-experimental-webstorage"],
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     css: true,
