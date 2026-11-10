@@ -66,7 +66,7 @@ PROBE=$PWD/export-showcase.mjs E2E_DECK=$PWD/showcase.eigendeck \
 #     general app export keeps full fonts on purpose (an exported deck is
 #     editable). ~22.6MB -> ~4.6MB (~11.6MB -> ~2.1MB gzip). Only touches the
 #     .html; the downloadable .eigendeck keeps full fonts for editing.
-uv run --with fonttools python subset-fonts.py showcase.html showcase.html
+uv run --with fonttools --with brotli python subset-fonts.py showcase.html showcase.html
 
 # 4. deploy to the website repo (the SUBSET .html + the full-font .eigendeck)
 cp showcase.eigendeck showcase.html /path/to/eigendeck-web/

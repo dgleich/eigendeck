@@ -23,7 +23,7 @@ const b64 = (buf) => Buffer.from(buf).toString('base64');
 
 // ---- demo slides (order = slide order) -------------------------------------
 const DEMOS = [
-  { file: 'drum-eigenmodes.html',   title: 'Eigenmodes of a membrane',   cap: 'Paint a membrane; we solve −Δu = λu on it. Pick a mode: its nodal lines (left) and the vibrating eigenvector (right). Eigenvectors of the Laplacian, made visible.' },
+  { file: 'drum-eigenmodes.html',   title: 'Eigenmodes of a membrane',   cap: 'Paint a membrane; we solve −Δu = λu with a clamped (Dirichlet) or free (Neumann) edge. Pick a mode: its nodal lines (left) and vibrating eigenvector (right).' },
   { file: 'gradient-descent.html',  title: 'Gradient descent',           cap: 'Click anywhere to drop a ball — it follows the gradient into a basin on a non-convex surface.' },
   { file: 'graph-layout.html',      title: 'Looking at paths in graphs', cap: 'The Fauci email reply network (Benson, Veldt & Gleich, ICWSM 2022), force-directed. Click two people to highlight every shortest reply-path between them — the count and length show below. Coloured by a spectral min-cut; hover for a name; drag to re-settle.' },
   { file: 'wave-equation.html',     title: 'The wave equation',          cap: 'Click or drag to pluck the string — the pulse splits into two waves and reflects off the ends.' },
@@ -163,10 +163,11 @@ function demoSlide(d) {
     // no-equation slides reclaim the freed strip — the demo starts higher + taller
     els.push({ id: `${key}-demo`, type: 'demo', assetId: assetId[d.file], position: { x: 60, y: eqTex ? 240 : 168, width: 1800, height: eqTex ? 728 : 800 } });
   }
-  // footnote is bottom-aligned, so a taller box grows UPWARD — long captions
+  // the caption is bottom-aligned, so a taller box grows UPWARD — long captions
   // (e.g. the graph slide) get 2–3 lines instead of being clipped, same baseline.
+  // Stated explicitly: the footnote preset itself is top-aligned since f77dd21.
   const capH = st.footnoteH || 84;
-  const cap = { id: `${key}-cap`, type: 'text', preset: 'footnote', html: d.cap, position: { x: 60, y: 1024 - capH, width: 1800, height: capH } };
+  const cap = { id: `${key}-cap`, type: 'text', preset: 'footnote', verticalAlign: 'bottom', html: d.cap, position: { x: 60, y: 1024 - capH, width: 1800, height: capH } };
   if (st.footnoteSize) cap.fontSize = st.footnoteSize;
   els.push(cap);
   const slide = { id: key, notes: '', elements: els };

@@ -6,9 +6,12 @@
 <title>Drum eigenmodes</title>
 <!--
   Showcase demo — "can you hear the shape of a drum?" PAINT a membrane on the
-  left grid; we build the 5-point Dirichlet Laplacian on it and solve the
-  eigenproblem −Δu = λu for the lowest modes (inverse iteration + conjugate
-  gradient + deflation, all in JS). Pick a mode from the strip: the LEFT shows
+  left grid; we build the 5-point Laplacian on it and solve the eigenproblem
+  −Δu = λu for the lowest modes (inverse iteration + conjugate gradient +
+  deflation, all in JS). A toggle picks the boundary condition: Dirichlet (the
+  edge is clamped, u = 0 outside the shape) or Neumann (the edge is free, zero
+  normal derivative; the operator is then the graph Laplacian of the painted
+  cells, whose first mode is the constant one with λ = 0). Pick a mode from the strip: the LEFT shows
   its nodal pattern (Chladni lines), the RIGHT shows the eigenvector as a 3-D
   surface oscillating at frequency √λ. The eigenvectors of the Laplacian made
   visible — the continuous cousin of the graph Laplacian. Title-less, theme-aware.
@@ -25,6 +28,7 @@
   .dr-right { flex: 1; }
   .dr-pane canvas { width: 100%; height: 100%; display: block; }
   #cv-top { cursor: crosshair; }
+  #dr-bc { position: absolute; right: 0; top: 0; z-index: 1; }   /* boundary condition, top-right of the membrane pane */
   .dr-lab { position: absolute; left: 0; top: 0; font-size: 0.58em; color: var(--eigendeck-muted, #999); pointer-events: none; user-select: none; }
   .dr-solving { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; font-size: 0.7em;
     color: var(--eigendeck-muted, #888); background: color-mix(in srgb, var(--eigendeck-bg,#fff) 55%, transparent); }
@@ -49,6 +53,7 @@
   body.hero .dr-mode { width: 100%; height: auto; aspect-ratio: 1; }
   body.hero .dr-ctrl { justify-content: center; margin-top: 0.35em; }
   body.hero #dr-preset [data-s="clear"] { display: none; }   /* no paint pane → nothing to clear */
+  body.hero #dr-bc { display: none; }                         /* the title slide keeps its look */
 </style>
 </head>
 <body>
@@ -61,6 +66,9 @@
     <div class="dr-pane dr-right">
       <canvas id="cv-3d"></canvas>
       <div class="dr-lab">eigenmode · vibrating</div>
+      <span class="dr-seg" id="dr-bc" title="Boundary condition">
+        <button data-bc="dirichlet" class="on" title="Clamped edge: u = 0 outside the shape">Dirichlet</button><button data-bc="neumann" title="Free edge: zero normal derivative">Neumann</button>
+      </span>
     </div>
   </div>
   <div class="dr-ctrl">
@@ -78,21 +86,29 @@
   var mask = new Uint8Array(NG * NG), idx = new Int32Array(NG * NG), cells = [], nC = 0;
   var modes = [], lam = [], disp = [], sel = 2, t = 0;   // modes stay UNIT-NORM (deflation needs it); disp[k] scales for display
 
-  // ---------- linear algebra: −Δ (Dirichlet) eigenpairs ----------
+  // ---------- linear algebra: −Δ eigenpairs, Dirichlet or Neumann ----------
+  // Dirichlet: every cell's diagonal is 4 (outside the shape u = 0).
+  // Neumann: the diagonal counts only the neighbours inside the shape, which makes
+  // the operator the graph Laplacian of the painted cells. It is singular (the
+  // constant vector has λ = 0), so the inverse iteration solves with L + SHIFT·I;
+  // the eigenvalue reported is still the Rayleigh quotient of L itself.
+  var NEUMANN = false, SHIFT = 0;
   function buildIndex() { idx.fill(-1); cells = []; for (var j = 0; j < NG; j++) for (var i = 0; i < NG; i++) if (mask[j * NG + i]) { idx[j * NG + i] = cells.length; cells.push([i, j]); } nC = cells.length; }
   function applyL(u, out) {
-    for (var k = 0; k < nC; k++) { var i = cells[k][0], j = cells[k][1], s = 4 * u[k], m;
-      if (i > 0 && (m = idx[j * NG + i - 1]) >= 0) s -= u[m];
-      if (i < NG - 1 && (m = idx[j * NG + i + 1]) >= 0) s -= u[m];
-      if (j > 0 && (m = idx[(j - 1) * NG + i]) >= 0) s -= u[m];
-      if (j < NG - 1 && (m = idx[(j + 1) * NG + i]) >= 0) s -= u[m];
-      out[k] = s; }
+    for (var k = 0; k < nC; k++) { var i = cells[k][0], j = cells[k][1], s = 0, d = 0, m;
+      if (i > 0 && (m = idx[j * NG + i - 1]) >= 0) { s -= u[m]; d++; }
+      if (i < NG - 1 && (m = idx[j * NG + i + 1]) >= 0) { s -= u[m]; d++; }
+      if (j > 0 && (m = idx[(j - 1) * NG + i]) >= 0) { s -= u[m]; d++; }
+      if (j < NG - 1 && (m = idx[(j + 1) * NG + i]) >= 0) { s -= u[m]; d++; }
+      out[k] = s + (NEUMANN ? d : 4) * u[k]; }
   }
+  // The operator inverse iteration solves with: L, shifted for Neumann.
+  function applyA(u, out) { applyL(u, out); if (SHIFT) for (var k = 0; k < nC; k++) out[k] += SHIFT * u[k]; }
   function dot(a, b) { var s = 0; for (var i = 0; i < a.length; i++) s += a[i] * b[i]; return s; }
   function cg(b, tol, maxit) {
     var n = b.length, x = new Float64Array(n), r = Float64Array.from(b), p = Float64Array.from(b), Ap = new Float64Array(n), rs = dot(r, r), bn = Math.max(1e-30, dot(b, b)), i, it;
     for (it = 0; it < maxit; it++) { if (rs / bn < tol * tol) break;
-      applyL(p, Ap); var a = rs / Math.max(1e-30, dot(p, Ap));
+      applyA(p, Ap); var a = rs / Math.max(1e-30, dot(p, Ap));
       for (i = 0; i < n; i++) { x[i] += a * p[i]; r[i] -= a * Ap[i]; }
       var rs2 = dot(r, r), beta = rs2 / Math.max(1e-30, rs); for (i = 0; i < n; i++) p[i] = r[i] + beta * p[i]; rs = rs2; }
     return x;
@@ -101,6 +117,7 @@
   function nrm(v) { var s = Math.sqrt(dot(v, v)) || 1; for (var i = 0; i < v.length; i++) v[i] /= s; }
   function solveModes() {
     buildIndex(); modes = []; lam = []; disp = []; if (nC < 8) return;
+    SHIFT = NEUMANN ? 0.01 : 0;
     var seed = 2246, rnd = function () { seed = (1103515245 * seed + 12345) & 0x7fffffff; return seed / 0x7fffffff - 0.5; };
     for (var k = 0; k < Math.min(K, nC - 1); k++) {
       var x = new Float64Array(nC); for (var i = 0; i < nC; i++) x[i] = rnd(); orth(x, modes); nrm(x);
@@ -179,14 +196,25 @@
     var d = size(cv3d), W = d[0], H = d[1]; x3.clearRect(0, 0, W, H);
     if (!modes.length) return;
     var fg = tv('--eigendeck-fg', '#222');
-    var phase = Math.cos(t * Math.sqrt(lam[sel] / Math.max(1e-6, lam[0])) * 0.55);
+    // Frequency relative to the lowest nonzero eigenvalue: under Neumann the first
+    // mode is constant with λ = 0 (a rigid offset that does not oscillate). Its
+    // computed λ is about 1e-7 from rounding; real eigenvalues on this grid are
+    // above 1e-3, so 1e-4 separates them.
+    var ref = 0; for (var r = 0; r < lam.length; r++) if (lam[r] > 1e-4) { ref = lam[r]; break; }
+    var still = lam[sel] <= 1e-4;
+    var phase = (ref && !still) ? Math.cos(t * Math.sqrt(lam[sel] / ref) * 0.55) : 1;
     var c = (NG - 1) / 2, sxx = Math.min(W, H) * 0.62 / NG, syy = sxx * 0.5, sh = Math.min(W, H) * 0.30, cx = W / 2, cy = H * 0.52;
     function proj(i, j, h) { var x = i - c, y = j - c; return [cx + (x - y) * sxx, cy + (x + y) * syy - h * sh]; }
     var quads = [];
     for (var j = 0; j < NG - 1; j++) for (var i = 0; i < NG - 1; i++) {
-      if (!(mask[j * NG + i] || mask[j * NG + i + 1] || mask[(j + 1) * NG + i] || mask[(j + 1) * NG + i + 1])) continue;
+      var in00 = mask[j * NG + i], in10 = mask[j * NG + i + 1], in01 = mask[(j + 1) * NG + i], in11 = mask[(j + 1) * NG + i + 1];
+      // Dirichlet clamps u = 0 just outside the shape, so patches reaching outside
+      // slope down to it. A Neumann edge is free: only patches inside the shape.
+      if (NEUMANN ? !(in00 && in10 && in01 && in11) : !(in00 || in10 || in01 || in11)) continue;
       var h00 = val(sel, i, j) * phase, h10 = val(sel, i + 1, j) * phase, h01 = val(sel, i, j + 1) * phase, h11 = val(sel, i + 1, j + 1) * phase;
-      quads.push({ depth: i + j, h: (h00 + h10 + h01 + h11) / 4, p: [proj(i, j, h00), proj(i + 1, j, h10), proj(i + 1, j + 1, h11), proj(i, j + 1, h01)] });
+      // A still (λ = 0) mode is a rigid offset: draw it level, coloured by its value.
+      var z = still ? 0 : 1;
+      quads.push({ depth: i + j, h: (h00 + h10 + h01 + h11) / 4, p: [proj(i, j, z * h00), proj(i + 1, j, z * h10), proj(i + 1, j + 1, z * h11), proj(i, j + 1, z * h01)] });
     }
     quads.sort(function (a, b) { return a.depth - b.depth; });
     for (var q = 0; q < quads.length; q++) { var Q = quads[q], p = Q.p;
@@ -241,6 +269,11 @@
     Array.prototype.forEach.call(this.children, function (x) { x.classList.toggle('on', x === b); });
     if (b.dataset.s === 'clear') { mask.fill(0); modes = []; lam = []; buildStrip(); drawTop(); draw3d(); return; }
     setPreset(b.dataset.s); resolve();
+  });
+  document.getElementById('dr-bc').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b || b.classList.contains('on')) return;
+    Array.prototype.forEach.call(this.children, function (x) { x.classList.toggle('on', x === b); });
+    NEUMANN = b.dataset.bc === 'neumann'; resolve();
   });
   window.addEventListener('resize', function () { drawTop(); draw3d(); });
 
