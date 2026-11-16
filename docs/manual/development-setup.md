@@ -5,7 +5,7 @@ it. If you just want to *use* Eigendeck, grab a build from the
 [downloads page](https://github.com/dgleich/eigendeck/releases) instead.
 
 Eigendeck is a [Tauri v2](https://v2.tauri.app/) app: a React + TypeScript
-frontend and a Rust backend. To build it you need **Node.js 20+**, **Rust 1.85+**,
+frontend and a Rust backend. To build it you need **Node.js 20+**, **Rust 1.90+**,
 and a few platform-specific system libraries.
 
 ## macOS
@@ -16,7 +16,7 @@ xcode-select --install
 
 # 2. Rust
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-source "$HOME/.cargo/env"          # rustc --version → 1.85+
+source "$HOME/.cargo/env"          # rustc --version → 1.90+
 
 # 3. Node.js (via nvm)
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
