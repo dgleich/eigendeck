@@ -10,7 +10,7 @@
 // Exercise-style + resilient: a crash sentinel + a few HARD invariants (AssetSection
 // renders for a stored asset; the missing asset shows "Not yet stored" + a canvas
 // placeholder), the rest guarded soft so one absent control can't fail the run.
-import { openApp, waitSeam, exec, sleep, quit, makeSoft, installErrorSentinel, readErrorSentinel } from './_ui.mjs';
+import { openApp, waitSeam, exec, execA, sleep, quit, makeSoft, installErrorSentinel, readErrorSentinel } from './_ui.mjs';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -143,9 +143,27 @@ soft('svg canvas element has an <img>', await exec(sid, "return !!document.query
 // ── 8. PDF asset (pdfium) — hard when the dylib is present in the rig ──────────
 console.log('\n[8] pdf asset render (pdfium)');
 await selectAsset('apdf');
-await sleep(1500);
 if (HAVE_PDFIUM) {
-  if (!await exec(sid, "return !!document.querySelector('[data-element-id=\"apdf\"] img')")) fail('pdf canvas element did not render an <img> although pdfium is present');
+  // Poll rather than wait a fixed time: pdfium's first render can be slow under a
+  // coverage-instrumented build on a CI runner.
+  let rendered = false;
+  for (let i = 0; i < 20 && !rendered; i++) {
+    await sleep(500);
+    rendered = !!await exec(sid, "return !!document.querySelector('[data-element-id=\"apdf\"] img')");
+  }
+  if (!rendered) {
+    // Say WHY (#211): what the element shows, and what the render command itself
+    // returns when called directly (a pdfium load error surfaces here).
+    const diag = await execA(sid, `const done = arguments[arguments.length - 1];
+      const el = document.querySelector('[data-element-id="apdf"]');
+      const st = window.__eigendeck.store.getState();
+      const model = st.presentation.slides.flatMap((s) => s.elements).find((e) => e.id === 'apdf');
+      const shown = el ? el.textContent.trim().slice(0, 80) : 'no element';
+      window.__TAURI_INTERNALS__.invoke('db_render_pdf_page', { assetId: model && model.assetId, page: 0, maxWidth: 200, maxHeight: 200 })
+        .then((r) => done('element shows "' + shown + '"; direct render returned ' + (r && (r.byteLength ?? r.length)) + ' bytes'))
+        .catch((e) => done('element shows "' + shown + '"; direct render FAILED: ' + String(e && (e.message || e)).slice(0, 300)));`);
+    fail('pdf canvas element did not render an <img> within 10 s although pdfium is present: ' + diag);
+  }
   console.log('  ✓ pdf element rendered via pdfium');
 } else {
   console.log('  · pdf render skipped (no libpdfium.so in this rig)');
