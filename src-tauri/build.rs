@@ -229,7 +229,7 @@ fn stage_llm_tools_docs() {
         // Re-stage when the source doc changes.
         println!("cargo:rerun-if-changed={}", src.display());
         if src.exists() {
-            if let Err(e) = fs::copy(&src, dest_dir.join(name)) {
+            if let Err(e) = copy_if_changed(&src, &dest_dir.join(name)) {
                 println!("cargo:warning=could not copy {} into llm-tools: {}", name, e);
             }
         } else {
@@ -256,24 +256,58 @@ fn stage_llm_tools_skills() {
         return;
     }
     let dest = manifest_dir.join("resources").join("llm-tools").join("skills");
-    // Start clean so a removed/renamed skill doesn't linger in the staged copy.
-    let _ = fs::remove_dir_all(&dest);
-    if let Err(e) = copy_dir_recursive(&src, &dest) {
+    // Sync rather than wipe-and-recopy: tauri-build (2.7+) watches the
+    // resources/llm-tools DIRECTORY, so rewriting unchanged files bumps its mtime,
+    // dirties the next build, and sends `tauri dev` into an endless rebuild loop.
+    // The sync still prunes a removed/renamed skill from the staged copy.
+    if let Err(e) = sync_dir(&src, &dest) {
         println!("cargo:warning=could not stage docs/skills into llm-tools: {}", e);
     }
 }
 
-/// Recursively copy a directory tree (build-time helper).
-fn copy_dir_recursive(src: &Path, dst: &Path) -> std::io::Result<()> {
+/// Copy `src` to `dst` only when the bytes differ, so an unchanged resource never
+/// touches the watched resources directory (see `stage_llm_tools_skills`).
+fn copy_if_changed(src: &Path, dst: &Path) -> std::io::Result<()> {
+    let bytes = fs::read(src)?;
+    if fs::read(dst).is_ok_and(|old| old == bytes) {
+        return Ok(());
+    }
+    fs::write(dst, bytes)
+}
+
+/// Make `dst` mirror `src` (build-time helper): copy changed files, recurse into
+/// directories, and delete entries in `dst` that no longer exist in `src`.
+fn sync_dir(src: &Path, dst: &Path) -> std::io::Result<()> {
     fs::create_dir_all(dst)?;
+    let mut keep = std::collections::HashSet::new();
     for entry in fs::read_dir(src)? {
         let entry = entry?;
         let path = entry.path();
         let dest = dst.join(entry.file_name());
         if path.is_dir() {
-            copy_dir_recursive(&path, &dest)?;
+            if dest.is_file() {
+                fs::remove_file(&dest)?;
+            }
+            sync_dir(&path, &dest)?;
         } else if path.is_file() {
-            fs::copy(&path, &dest)?;
+            if dest.is_dir() {
+                fs::remove_dir_all(&dest)?;
+            }
+            copy_if_changed(&path, &dest)?;
+        } else {
+            continue;
+        }
+        keep.insert(entry.file_name());
+    }
+    for entry in fs::read_dir(dst)? {
+        let entry = entry?;
+        if !keep.contains(&entry.file_name()) {
+            let path = entry.path();
+            if path.is_dir() {
+                fs::remove_dir_all(&path)?;
+            } else {
+                fs::remove_file(&path)?;
+            }
         }
     }
     Ok(())

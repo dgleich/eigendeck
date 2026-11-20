@@ -317,7 +317,7 @@ fn write_system(_app: &tauri::AppHandle, reps: &[(String, Vec<u8>)]) -> Result<(
     }
     #[cfg(target_os = "macos")]
     {
-        return mac_write_multi(_app, reps.to_vec());
+        mac_write_multi(_app, reps.to_vec())
     }
     #[cfg(not(target_os = "macos"))]
     {

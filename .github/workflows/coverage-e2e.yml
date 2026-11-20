@@ -5,6 +5,11 @@ name: E2E Coverage
 # or weekly; it publishes the merged reports as artifacts.
 on:
   workflow_dispatch:
+    inputs:
+      filter:
+        description: 'Optional regex: run only the matching e2e probes (E2E_FILTER), e.g. asset-layer'
+        required: false
+        default: ''
   schedule:
     - cron: '0 6 * * 1' # Mondays 06:00 UTC
 
@@ -64,6 +69,9 @@ jobs:
       # /work noexec mount used in the dev container).
       - name: Run instrumented e2e coverage
         run: bash e2e/coverage-run.sh
+        env:
+          # Empty (the schedule, or no input) runs every probe.
+          E2E_FILTER: ${{ inputs.filter }}
 
       - name: Generate coverage map (coverage-viz/)
         if: always()

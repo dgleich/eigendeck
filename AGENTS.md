@@ -21,7 +21,7 @@ Eigendeck is a Tauri v2 desktop app for building presentations with embedded int
 ## Prerequisites
 
 - **Node.js 20+** (`node -v` to check; install via `brew install node` or nvm)
-- **Rust 1.85+** (`rustc --version`; `rustup update stable` to update)
+- **Rust 1.90+** (`rustc --version`; `rustup update stable` to update)
 
 ## Build commands
 
