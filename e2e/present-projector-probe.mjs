@@ -19,10 +19,20 @@ if (!presH) fail('presenter window did not open (no 2nd window handle)');
 
 // Switch into it; settle (a freshly-loaded 2nd webview reads empty for a beat), then
 // assert it's the presenter and rendered the slide.
-await switchTo(sid, presH);
+const switched = await switchTo(sid, presH);
 let title = '', body = '';
 for (let i = 0; i < 15; i++) { await sleep(500); title = String(await exec(sid, "return document.title||''")); body = String(await exec(sid, "return document.body?document.body.textContent:''")); if (title.includes('Presenter') && body.trim().length > 20) break; }
-if (!title.includes('Presenter')) fail(`presenter title wrong; got: ${JSON.stringify(title)}`);
+if (!title.includes('Presenter')) {
+  // Say WHY: did the switch itself fail, and what does each handle actually hold?
+  const all = await handles(sid);
+  const seen = [];
+  for (const h of all) {
+    const r = await switchTo(sid, h);
+    const info = await exec(sid, "return JSON.stringify({ title: document.title, path: location.pathname, seam: !!window.__eigendeck })");
+    seen.push(`${h === mainH ? 'main' : h === presH ? 'pres' : 'other'}:${JSON.stringify(r?.value ?? null)}:${info}`);
+  }
+  fail(`presenter title wrong; got: ${JSON.stringify(title)}; switch response ${JSON.stringify(switched?.value ?? switched)}; handles ${JSON.stringify(all)}; per handle ${seen.join(' | ')}`);
+}
 if (body.trim().length < 20) fail(`presenter rendered no slide content; got: ${JSON.stringify(body.slice(0, 80))}`);
 
 // The main window must survive opening the 2nd window (the crash claim was stale).

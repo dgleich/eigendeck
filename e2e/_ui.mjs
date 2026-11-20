@@ -44,7 +44,8 @@ export async function quit(sid) {
   await fetch(`${BASE}/session/${sid}`, { method: 'DELETE' }).catch(() => {});
 }
 export async function handles(sid) { return (await get(`/session/${sid}/window/handles`))?.value || []; }
-export async function switchTo(sid, h) { await post(`/session/${sid}/window`, { handle: h }); }
+// Returns the WebDriver response so a probe can report a failed switch (`value.error`).
+export async function switchTo(sid, h) { return post(`/session/${sid}/window`, { handle: h }); }
 // The MAIN window is the only one carrying the __eigendeck seam (the Security window
 // is a separate entry point without it). Identify it by that, never by handle index —
 // window open/close reorders handles, and a leftover Security window at [0] would be
