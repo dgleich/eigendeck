@@ -363,7 +363,7 @@ for entry in "${MANIFEST[@]}"; do
   rc=1; tries=3
   for try in $(seq 1 $tries); do
     cp "$tmpdir/.pristine.eigendeck" "$DECK"; rm -f "$DECK-wal" "$DECK-shm"
-    env $extra_expanded PROBE="$ROOT/e2e/$probe" E2E_DECK="$DECK" bash "$ROOT/e2e/run-probe.sh" 2>&1 | tail -30
+    env $extra_expanded PROBE="$ROOT/e2e/$probe" E2E_DECK="$DECK" bash "$ROOT/e2e/run-probe.sh" 2>&1 | tail -80
     rc=${PIPESTATUS[0]}
     [ "$rc" -eq 0 ] && break
     if [ "$try" -lt "$tries" ]; then

@@ -83,6 +83,9 @@ xvfb-run -a -s "-screen 0 1280x900x24" bash -c "
   '$TAURI_DRIVER' --native-driver /usr/bin/WebKitWebDriver >/tmp/e2e-td.log 2>&1 & TD=\$!
   sleep 3
   node '$PROBE'; RC=\$?
+  # On failure, show what the app itself printed (its stderr reaches the driver log):
+  # a WebKit web-process crash or a Rust panic is otherwise invisible in CI (#213).
+  if [ \$RC -ne 0 ]; then echo '  --- app/driver log (tail) ---'; grep -v '^\s*$' /tmp/e2e-td.log | tail -40 | sed 's/^/  | /'; fi
   # Best-effort in-subshell teardown (PID-based, safe): kill the driver + its
   # children (WebKitWebDriver/app) + the http server. The outer 'trap cleanup_rig
   # EXIT' then does the thorough anchored global sweep so nothing is orphaned.
