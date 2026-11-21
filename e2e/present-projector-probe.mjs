@@ -12,12 +12,14 @@ const mainH = await findMainHandle(sid);
 
 // Keep the main window's console errors: a failed window creation is reported there
 // (createAppWindow logs 'tauri://error'), and the failure message below includes them.
-await exec(sid, "window.__errs = []; const o = console.error.bind(console); console.error = (...a) => { window.__errs.push(a.map((x) => typeof x === 'string' ? x : JSON.stringify(x)).join(' ')); o(...a); }; return 1;");
+await exec(sid, "window.__errs = []; const o = console.error.bind(console); console.error = (...a) => { window.__errs.push(Math.round(performance.now() - (window.__t0 || 0)) + 'ms ' + a.map((x) => typeof x === 'string' ? x : x instanceof Error ? 'Error: ' + x.message : JSON.stringify(x)).join(' ')); o(...a); }; return 1;");
 // Trigger the REAL screen-share present flow (opens the windowed presenter window).
-await exec(sid, "window.dispatchEvent(new CustomEvent('eigendeck:screen-share-present'))");
+await exec(sid, "window.__t0 = performance.now(); window.dispatchEvent(new CustomEvent('eigendeck:screen-share-present'))");
+const t0 = Date.now();
 
 let presH = null;
 for (let i = 0; i < 15; i++) { await sleep(800); presH = (await handles(sid)).find((h) => h !== mainH); if (presH) break; }
+console.log(`  2nd window handle after ${Date.now() - t0} ms`);
 if (!presH) fail('presenter window did not open (no 2nd window handle)');
 // Tauri's own view of its windows (labels), read from the main window: lets a failure
 // tell "the window closed" apart from "WebDriver lost track of a live window" (#213).
