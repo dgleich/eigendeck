@@ -3,7 +3,7 @@
 // probes deliberately dodge (they use single-window setPresenting) on the old — now
 // disproven — belief that a 2nd window crashes WebKitWebDriver. It doesn't: the
 // presenter window is drivable via WebDriver handles, and the main window survives.
-import { openApp, waitSeam, handles, switchTo, findMainHandle, exec, sleep, quit } from './_ui.mjs';
+import { openApp, waitSeam, handles, switchTo, findMainHandle, exec, execA, sleep, quit } from './_ui.mjs';
 const APP = process.env.E2E_APP, DECK = process.env.E2E_DECK;
 const fail = (m) => { console.error('PROJECTOR_FAIL:', m); process.exit(1); };
 
@@ -16,6 +16,12 @@ await exec(sid, "window.dispatchEvent(new CustomEvent('eigendeck:screen-share-pr
 let presH = null;
 for (let i = 0; i < 15; i++) { await sleep(800); presH = (await handles(sid)).find((h) => h !== mainH); if (presH) break; }
 if (!presH) fail('presenter window did not open (no 2nd window handle)');
+// Tauri's own view of its windows (labels), read from the main window: lets a failure
+// tell "the window closed" apart from "WebDriver lost track of a live window" (#213).
+const tauriWindows = () => execA(sid, `const done = arguments[arguments.length - 1];
+  window.__TAURI_INTERNALS__.invoke('plugin:window|get_all_windows').then((w) => done(JSON.stringify(w)), (e) => done('ERR ' + e));`);
+const windowsAtOpen = await tauriWindows();
+console.log('  tauri windows at open:', windowsAtOpen);
 
 // Switch into it; settle (a freshly-loaded 2nd webview reads empty for a beat), then
 // assert it's the presenter and rendered the slide.
@@ -31,7 +37,9 @@ if (!title.includes('Presenter')) {
     const info = await exec(sid, "return JSON.stringify({ title: document.title, path: location.pathname, seam: !!window.__eigendeck })");
     seen.push(`${h === mainH ? 'main' : h === presH ? 'pres' : 'other'}:${JSON.stringify(r?.value ?? null)}:${info}`);
   }
-  fail(`presenter title wrong; got: ${JSON.stringify(title)}; switch response ${JSON.stringify(switched?.value ?? switched)}; handles ${JSON.stringify(all)}; per handle ${seen.join(' | ')}`);
+  await switchTo(sid, mainH);
+  const windowsAfter = await tauriWindows();
+  fail(`presenter title wrong; got: ${JSON.stringify(title)}; tauri windows at open ${windowsAtOpen}, after ${windowsAfter}; switch response ${JSON.stringify(switched?.value ?? switched)}; handles ${JSON.stringify(all)}; per handle ${seen.join(' | ')}`);
 }
 if (body.trim().length < 20) fail(`presenter rendered no slide content; got: ${JSON.stringify(body.slice(0, 80))}`);
 
