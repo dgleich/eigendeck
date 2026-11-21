@@ -67,12 +67,6 @@ jobs:
       # Run the same orchestrator used locally. E2E toolchain provisioned above;
       # the default target dir is fine in CI (checkout is exec-capable, unlike the
       # /work noexec mount used in the dev container).
-      # TEMPORARY (#213): which session bus does the runner have, and how long does the
-      # desktop portal's color-scheme lookup take (tao 0.37 makes it on every new window)?
-      - name: Portal timing (temporary, #213)
-        run: |
-          xvfb-run -a bash -c 'echo "DBUS_SESSION_BUS_ADDRESS=${DBUS_SESSION_BUS_ADDRESS:-unset}"; dpkg -l | grep -E "xdg-desktop-portal|dbus-x11|dbus-user-session" | awk "{print \$2, \$3}"; time (gdbus call --session --timeout 10 --dest org.freedesktop.portal.Desktop --object-path /org/freedesktop/portal/desktop --method org.freedesktop.portal.Settings.Read org.freedesktop.appearance color-scheme || true)' || true
-
       - name: Run instrumented e2e coverage
         run: bash e2e/coverage-run.sh
         env:

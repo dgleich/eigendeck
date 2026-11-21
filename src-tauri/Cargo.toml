@@ -39,7 +39,12 @@ tar = "0.4"
 sha2 = "0.10"   # verify the pdfium download against a pinned SHA-256 (#147)
 
 [dependencies]
-tauri = { version = "2.12", features = ["devtools"] }
+# Tauri's defaults minus "dbus". That feature only lets tao (0.37+) ask the desktop
+# portal for the system light/dark preference, synchronously on the main thread with
+# a 5 s timeout, every time it creates a window. Where the portal never answers, each
+# window opened 5 s late and the presenter's ready handshake timed out (#213). The
+# app has no dark mode (App.css pins color-scheme: light), so nothing is lost.
+tauri = { version = "2.12", default-features = false, features = ["wry", "compression", "common-controls-v6", "dynamic-acl", "x11", "devtools"] }
 # Loopback HTTP shim that hosts the YouTube embed so the packaged app (origin
 # tauri://localhost) can present YouTube. See src/youtube_shim.rs + docs/youtube-embed-shim.md.
 tiny_http = "0.12"
