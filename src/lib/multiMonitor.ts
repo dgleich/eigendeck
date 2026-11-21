@@ -139,6 +139,13 @@ export async function openPresenterWindow(
     // Close existing presenter window if any
     await closePresenterWindow();
 
+    // Listen for the ready handshake BEFORE creating the window, as securityWindow.ts
+    // does: a presenter that loads quickly could otherwise signal before anyone listens,
+    // and the wait below would time out and close a window that was fine.
+    let markReady: () => void = () => {};
+    const readyPromise = new Promise<void>((resolve) => { markReady = resolve; });
+    const unlistenReady = await listen('presenter:ready', () => markReady());
+
     if (windowed) {
       // Size the window to the slide's aspect ratio so the shared window shows
       // the slide edge-to-edge with no letterboxing. Chromeless (decorations:
@@ -180,19 +187,15 @@ export async function openPresenterWindow(
       });
     }
 
-    // Wait for the presenter window to signal ready
-    const readyPromise = new Promise<void>((resolve) => {
-      listen('presenter:ready', () => resolve()).then((unlisten) => {
-        // Clean up after ready
-        setTimeout(unlisten, 5000);
-      });
-    });
-
-    // Wait for window creation + ready signal (with timeout)
-    await Promise.race([
-      readyPromise,
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Presenter window timeout')), 5000)),
-    ]);
+    // Wait for the ready signal (with timeout)
+    try {
+      await Promise.race([
+        readyPromise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Presenter window timeout')), 5000)),
+      ]);
+    } finally {
+      unlistenReady();
+    }
 
     // Set window level above the menu bar so it covers the secondary monitor fully.
     // This is how Keynote/PowerPoint do it — no fullscreen API, just a high window level.
