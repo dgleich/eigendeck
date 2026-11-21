@@ -9,7 +9,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const h = vi.hoisted(() => ({
   getByLabel: vi.fn(),
-  ctor: vi.fn(),
+  // The created window gets a 'tauri://error' listener (createAppWindow), so it needs once().
+  ctor: vi.fn(function () { return { once: vi.fn(() => Promise.resolve(() => {})) }; }),
   listen: vi.fn(),
   emitTo: vi.fn(),
   getState: vi.fn(),

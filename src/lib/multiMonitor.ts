@@ -6,6 +6,7 @@
  */
 import { availableMonitors, currentMonitor, getCurrentWindow } from '@tauri-apps/api/window';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { createAppWindow } from './appWindow';
 import { PhysicalPosition, PhysicalSize } from '@tauri-apps/api/dpi';
 import { emitTo, listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
@@ -147,7 +148,7 @@ export async function openPresenterWindow(
       const winW = 1280;
       const winH = Math.round(winW * (ah / aw));
       console.log(`[multi-monitor] SCREEN-SHARE MODE — windowed chromeless presenter ${winW}x${winH} on the current monitor`);
-      presenterWindow = new WebviewWindow('presenter', {
+      presenterWindow = createAppWindow('presenter', {
         url: '/presenter.html',
         // Title shows in the OS/Zoom "share a window" picker — keep it findable.
         title: 'Eigendeck Presentation',
@@ -165,7 +166,7 @@ export async function openPresenterWindow(
       const logW = Math.round(projector!.width / s);
       const logH = Math.round(projector!.height / s);
       console.log(`[multi-monitor] Opening presenter on "${projector!.name}" physical=(${projector!.x}, ${projector!.y}) ${projector!.width}x${projector!.height} scale=${s} logical=(${logX}, ${logY}) ${logW}x${logH}`);
-      presenterWindow = new WebviewWindow('presenter', {
+      presenterWindow = createAppWindow('presenter', {
         url: '/presenter.html',
         title: 'Eigendeck Presenter',
         x: logX,
