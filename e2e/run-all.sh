@@ -66,6 +66,7 @@ MANIFEST=(
   "present-theme-parity-probe.mjs|examples/intro-slide.eigendeck||"
   "present-projector-probe.mjs|examples/intro-slide.eigendeck||"
   "window-create-diag-probe.mjs|examples/intro-slide.eigendeck||"   # TEMPORARY #213 diagnostic: window creation timing by label and page (remove before merge)
+  "window-create-diag-probe.mjs|examples/intro-slide.eigendeck|DBUS_SESSION_BUS_ADDRESS=disabled:|"   # TEMPORARY #213: same, with the session bus (desktop portal) unreachable
   # #134 present-mode VISUAL check via the in-app seam capture (captureElement),
   # NOT WebDriver /screenshot which hangs in headless present. Asserts non-blank pixels.
   "present-visual-probe.mjs|present-visual.eigendeck||import_json \$ROOT/e2e/fixtures/present-visual-deck.json"
