@@ -10,6 +10,9 @@ const fail = (m) => { console.error('PROJECTOR_FAIL:', m); process.exit(1); };
 const sid = await openApp(APP, DECK); if (!sid || !await waitSeam(sid)) fail('open/seam');
 const mainH = await findMainHandle(sid);
 
+// Keep the main window's console errors: a failed window creation is reported there
+// (createAppWindow logs 'tauri://error'), and the failure message below includes them.
+await exec(sid, "window.__errs = []; const o = console.error.bind(console); console.error = (...a) => { window.__errs.push(a.map((x) => typeof x === 'string' ? x : JSON.stringify(x)).join(' ')); o(...a); }; return 1;");
 // Trigger the REAL screen-share present flow (opens the windowed presenter window).
 await exec(sid, "window.dispatchEvent(new CustomEvent('eigendeck:screen-share-present'))");
 
@@ -39,7 +42,8 @@ if (!title.includes('Presenter')) {
   }
   await switchTo(sid, mainH);
   const windowsAfter = await tauriWindows();
-  fail(`presenter title wrong; got: ${JSON.stringify(title)}; tauri windows at open ${windowsAtOpen}, after ${windowsAfter}; switch response ${JSON.stringify(switched?.value ?? switched)}; handles ${JSON.stringify(all)}; per handle ${seen.join(' | ')}`);
+  const errs = await exec(sid, "return JSON.stringify(window.__errs || [])");
+  fail(`presenter title wrong; got: ${JSON.stringify(title)}; tauri windows at open ${windowsAtOpen}, after ${windowsAfter}; main console errors ${errs}; switch response ${JSON.stringify(switched?.value ?? switched)}; handles ${JSON.stringify(all)}; per handle ${seen.join(' | ')}`);
 }
 if (body.trim().length < 20) fail(`presenter rendered no slide content; got: ${JSON.stringify(body.slice(0, 80))}`);
 
