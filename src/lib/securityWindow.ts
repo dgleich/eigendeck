@@ -6,6 +6,7 @@
 // window's store can build the report. Focuses the existing window if already open.
 
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { createAppWindow } from './appWindow';
 import { listen, emitTo } from '@tauri-apps/api/event';
 import { usePresentationStore } from '../store/presentation';
 
@@ -41,7 +42,7 @@ export async function openSecurityWindow(): Promise<void> {
   const unlisten = await listen('security:ready', () => sendInit());
   setTimeout(() => { unlisten(); }, 15000);
 
-  new WebviewWindow('security', {
+  createAppWindow('security', {
     url: '/security.html',
     title: 'Security & linked files',
     width: 760,

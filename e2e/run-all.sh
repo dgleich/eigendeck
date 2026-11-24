@@ -65,6 +65,7 @@ MANIFEST=(
   "present-html-interactive-navkey-probe.mjs|htmlint.eigendeck||import_json \$ROOT/e2e/fixtures/html-interactive-deck.json"   # #155 CAVEAT: interactive html iframe is script-less + forwarder-less (nav keys swallowed) — regression guard
   "present-theme-parity-probe.mjs|examples/intro-slide.eigendeck||"
   "present-projector-probe.mjs|examples/intro-slide.eigendeck||"
+  "window-create-probe.mjs|examples/intro-slide.eigendeck||"   # #213 opening an app window must not stall (tao portal theme lookup)
   # #134 present-mode VISUAL check via the in-app seam capture (captureElement),
   # NOT WebDriver /screenshot which hangs in headless present. Asserts non-blank pixels.
   "present-visual-probe.mjs|present-visual.eigendeck||import_json \$ROOT/e2e/fixtures/present-visual-deck.json"
@@ -363,7 +364,7 @@ for entry in "${MANIFEST[@]}"; do
   rc=1; tries=3
   for try in $(seq 1 $tries); do
     cp "$tmpdir/.pristine.eigendeck" "$DECK"; rm -f "$DECK-wal" "$DECK-shm"
-    env $extra_expanded PROBE="$ROOT/e2e/$probe" E2E_DECK="$DECK" bash "$ROOT/e2e/run-probe.sh" 2>&1 | tail -30
+    env $extra_expanded PROBE="$ROOT/e2e/$probe" E2E_DECK="$DECK" bash "$ROOT/e2e/run-probe.sh" 2>&1 | tail -80
     rc=${PIPESTATUS[0]}
     [ "$rc" -eq 0 ] && break
     if [ "$try" -lt "$tries" ]; then
