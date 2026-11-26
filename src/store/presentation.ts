@@ -155,9 +155,9 @@ function updateCurrentSlide(
  *  fileOps.createProject (Cmd+N) — they MUST stay in sync, so the
  *  seeding logic lives in one place.
  *
- *  Currently seeds: presentation.config.mathPreamble (from the global
- *  mathPreamble pref). Add new "seed from global" fields here, not at
- *  the call sites.
+ *  Currently seeds: presentation.config.mathPreamble, textSizes and
+ *  typesetMath (from the global prefs of the same names). Add new "seed
+ *  from global" fields here, not at the call sites.
  *
  *  Direct localStorage read (not the preferences module) because the
  *  Zustand initializer runs at module eval time, before React is
@@ -201,6 +201,16 @@ export function createSeededPresentation(): Presentation {
           } as Presentation['config']['textSizes'];
         }
       }
+    }
+  } catch { /* ignore */ }
+  // Typeset math (#208): a new deck records the global pref's value (default on), so
+  // it behaves the same on any machine. Older decks lack the field and typeset.
+  pres.config.typesetMath = true;
+  try {
+    const v = localStorage.getItem('eigendeck:pref:typesetMath');
+    if (v) {
+      const on = JSON.parse(v);
+      if (typeof on === 'boolean') pres.config.typesetMath = on;
     }
   } catch { /* ignore */ }
   return pres;

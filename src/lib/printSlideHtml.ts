@@ -22,6 +22,7 @@ import { effectiveFontSize } from '../types/presentation';
 import { fontForPreset, fontFamilyForPreset } from './fontRegistry.mjs';
 import type { Presentation, Slide } from '../types/presentation';
 import { showFooter, footerFontFamily } from './footer.mjs';
+import { elementMathHtml } from './mathSource.mjs';
 
 const W = 1920, H = 1080;
 const S = 11 / 1920; // inches per pixel (11in-wide letter-landscape slide)
@@ -101,7 +102,7 @@ export function buildPrintSlideHtml(
         color: resolveColor(el.color, theme, themeColorForPreset(theme, el.preset)),
         fontFamily: el.fontFamily || presetFontFamily,
         fontSize: effectiveFontSize(el, presentation.config),
-        content: markAsEigendeck(scaleTrackingForPrint(mathHtmlByKey?.get(`${slide.id}:${el.id}`) ?? el.html ?? '')),
+        content: markAsEigendeck(scaleTrackingForPrint(mathHtmlByKey?.get(`${slide.id}:${el.id}`) ?? elementMathHtml(el, presentation.config))),
         len: px2in,
         fsize: px2pt,
         theme,

@@ -332,6 +332,8 @@ export function texFromHtml(raw: string): string {
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    // A literal dollar (mathSource.mjs, #208) inside math is TeX's own \$.
+    .replace(/&#36;/g, '\\$')
     .replace(/&amp;/g, '&');
 }
 

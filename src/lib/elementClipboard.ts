@@ -15,6 +15,7 @@ import { TEXT_PRESET_STYLES, effectiveFontSize, resolveColor } from '../types/pr
 import { resolveTheme, themeColorForPreset } from './themes';
 import { fontForPreset, fontFamilyForPreset } from './fonts';
 import { renderMathInHtmlSync, containsMath } from './mathjaxRenderer';
+import { elementMathHtml, mathSourcePlain } from './mathSource.mjs';
 
 const PAYLOAD_V = 1;
 
@@ -116,13 +117,15 @@ export function textElementClipboardHtml(
   const fontSize = effectiveFontSize(el, config);
   const clipTheme = resolveTheme(theme, slide.theme);
   const color = resolveColor(el.color, clipTheme, themeColorForPreset(clipTheme, el.preset));
-  const rendered = containsMath(el.html)
-    ? (renderMathInHtmlSync(el.html, pkg.id, config.mathPreamble) ?? el.html ?? '')
-    : (el.html || '');
+  // The "Typeset math" setting and the \$ escape (#208), as in the editor.
+  const source = elementMathHtml(el, config);
+  const rendered = containsMath(source)
+    ? (renderMathInHtmlSync(source, pkg.id, config.mathPreamble) ?? source)
+    : source;
   const styled =
     `<div style="font-family:${fontFamily};font-size:${fontSize}px;font-weight:${preset.fontWeight};` +
     `font-style:${preset.fontStyle};color:${color};line-height:1.3;">${rendered}</div>`;
-  return { styledHtml: styled, plain: plainTextFromHtml(el.html || '') };
+  return { styledHtml: styled, plain: plainTextFromHtml(mathSourcePlain(el.html)) };
 }
 
 /** Is there a FRESH internal asset clip right now? (staleness-checked in Rust).

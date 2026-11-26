@@ -15,6 +15,7 @@ import { effectiveFontSize } from './textSizes.mjs';
 import { textBackgroundResolved, textBoxShadowCss, applyCodeFont, resolveColor } from './textStyle.mjs';
 import { TEXT_PRESET_STYLES } from './textPresets.mjs';
 import { textElementHtml } from './textElementHtml.mjs';
+import { elementMathHtml } from './mathSource.mjs';
 
 // --- round-trip source embed (File > Import from HTML) ------------------------
 // The exported HTML carries the full presentation JSON in an
@@ -350,7 +351,8 @@ export async function buildExportHtml(opts) {
           // matching the editor and the app/GUI export. Explicit el.color wins.
           const legacyTheme = themeColorsByName(presentation.theme, slide && slide.theme);
           const legacyColor = resolveColor(el.color, legacyTheme, themeColorForPreset(legacyTheme, el.preset));
-          let textHtml = el.html || '';
+          // The "Typeset math" setting and the \$ escape (#208), as in the editor.
+          let textHtml = elementMathHtml(el, presentation.config);
           if (renderMath && /\$[^$]+\$|\$\$[\s\S]+?\$\$/.test(textHtml)) {
             const bundleId = resolveMathBundle ? resolveMathBundle(el.preset, slide) : undefined;
             try { textHtml = await renderMath(textHtml, bundleId); }

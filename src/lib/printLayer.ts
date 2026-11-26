@@ -18,6 +18,7 @@ import { resolveTheme, previewThemeSalt } from './themes';
 import { bytesToBase64 } from './base64';
 import { fontForPreset } from './fonts';
 import { renderMathInHtml, containsMath } from './mathjaxRenderer';
+import { elementMathHtml } from './mathSource.mjs';
 
 /** Element types baked to a static screenshot for print (can't be live on paper). */
 export const isLivePrintElement = (t: string): boolean =>
@@ -138,9 +139,12 @@ export async function preparePrintLayer(
   const mathHtmlByKey = new Map<string, string>();
   for (const slide of presentation.slides) {
     for (const el of slide.elements as SlideElement[]) {
-      if (el.type === 'text' && el.html && containsMath(el.html)) {
+      if (el.type !== 'text' || !el.html) continue;
+      // The "Typeset math" setting and the \$ escape (#208), as in the editor.
+      const source = elementMathHtml(el, presentation.config);
+      if (containsMath(source)) {
         const bundleId = fontForPreset(el.preset, slide as Slide, presentation.config).id;
-        const rendered = await renderMath(el.html, bundleId, presentation.config.mathPreamble || '').catch(() => el.html as string);
+        const rendered = await renderMath(source, bundleId, presentation.config.mathPreamble || '').catch(() => source);
         mathHtmlByKey.set(`${slide.id}:${el.id}`, rendered);
       }
     }

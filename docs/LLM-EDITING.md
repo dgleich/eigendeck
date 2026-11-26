@@ -74,6 +74,7 @@ my-presentation/
 ```
 
 - `mathPreamble`: optional LaTeX preamble applied to all MathJax rendering (e.g. `\newcommand`, `\def`)
+- `typesetMath`: optional boolean. Whether text between `$..$` / `$$..$$` is typeset as math in this deck (#208). New decks record the app's global "Typeset math" setting here; absent (older decks) means `true`. A text element's own `typesetMath` overrides it.
 - `defaultTitleFont` / `defaultBodyFont` / `defaultHypeFont`: optional default font package ids (see `src/lib/fonts.ts`). Available ids include `"ptsans"`, `"libertinus"`, `"libertinus-sans"`, `"lm-sans"`, `"noto-sans"`, `"source-sans"`, `"source-code"`, `"shantell"`, `"concrete-euler"`. Slides may override via `Slide.titleFont` / `bodyFont` / `hypeFont`. Missing values resolve to `"ptsans"`.
 - `defaultMonoFont`: optional default monospace font package id, used by notebook code cells. Falls back to `"source-code"` (Source Code Pro, bundled). Notebook prose cells use the body font; only code cells / outputs use this.
 - `footerFont`: optional font package id for the slide footer (the author·venue line + slide number). Unset → `"lato"` (the deck default font). Deck-level only.
@@ -150,6 +151,7 @@ Defaults sit on the **30px** alignment grid with a 60px (2-cell) outer margin.
 - `fontSize`: number (in slide units, 1920×1080 coordinate space). Beats `fontSizeName` when both set.
 - `fontFamily`: string (e.g., `"'PT Sans Narrow', sans-serif"`)
 - `color`: string (CSS color, e.g., `"#dc2626"`) — or the special **`"accent"`** token (#132), a **live theme-relative** foreground: it resolves to the slide theme's accent at render and re-adapts if the theme changes (unlike a baked hex). Also valid on `arrow` `color`. Absent = the preset's theme default.
+- `typesetMath`: optional boolean. `false` shows every `$` in this box as a plain dollar sign, `true` typesets its math even in a deck that doesn't. Absent = follow the deck's `config.typesetMath` (#208).
 - `verticalAlign`: `"top"` | `"middle"` | `"bottom"` — vertical text alignment within the box. This is a STORED property: it's stamped from the preset when the element is created (title → `"bottom"`, every other preset → `"top"`) and back-filled onto older decks on open, so the render paths read it directly. If somehow absent it falls back to `"top"`.
 - `backgroundColor`: string (CSS color) — fill behind the text box (e.g., a caption panel over a busy background). Absent = transparent.
 - `backgroundOpacity`: number 0–1 (default 1) — opacity applied to `backgroundColor` (combined into rgba at render, so the text itself isn't faded).
@@ -177,6 +179,7 @@ Defaults sit on the **30px** alignment grid with a 60px (2-cell) outer margin.
 - Escape backslashes in JSON: `\\lambda` not `\lambda`
 - **Escape `<` and `>` inside math** — write `\\lt` / `\\gt` (or `&lt;` / `&gt;`), never a raw `<`. The `html` field is parsed as HTML by the sanitizer, so a raw `<` in `$k<r$` is read as a tag start and the expression is mangled. (The in-app editor escapes `<`→`&lt;` automatically; only hand-written JSON hits this.)
 - Custom commands from `config.mathPreamble` are available
+- **Literal dollar signs**: write `\\$` (JSON for `\$`) for a dollar sign that is never math, e.g. `"html": "It costs \\$5, and the slope is $m$"`. Inside math, `\\$` is TeX's dollar sign as usual. To show every `$` in a box literally (prices, shell snippets), set the element's `typesetMath: false`, or the deck's `config.typesetMath: false`.
 
 ### Image Element
 

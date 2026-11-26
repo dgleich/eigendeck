@@ -24,6 +24,7 @@ import {
   renderMathInHtmlSync,
   containsMath as containsMathExpr,
 } from '../lib/mathjaxRenderer';
+import { elementMathHtml, mathSourcePlain } from '../lib/mathSource.mjs';
 
 function valignToCss(valign?: string): string {
   if (valign === 'middle') return 'display:flex;flex-direction:column;justify-content:center';
@@ -93,7 +94,7 @@ export function buildTextElementSvgMarkup(
   const h = element.position.height;
   // Alt text comes from the SOURCE element.html (with $..$), not the
   // post-render html (which would have lost the math source to inline SVGs).
-  const alt = altTextFromHtml(element.html);
+  const alt = altTextFromHtml(mathSourcePlain(element.html));
   // Clip the OUTER box to its bounds (overflow="hidden" attribute, not just CSS —
   // WebKit's UA stylesheet already forces overflow:hidden on <svg>/<foreignObject>,
   // and only the presentation attribute can change it). Content that overflows the
@@ -169,23 +170,27 @@ export function TextElementSvg({
   // paints in the FIRST frame — no "slide appears, then math fades in" flash
   // (the projector warms its cache from SQLite, so this is a full hit there).
   // Uncached expressions stay raw and the async effect below fills them in.
+  //
+  // sourceHtml applies the "Typeset math" setting and the \$ escape (#208): literal
+  // dollars arrive as &#36;, so the math finders below only see real delimiters.
+  const sourceHtml = elementMathHtml(element, presentationConfig);
   const [renderedHtml, setRenderedHtml] = useState<string>(() => {
-    if (!containsMathExpr(element.html)) return element.html || '';
-    return renderMathInHtmlSync(element.html, mathBundleId, presentationConfig.mathPreamble) ?? (element.html || '');
+    if (!containsMathExpr(sourceHtml)) return sourceHtml;
+    return renderMathInHtmlSync(sourceHtml, mathBundleId, presentationConfig.mathPreamble) ?? sourceHtml;
   });
   useEffect(() => {
     let cancelled = false;
-    if (!containsMathExpr(element.html)) {
-      setRenderedHtml(element.html || '');
+    if (!containsMathExpr(sourceHtml)) {
+      setRenderedHtml(sourceHtml);
       return () => { cancelled = true; };
     }
-    renderMathInIframe(element.html, mathBundleId, presentationConfig.mathPreamble).then((html) => {
+    renderMathInIframe(sourceHtml, mathBundleId, presentationConfig.mathPreamble).then((html) => {
       if (!cancelled) setRenderedHtml(html);
     }).catch(() => {
-      if (!cancelled) setRenderedHtml(element.html || '');
+      if (!cancelled) setRenderedHtml(sourceHtml);
     });
     return () => { cancelled = true; };
-  }, [element.html, mathBundleId]);
+  }, [sourceHtml, mathBundleId]);
 
   const svgMarkup = buildTextElementSvgMarkup(element, renderedHtml, {
     fontFamily, fontSize, fontWeight, fontStyle, color, valign,

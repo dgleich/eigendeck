@@ -50,6 +50,7 @@ import { ASSET_TIER } from '../lib/assetCache';
 import { renderAsset } from '../lib/assetRenderer';
 import type { TextElement, Slide, SlideElement, NotebookElement } from '../types/presentation';
 import { renderNotebookElementHtml } from '../lib/notebookExport';
+import { elementMathHtml } from '../lib/mathSource.mjs';
 
 /**
  * Resolve an element's preview PNG to a base64 data: URL for export, mirroring
@@ -431,9 +432,11 @@ export function makeTextElementRenderer(presentation: Presentation) {
     const fontFamily = el.fontFamily || fontFamilyForPreset(presetFontPkg, el.preset);
     const color = resolveColor(el.color, theme, themeColorForPreset(theme, el.preset));
     const valign = elementValign(el);
+    // The "Typeset math" setting and the \$ escape (#208), as in the editor.
+    const source = elementMathHtml(el, presentation.config);
     const renderedHtml = await renderMathPerBundle(
-      el.html || '', presetFontPkg.id, presentation.config.mathPreamble || ''
-    ).catch(() => el.html || '');
+      source, presetFontPkg.id, presentation.config.mathPreamble || ''
+    ).catch(() => source);
     return buildTextElementSvgMarkup(el, renderedHtml, {
       fontFamily,
       fontSize: effectiveFontSize(el, presentation.config),

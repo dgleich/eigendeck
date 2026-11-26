@@ -15,6 +15,7 @@ import { pickDirectoryWithEigendecks } from './dirPicker';
 import { writeReportAndAlert, showBatchError, confirmWriteInPlace } from './report';
 import { extractMath } from './mathExtract';
 import type { WarmCacheReport, WarmCacheFileReport, RunMeta } from './types';
+import { elementMathHtml } from '../lib/mathSource.mjs';
 
 async function readSchemaVersion(): Promise<number | null> {
   try {
@@ -60,7 +61,8 @@ async function warmOne(input: string): Promise<WarmCacheFileReport> {
       for (const el of slide.elements || []) {
         if (el.type !== 'text' || !el.html) continue;
         const bundle = fontForPreset(el.preset, slide, presentation.config).id;
-        for (const [tex, display] of extractMath(el.html)) {
+        // Same source the renderers see (#208): no math for a box that doesn't typeset it.
+        for (const [tex, display] of extractMath(elementMathHtml(el, presentation.config))) {
           expressionsFound++;
           try {
             // renderMath checks pool.cache first; on miss it renders via the
