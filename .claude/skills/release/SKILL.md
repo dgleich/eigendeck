@@ -100,14 +100,17 @@ gh run watch <run-id> --exit-status                # ~10–15 min
 - macOS DMG packaging (`bundle_dmg.sh`/`hdiutil`) flakes intermittently — the
   workflow **retries the tauri-action step up to 3×**, so a single hiccup
   self-heals.
-- All four jobs must go green: macOS-ARM64, macOS-x64, Linux-x64, Windows-x64.
+- All five jobs must go green: macOS-ARM64, macOS-x64, Linux-x64, Linux-ARM64, Windows-x64.
+- To test the build matrix without releasing, run the workflow by hand from a branch
+  (`gh workflow run build.yml --ref <branch>`): it builds every platform but publishes
+  nothing, and keeps each platform's bundles as a `bundles-<label>` workflow artifact.
 
 ## Verify the draft, then publish
 ```bash
 gh release view vYY.M.D --json assets -q '.assets[].name'
 ```
-Expect: both Mac DMGs (`_aarch64.dmg` + `_x64.dmg`) + two `.app.tar.gz`, Linux
-(`.deb` / `.AppImage` / `.rpm`), Windows (`-setup.exe` / `.msi`).
+Expect: both Mac DMGs (`_aarch64.dmg` + `_x64.dmg`) + two `.app.tar.gz`, Linux for
+both x64 and arm64 (`.deb` / `.AppImage` / `.rpm` each), Windows (`-setup.exe` / `.msi`).
 
 ### Write the release notes (every release)
 The workflow only sets the body to "See the assets for download links." Replace it
