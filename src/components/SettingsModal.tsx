@@ -59,6 +59,7 @@ export function SettingsPanel({ header }: { header?: React.ReactNode }) {
             <DefaultNotebookEditableSetting />
             <TryProjectorModeSetting />
             <DefaultTextSizesSetting />
+            <TypesetMathSetting />
             <MathPreambleSetting />
           </div>
         )}
@@ -342,6 +343,30 @@ function timeAgo(ms: number): string {
 }
 
 // ---- General tab settings (unchanged) ------------------------------------
+
+function TypesetMathSetting() {
+  const [value, setValue] = usePreference('typesetMath');
+  return (
+    <div>
+      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+        <input
+          type="checkbox"
+          checked={value}
+          onChange={(e) => setValue(e.target.checked)}
+          style={{ marginTop: 3 }} />
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>Typeset math in new presentations</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+            When on, text between $..$ or $$..$$ is typeset as math. New presentations
+            start with this setting. Each presentation can change it in its properties,
+            and a text box can override its presentation. Write \$ for a dollar sign
+            that is never math.
+          </div>
+        </div>
+      </label>
+    </div>
+  );
+}
 
 function MathPreambleSetting() {
   const [value, setValue] = usePreference('mathPreamble');

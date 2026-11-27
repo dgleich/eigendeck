@@ -73,6 +73,10 @@ export interface TextElement extends BaseElement {
   fontFamily?: string;
   color?: string;
   verticalAlign?: VerticalAlign;
+  /** Typeset $..$ and $$..$$ as math (#208). Unset = use the deck's
+   *  config.typesetMath. false = every dollar is literal text. Resolved by
+   *  effectiveTypesetMath (lib/mathSource.mjs). \$ is always a literal dollar. */
+  typesetMath?: boolean;
   /** Fill behind the text (e.g. a caption panel over a busy background). A CSS
    *  color; combined with backgroundOpacity at render. Unset = transparent. */
   backgroundColor?: string;
@@ -431,6 +435,10 @@ export interface PresentationConfig {
   author?: string;
   venue?: string;
   mathPreamble?: string;
+  // Typeset $..$ and $$..$$ as math in this deck's text (#208). Seeded from the
+  // global "Typeset math" pref when the deck is created; absent (decks made before
+  // the setting) means true. A text element's own typesetMath overrides it.
+  typesetMath?: boolean;
   // Default font package ids (see src/lib/fonts.ts FONT_PACKAGES).
   // Slides may override via Slide.{titleFont,bodyFont,hypeFont}.
   // Missing values resolve to 'ptsans' at render time.

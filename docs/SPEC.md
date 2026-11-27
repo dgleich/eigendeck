@@ -378,6 +378,13 @@ family (when it has one, e.g. PT Sans → PT Sans Narrow) is used for the `footn
   text metrics (x-height tuned per font)
 - Rendered as SVG (requires an SRE-free `-nosre` MathJax build for Tauri)
 - `config.mathPreamble` lets a deck define custom `\newcommand` macros
+- `\$` is always a literal dollar sign (#208)
+- "Typeset math" follows the global pref → deck pref → element pref pattern (#208). The
+  global pref seeds `config.typesetMath` when a deck is created (absent on older decks
+  means on). A text element's `typesetMath` overrides its deck. `lib/mathSource.mjs`
+  resolves it and turns every dollar that must stay literal into `&#36;` before any math
+  finder sees the html, so every render path (editor, present, thumbnails, HTML and PDF
+  export, CLI export, clipboard) agrees.
 
 ---
 

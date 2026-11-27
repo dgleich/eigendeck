@@ -1,0 +1,28 @@
+{
+  "title": "Typeset math setting (#208)",
+  "theme": "white",
+  "config": { "width": 1920, "height": 1080, "typesetMath": true,
+    "defaultTitleFont": "lato", "defaultBodyFont": "lato",
+    "textSizes": { "footnote": 24, "note": 32, "body": 48, "title": 62, "hype": 48 } },
+  "slides": [
+    {
+      "id": "s1",
+      "layout": "default",
+      "notes": "",
+      "elements": [
+        { "id": "tm-off", "type": "text", "preset": "body", "typesetMath": false,
+          "html": "He got a $5 million and $6 million grant.",
+          "position": { "x": 60, "y": 60, "width": 1800, "height": 120 } },
+        { "id": "tm-esc", "type": "text", "preset": "body",
+          "html": "It costs \\$5, and the slope is $m$.",
+          "position": { "x": 60, "y": 240, "width": 1800, "height": 120 } },
+        { "id": "tm-deck", "type": "text", "preset": "body",
+          "html": "Energy $x^2 + y^2$ here.",
+          "position": { "x": 60, "y": 420, "width": 1800, "height": 120 } },
+        { "id": "tm-on", "type": "text", "preset": "body", "typesetMath": true,
+          "html": "Always $\\lambda_1$ math.",
+          "position": { "x": 60, "y": 600, "width": 1800, "height": 120 } }
+      ]
+    }
+  ]
+}

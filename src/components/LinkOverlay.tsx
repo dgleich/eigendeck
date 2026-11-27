@@ -8,6 +8,7 @@ import { arrowBBox } from '../lib/arrowGeometry.mjs';
 import { ArrowGlyph } from './ArrowGlyph';
 import { describeCover, describeArrow } from '../lib/elementDescriptor.mjs';
 import { ELEMENT_PLACEHOLDERS as PH } from '../lib/elementPlaceholders.mjs';
+import { elementMathHtml } from '../lib/mathSource.mjs';
 
 const SLIDE_W = 1920;
 const SLIDE_H = 1080;
@@ -180,7 +181,7 @@ function LinkableElement({ element: el, isLinked, linkable = true, onClick }: {
             fontStyle: ps.fontStyle, fontSize: effectiveFontSize(el, config),
             color: el.color || ps.color, lineHeight: 1.3, overflow: 'hidden', padding: '8px 12px',
             pointerEvents: 'none',
-          }} dangerouslySetInnerHTML={{ __html: el.html }} />
+          }} dangerouslySetInnerHTML={{ __html: elementMathHtml(el, config) /* \$ shows as $ (#208) */ }} />
         </div>
       );
     }

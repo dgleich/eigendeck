@@ -36,6 +36,7 @@ import {
   renderMathInHtml as renderMathInIframe,
   containsMath as containsMathExpr,
 } from '../lib/mathjaxRenderer';
+import { effectiveTypesetMath, mathSourceHtml } from '../lib/mathSource.mjs';
 import type { SlideElement, ElementPosition, TextElement } from '../types/presentation';
 
 interface Props {
@@ -729,22 +730,27 @@ function TextContent({
   // Display: pre-render math (via iframe pool) into a string we splice into
   // the foreignObject's HTML. Falls back to raw element.html while pending.
   const mathPreamble = presentation.config.mathPreamble || '';
-  const [renderedHtml, setRenderedHtml] = useState<string>(element.html || '');
+  // The "Typeset math" setting and the \$ escape (#208): literal dollars arrive as
+  // &#36;, so the math finder only sees real delimiters. Editing still shows the
+  // source (element.html), including any \$.
+  const typesetMath = effectiveTypesetMath(element, presentation.config);
+  const sourceHtml = mathSourceHtml(element.html, typesetMath);
+  const [renderedHtml, setRenderedHtml] = useState<string>(sourceHtml);
   useEffect(() => {
     let cancelled = false;
     if (editing) return;
-    if (!containsMathExpr(element.html)) {
-      setRenderedHtml(element.html || '');
+    if (!containsMathExpr(sourceHtml)) {
+      setRenderedHtml(sourceHtml);
       return () => { cancelled = true; };
     }
-    renderMathInIframe(element.html, mathBundleId, mathPreamble).then((html) => {
+    renderMathInIframe(sourceHtml, mathBundleId, mathPreamble).then((html) => {
       if (!cancelled) setRenderedHtml(html);
     }).catch((err) => {
       console.warn('TextContent math render failed:', err);
-      if (!cancelled) setRenderedHtml(element.html || '');
+      if (!cancelled) setRenderedHtml(sourceHtml);
     });
     return () => { cancelled = true; };
-  }, [element.html, mathBundleId, editing, mathPreamble]);
+  }, [sourceHtml, mathBundleId, editing, mathPreamble]);
 
   // #95: detect clipped (overflowing) text. Compare the CONTENT div's natural
   // size to the fixed-height box, not the box's own scroll offset — with
@@ -811,6 +817,8 @@ function TextContent({
   };
 
   const applyMathLineStyles = (el: HTMLElement) => {
+    // A box that doesn't typeset math shows $$..$$ lines as text: nothing to reserve.
+    if (!typesetMath) return;
     // Only apply to direct child ELEMENTS (each <div> line in contentEditable)
     for (const child of Array.from(el.childNodes)) {
       if (child.nodeType !== Node.ELEMENT_NODE) continue;

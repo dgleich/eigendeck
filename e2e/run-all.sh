@@ -66,6 +66,7 @@ MANIFEST=(
   "present-theme-parity-probe.mjs|examples/intro-slide.eigendeck||"
   "present-projector-probe.mjs|examples/intro-slide.eigendeck||"
   "window-create-probe.mjs|examples/intro-slide.eigendeck||"   # #213 opening an app window must not stall (tao portal theme lookup)
+  "typeset-math-probe.mjs|typeset-math.eigendeck||import_json \$ROOT/e2e/fixtures/typeset-math-deck.json"   # #208 Typeset math setting + \\$ escape: editor, inspector, present, export
   # #134 present-mode VISUAL check via the in-app seam capture (captureElement),
   # NOT WebDriver /screenshot which hangs in headless present. Asserts non-blank pixels.
   "present-visual-probe.mjs|present-visual.eigendeck||import_json \$ROOT/e2e/fixtures/present-visual-deck.json"

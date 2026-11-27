@@ -309,6 +309,18 @@ export function PropertiesPanel() {
               <input className="prop-input" value={presentation.config.venue || ''}
                 onChange={(e) => updateConfig({ venue: e.target.value })} />
             </PropSection>
+            <PropSection label="Typeset Math">
+              <select className="prop-select" aria-label="Typeset math in this presentation"
+                value={(presentation.config.typesetMath ?? true) ? 'yes' : 'no'}
+                onChange={(e) => updateConfig({ typesetMath: e.target.value === 'yes' })}>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+              <HelpText>
+                Whether text between $..$ or $$..$$ is typeset as math. A text box can
+                override this. Write \$ for a dollar sign that is never math.
+              </HelpText>
+            </PropSection>
             <PropSection label="LaTeX Preamble">
               <PreambleField
                 value={presentation.config.mathPreamble || ''}
@@ -464,6 +476,17 @@ export function PropertiesPanel() {
                       );
                     })}
                   </div>
+                </PropSection>
+                <PropSection label="Typeset Math">
+                  <select className="prop-select" aria-label="Typeset math in this text box"
+                    value={selectedEl.typesetMath === undefined ? 'default' : selectedEl.typesetMath ? 'yes' : 'no'}
+                    onChange={(e) => updateElement(selectedEl.id, {
+                      typesetMath: e.target.value === 'default' ? undefined : e.target.value === 'yes',
+                    } as any)}>
+                    <option value="default">Default ({(presentation.config.typesetMath ?? true) ? 'yes' : 'no'})</option>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                  </select>
                 </PropSection>
                 <PropSection label="Text Color">
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>

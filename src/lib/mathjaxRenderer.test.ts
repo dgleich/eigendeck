@@ -91,6 +91,10 @@ describe('texFromHtml', () => {
     expect(texFromHtml('<span style="color:red">\\lambda_1</span>')).toBe('\\lambda_1');
   });
 
+  it('maps a literal-dollar entity back to TeX\'s own \\$ (#208: an escaped dollar inside math)', () => {
+    expect(texFromHtml('&#36;5')).toBe('\\$5');
+  });
+
   it('decodes HTML entities back to LaTeX punctuation', () => {
     expect(texFromHtml('a &lt; b &gt; c')).toBe('a < b > c');
     expect(texFromHtml('&quot;q&quot; and &#39;p&#39;')).toBe('"q" and \'p\'');

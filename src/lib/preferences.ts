@@ -26,6 +26,11 @@ export interface PrefSchema {
    *  "Replace with global" buttons. Render path only uses the
    *  per-presentation preamble; this is editing-only. */
   mathPreamble: string;
+  /** Typeset $..$ and $$..$$ as math in NEW presentations (#208). Copied into a
+   *  new deck's config.typesetMath when it is created; existing decks keep their
+   *  own setting (and decks without one typeset). A text element can override its
+   *  deck. */
+  typesetMath: boolean;
   /** Default deck-level type scale overrides for NEW presentations.
    *  When a new deck is created, its PresentationConfig.textSizes is
    *  seeded from this. Any keys absent here fall back to
@@ -111,6 +116,7 @@ export interface JupyterServerEntry {
 const DEFAULTS: PrefSchema = {
   autoReloadAssets: true,
   mathPreamble: '',
+  typesetMath: true,
   textSizes: {},
   jupyterServers: [],
   defaultNotebookEditable: false,

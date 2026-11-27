@@ -463,6 +463,18 @@ describe('presentation store — full lifecycle exercise', () => {
     assertInvariants('after setPresentation');
   });
 
+  it('createSeededPresentation seeds typesetMath from the global pref (#208)', () => {
+    localStorage.removeItem('eigendeck:pref:typesetMath');
+    expect(createSeededPresentation().config.typesetMath).toBe(true);   // pref unset: default on
+    localStorage.setItem('eigendeck:pref:typesetMath', JSON.stringify(false));
+    expect(createSeededPresentation().config.typesetMath).toBe(false);
+    localStorage.setItem('eigendeck:pref:typesetMath', JSON.stringify(true));
+    expect(createSeededPresentation().config.typesetMath).toBe(true);
+    localStorage.setItem('eigendeck:pref:typesetMath', '{not json');
+    expect(createSeededPresentation().config.typesetMath).toBe(true);   // malformed: default on
+    localStorage.removeItem('eigendeck:pref:typesetMath');
+  });
+
   it('createSeededPresentation seeds mathPreamble + textSizes from localStorage prefs', () => {
     localStorage.setItem('eigendeck:pref:mathPreamble', JSON.stringify('\\newcommand{\\x}{x}'));
     localStorage.setItem('eigendeck:pref:textSizes', JSON.stringify({ body: 42, junk: 'bad', neg: -3 }));
